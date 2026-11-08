@@ -32,6 +32,7 @@ type Mode = 'error' | 'abort' | 'stop';
 interface Handler {
   kind: Kind;
   node: Steps.Node;
+  bare?: boolean;
 }
 
 interface Rescue {
@@ -54,7 +55,6 @@ interface Branch {
 interface Lineage {
   restore: Restore;
   caught: Steps.Node;
-  cause: unknown;
 }
 
 interface Gate {
@@ -164,7 +164,7 @@ declare namespace Steps {
     until?: number;
   }
 
-  /** A `then.on` handler: a function, or for a durable run, steps called for it. */
+  /** A `then.on` handler: a function; or for a durable run, a step method uncalled - given the error or reason - or steps called for it. */
   type Handler = ((reason: unknown) => unknown) | Promise<void> | readonly Promise<void>[];
 
   /** Handlers for the outcomes of a step's subtree - `this.then.on({ ... })`. */
@@ -586,7 +586,6 @@ class Run extends Model {
   _on = new Map<string, Handler[]>();
   _finished = new Set<string>();
   _reset = new Set<string>();
-  _reasons = new Map<string, unknown>();
   _writer = new Map<string, string>();
   _lost = new Set<string>();
   _losing = new Map<string, Promise<unknown>>();
@@ -742,7 +741,7 @@ class Run extends Model {
 
     if (this.stale()) return restore();
 
-    let { node } = handler;
+    let node = this.given(handler, cause);
     const fn = this._inline.get(node.id);
 
     if (fn) {
@@ -752,7 +751,7 @@ class Run extends Model {
     }
 
     this._parent.set(node.id, id);
-    this._lineage.set(node.id, { restore, caught: item!, cause });
+    this._lineage.set(node.id, { restore, caught: item! });
     this._retried.set(node.id, this.retried(item!));
 
     await this.exec(node, frame);
@@ -804,7 +803,17 @@ class Run extends Model {
   }
 
   async fire(on: Handler[] | undefined, kind: Kind, cause: unknown, kept: Set<string>) {
-    for (const { kind: is, node } of [...(on || [])].reverse()) if (is == kind) await this.compensate(node, cause, kept, kind == 'reset');
+    for (const handler of [...(on || [])].reverse())
+      if (handler.kind == kind) await this.compensate(this.given(handler, cause), cause, kept, kind == 'reset');
+  }
+
+  given({ node, bare, kind }: Handler, cause: unknown) {
+    if (bare && kind != 'reset') {
+      node.args = [serial(cause)];
+      this._errors.set(node.id, cause);
+    }
+
+    return node;
   }
 
   racing(item: Steps.Node) {
@@ -895,7 +904,7 @@ class Run extends Model {
     if (key) this._errors.set(node.id, cause);
 
     this._parent.set(node.id, parent);
-    this._lineage.set(node.id, { restore, caught: item, cause });
+    this._lineage.set(node.id, { restore, caught: item });
     this._retried.set(node.id, this.retried(item));
 
     if (!key) {
@@ -1140,7 +1149,7 @@ class Run extends Model {
     const inline = this._inline.get(id);
     const lineage = this._lineage.get(id);
     const fn = inline || control._steps.get(key)!;
-    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), _retried: this.retried(node), ...lineage && { _restore: lineage.restore, _caught: lineage.caught, _cause: { error: lineage.cause } }, ...this._reasons.has(id) && { _cause: { error: this._reasons.get(id) } } });
+    const frame = this.frames.add({ id, key, args, _wake: wake, _undo: undo, _owner: this._owner.get(id), _retried: this.retried(node), ...lineage && { _restore: lineage.restore, _caught: lineage.caught } });
     const input = this._errors.has(id) ? [this._errors.get(id)] : args;
     let body = false;
 
@@ -1472,7 +1481,7 @@ class Run extends Model {
   async compensate(item: Steps.Node, cause: unknown, kept: Set<string>, bare?: boolean) {
     const fn = this._inline.get(item.id);
 
-    if (!fn) return this.undo([item], kept, cause);
+    if (!fn) return this.undo([item], kept);
 
     const frame = this.frames.add({ id: item.id, key: item.key, args: item.args, _undo: true, _owner: this._owner.get(item.id) });
     try {
@@ -1485,12 +1494,10 @@ class Run extends Model {
     await this.undo(frame._items, kept);
   }
 
-  async undo(items: Steps.Node[], kept: Set<string>, cause?: unknown): Promise<void> {
+  async undo(items: Steps.Node[], kept: Set<string>): Promise<void> {
     for (const item of items)
-      if (item.group) await Promise.all(item.group.map((member) => this.undo([member], kept, cause)));
+      if (item.group) await Promise.all(item.group.map((member) => this.undo([member], kept)));
       else {
-        this._reasons.set(item.id, cause);
-
         const frame = (await this.invoke(item, undefined, true))!;
 
         for (const key of frame._wrote) kept.add(key);
@@ -1563,7 +1570,6 @@ class Frame extends Model {
   _retried = 0;
   _restore?: Restore = undefined;
   _caught?: Steps.Node = undefined;
-  _cause?: { error: unknown } = undefined;
   _failed?: { cause: unknown } = undefined;
   _committed?: boolean = undefined;
   _entry?: Steps.Entry = undefined;
@@ -1764,7 +1770,6 @@ class Frame extends Model {
       end: { value: (...value: unknown[]) => (valueless(value), this.issue('end', [])) },
       signal: { get: () => this._abort.signal },
       retried: { get: () => this._retried },
-      error: { get: () => (this._cause ? this._cause.error : this.run.control.error) },
       retry: { value: retry },
       only: { value: (max: unknown, key?: unknown) => this.slot(max, key) },
       on: { value: (handlers: unknown) => this.handle(handlers) },
@@ -1800,16 +1805,18 @@ class Frame extends Model {
       if (value === undefined) continue;
       if (kind == 'catch' && this._on.some((handler) => handler.kind == 'catch')) throw rule('then.on() takes one catch per step.');
 
+      const step = typeof value == 'function' && this.keyOf(value);
       let node: Steps.Node;
 
-      if (typeof value == 'function' && !this.keyOf(value)) {
+      if (step) node = run.node(step, []);
+      else if (typeof value == 'function') {
         node = run.node('then', []);
         run._inline.set(node.id, value);
         run._owner.set(node.id, this);
       }
       else [node] = this.claimed(Array.isArray(value) ? value : [value], usage, 'then.on()');
 
-      this._on.push({ kind: kind as Kind, node });
+      this._on.push({ kind: kind as Kind, node, bare: !!step });
     }
   }
 

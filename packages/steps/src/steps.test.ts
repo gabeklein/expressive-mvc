@@ -5901,7 +5901,7 @@ describe('on catch', () => {
     expect(tries).toEqual([0, 1, 2]);
   });
 
-  it('will schedule a step called for catch in place, reading the error', async () => {
+  it('will schedule a step called for catch in place, without the error', async () => {
     const seen: unknown[] = [];
 
     class Test extends Journal {
@@ -5910,7 +5910,6 @@ describe('on catch', () => {
       }
 
       protected async a() {
-        seen.push(this.then.error);
         this.then.on({ catch: this.fallback('b') });
         this.fail();
       }
@@ -5920,15 +5919,55 @@ describe('on catch', () => {
       }
 
       protected async fallback(name: string) {
-        seen.push(name, this.then.error);
+        seen.push(name);
       }
     }
 
     const test = Test.new();
 
     await test.run();
-    expect(seen).toEqual([undefined, 'b', new Error('boom')]);
+    expect(seen).toEqual(['b']);
     expect(record(test).map((entry) => entry.id)).toEqual(['run#1', 'a#1', 'fail#1', 'fallback#1']);
+  });
+
+  it('will run a step method given for catch with the error, recorded', async () => {
+    const seen: unknown[] = [];
+
+    class Test extends Journal {
+      async run(rethrow: boolean) {
+        this.a(rethrow);
+      }
+
+      protected async a(rethrow: boolean) {
+        this.then.on({ catch: rethrow ? this.passOn : this.fallback });
+        this.fail();
+      }
+
+      protected async fail() {
+        throw new Error('boom');
+      }
+
+      protected async fallback(error: unknown) {
+        seen.push(error);
+        this.later();
+      }
+
+      protected async passOn(error: unknown) {
+        throw error;
+      }
+
+      protected async later() {
+        seen.push('later');
+      }
+    }
+
+    const test = Test.new();
+
+    await test.run(false);
+    expect(seen).toEqual([new Error('boom'), 'later']);
+    expect(record(test).find((entry) => entry.key == 'fallback')).toMatchObject({ args: [{ name: 'Error', message: 'boom' }] });
+
+    await expect(Test.new().run(true)).rejects.toThrow('boom');
   });
 
   it('will not run catch once an undo below fails the run', async () => {
@@ -6288,32 +6327,49 @@ describe('Aborted and Stopped', () => {
     expect(signals).toEqual(errors);
   });
 
-  it('will give a recorded close the reason as then.error', async () => {
+  it('will run a step method given for close with the reason, recorded', async () => {
     const seen: unknown[] = [];
+    const reset = vi.fn();
 
-    class Test extends Steps {
-      async run(fail: boolean) {
-        this.a(fail);
+    class Test extends Journal {
+      async run(halt: boolean) {
+        this.a(halt);
       }
 
-      protected async a(fail: boolean) {
-        this.then.on({ close: this.closed() });
+      protected async a(halt: boolean) {
+        this.then.on({ close: this.closed, reset: this.unwind });
 
-        if (fail) this.fail();
+        if (halt) this.slow();
       }
 
-      protected async fail() {
-        throw new Error('boom');
+      protected async slow() {
+        const { signal } = this.then;
+
+        await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
       }
 
-      protected async closed() {
-        seen.push(this.then.error);
+      protected async closed(reason: unknown) {
+        seen.push(reason);
+      }
+
+      protected async unwind(...args: unknown[]) {
+        reset(...args);
       }
     }
 
     await Test.new().run(false);
-    await expect(Test.new().run(true)).rejects.toThrow('boom');
-    expect(seen).toEqual([undefined, new Error('boom')]);
+
+    const test = Test.new();
+    const result = test.run(true);
+
+    await vi.waitFor(() => expect(test.then.active).toBe('slow'));
+    test.then.abort();
+    await result.catch(() => {});
+
+    expect(seen[0]).toBeUndefined();
+    expect(seen[1]).toBeInstanceOf(Steps.Aborted);
+    expect(reset).toHaveBeenCalledWith();
+    expect(record(test).find((entry) => entry.key == 'closed')).toMatchObject({ args: [{ name: 'Aborted' }] });
   });
 });
 
@@ -7855,7 +7911,7 @@ describe('durable handlers', () => {
           () => this.then.on({ reset: this.then({}) as never }),
           () => this.then.on(undefined as never),
           () => this.then.on({ reset: {} as never }),
-          () => this.then.on({ reset: this.a as never }),
+          () => this.then.on({ reset: [this.a as never] }),
         ];
 
         for (const attempt of tries)
