@@ -1,5 +1,13 @@
 # @expressive/router
 
+## 0.10.2
+
+### Patch Changes
+
+- [#624](https://github.com/gabeklein/expressive-mvc/pull/624) [`3e9a156`](https://github.com/gabeklein/expressive-mvc/commit/3e9a1560719474908ed873d7883dc002b072e387) A function `redirect` guard that rejects now reaches the Route's `catch` after an in-app navigation, instead of leaving the current page held with the error dropped.
+- Updated dependencies [[`72f0d74`](https://github.com/gabeklein/expressive-mvc/commit/72f0d742007dfd23b9103b314a9367319de50f7b)]:
+  - @expressive/mvc@0.94.1
+
 ## 0.10.1
 
 ### Patch Changes

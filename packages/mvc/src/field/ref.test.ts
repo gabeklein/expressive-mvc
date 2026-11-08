@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, afterEach } from 'vitest';
-import { Model } from '../state';
+import { Model } from '../model';
 import { ref } from './ref';
 import { set } from './set';
 
