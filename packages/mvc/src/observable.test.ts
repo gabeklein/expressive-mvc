@@ -5,7 +5,7 @@ import { set } from './field/set';
 import { def } from './field/def';
 import { vi, describe, it, expect } from 'vitest';
 import { mockError, mockPromise, mockUncaught, flushMicrotasks } from '../test.setup';
-import { Model } from './state';
+import { Model } from './model';
 
 describe('effect', () => {
   it('will remove listener on cleanup', () => {

@@ -19,7 +19,7 @@ import { dirname, join, relative, resolve } from 'node:path';
  *    so a `declare module` augmentation split into its own chunk ships orphaned
  *    and consumers never see it.
  */
-const PACKAGES = ['mvc', 'react', 'dom', 'router', 'inspect'];
+const PACKAGES = ['mvc', 'react', 'dom', 'router', 'inspect', 'steps'];
 
 const IMPORTS = /(?:^|;)\s*(?:import|export)[^'"]*?from\s*['"]([^'"]+)['"]/gm;
 const SIDE_EFFECT = /(?:^|;)\s*import\s*['"]([^'"]+)['"]/gm;
