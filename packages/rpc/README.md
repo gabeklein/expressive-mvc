@@ -44,5 +44,6 @@ try {
 - **Gates** - an `index.ts` default `Model` with `static key()` runs before every call in its folder and below: throw to refuse.
 - **Request** - `Current.get().request`, `.url` and `.cookies` inside a call.
 - **Client** - `configure({ base, headers, transport, reply })` for cross-origin servers, auth headers or a custom fetch.
+- **Server entry** - `rpc({ entry: "server.ts" })` makes your own Worker-shaped module the server: it gets the calls as `handle(request)` from `@expressive/rpc/calls` and adds routes, a `scheduled` handler or Durable Objects beside them, sharing their modules in dev and build.
 
 Full reference: [skills/rpc.md](https://github.com/gabeklein/expressive-mvc/blob/main/skills/rpc.md). A runnable app is in [`example/`](https://github.com/gabeklein/expressive-mvc/tree/main/packages/rpc/example).

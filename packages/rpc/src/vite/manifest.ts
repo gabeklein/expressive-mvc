@@ -120,7 +120,8 @@ export class Manifest<E extends Exposed = Exposed> {
     return { calls, classes };
   }
 
-  entry(gates: Located[]): string {
+  /** The calls as a module: `handle(request)` answers a call and gives anything else `undefined`. */
+  calls(gates: Located[]): string {
     const json = JSON.stringify;
     const files = [...new Set([...this.modules.keys(), ...gates.map(gate => gate.file)])];
     const alias = (file: string) => `m${files.indexOf(file)}`;
@@ -141,9 +142,7 @@ export class Manifest<E extends Exposed = Exposed> {
       "",
       ...endpoints.flat(),
       `const gates = new Map([${gates.map(gate => `[${json(gate.pattern.join("/"))}, ${alias(gate.file)}.default]`).join(", ")}]);`,
-      `const handle = handler([${this.byPattern().map((group, i) => `{ pattern: ${json(group[0].pattern)}, exports: async () => e${i} }`).join(", ")}], { seats: async pattern => gates.get(pattern.join("/")) });`,
-      "",
-      `export default { async fetch(request, env) { return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not found.", { status: 404 }); } };`,
+      `export const handle = handler([${this.byPattern().map((group, i) => `{ pattern: ${json(group[0].pattern)}, exports: async () => e${i} }`).join(", ")}], { seats: async pattern => gates.get(pattern.join("/")) });`,
       "",
     ].join("\n");
   }

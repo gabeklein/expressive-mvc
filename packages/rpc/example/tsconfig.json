@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["api", "data", "src"]
+  "include": ["api", "data", "src", "server.ts"]
 }

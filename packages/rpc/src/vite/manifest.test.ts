@@ -136,7 +136,7 @@ describe("exports", () => {
   });
 });
 
-describe("entry", () => {
+describe("calls", () => {
   it("will list each folder's calls and errors under their ids, with the gates along them", () => {
     const manifest = new Manifest();
 
@@ -144,12 +144,12 @@ describe("entry", () => {
     manifest.modules.set("/app/api/index.ts", exposed("/app/api/index.ts", { calls: ["ping"] }));
     manifest.modules.set("/app/api/admin/users.ts", exposed("/app/api/admin/users.ts", { calls: ["list"] }));
 
-    const entry = manifest.entry([at("/app/api/index.ts")!, at("/app/api/admin/index.ts")!]);
+    const entry = manifest.calls([at("/app/api/index.ts")!, at("/app/api/admin/index.ts")!]);
 
     expect(entry).toContain(`import * as m0 from "/app/api/todos.ts";\nimport * as m1 from "/app/api/index.ts";\nimport * as m2 from "/app/api/admin/users.ts";\nimport * as m3 from "/app/api/admin/index.ts";`);
     expect(entry).toContain(`const e0 = { calls: { "todos:list": m0.list, "ping": m1.ping }, classes: { "/#todos:Over": m0.Over } };\nverify("/", e0);`);
     expect(entry).toContain(`const e1 = { calls: { "users:list": m2.list }, classes: {  } };\nverify("/admin", e1);`);
     expect(entry).toContain(`const gates = new Map([["", m1.default], ["admin", m3.default]]);`);
-    expect(entry).toContain(`handler([{ pattern: [], exports: async () => e0 }, { pattern: ["admin"], exports: async () => e1 }]`);
+    expect(entry).toContain(`export const handle = handler([{ pattern: [], exports: async () => e0 }, { pattern: ["admin"], exports: async () => e1 }]`);
   });
 });

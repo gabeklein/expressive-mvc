@@ -7,14 +7,13 @@ import server from "./dist/server/index.js";
 
 const client = join(import.meta.dirname, "dist/client");
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" };
-const calls = toNode(server.fetch);
+// server.ts answers first - calls and its own routes; what it leaves is the static client.
+const app = toNode(request => server.fetch(request));
 
-createServer((req, res) => {
-  if (req.method === "POST") return calls(req, res);
-
+createServer((req, res) => app(req, res, () => {
   const path = join(client, normalize(new URL(req.url, "http://localhost").pathname));
   const file = path.startsWith(client) && existsSync(path) && statSync(path).isFile() ? path : join(client, "index.html");
 
   res.setHeader("content-type", types[extname(file)] ?? "application/octet-stream");
   createReadStream(file).pipe(res);
-}).listen(Number(process.env.PORT) || 3000);
+})).listen(Number(process.env.PORT) || 3000);

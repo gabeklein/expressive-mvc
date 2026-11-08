@@ -8,6 +8,7 @@ export const SERVER_ONLY: readonly string[] = ["Current"];
 const ROOT = "@expressive/rpc";
 
 const HOST_ONLY: Record<string, string> = {
+  "@expressive/rpc/calls": "the server's calls - only its entry uses them",
   "@expressive/rpc/http": "the host adapter - only a server entry uses it",
   "@expressive/rpc/protocol": "server plumbing - only a server or host module uses it",
 };
