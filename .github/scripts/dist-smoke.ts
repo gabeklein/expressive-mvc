@@ -1,6 +1,8 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+
+import { manifests, pinned, unpinned } from './pin-workspace';
 
 /**
  * Pack every publishable package, install the tarballs into a throwaway project
@@ -13,8 +15,11 @@ import { join, resolve } from 'node:path';
  * dom app built the way a consumer builds one: type-checked against the
  * published declarations with `skipLibCheck` off, bundled and minified so
  * `sideEffects` tree-shaking applies, then driven under happy-dom.
+ *
+ * Each package packs from a staged copy whose `workspace:` ranges are pinned
+ * as `ci:publish` pins them, and a packed manifest that still has one fails.
  */
-const PACKAGES = ['mvc', 'react', 'dom', 'router', 'inspect', 'steps'];
+const PACKAGES = ['mvc', 'react', 'dom', 'router', 'inspect', 'steps', 'rpc', 'dev'];
 
 function run(cmd: string[], cwd: string) {
   const { exitCode, stdout, stderr } = Bun.spawnSync(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
@@ -32,11 +37,27 @@ const fixture = mkdtempSync(join(tmpdir(), 'expressive-dist-smoke-'));
 const tarballs: Record<string, string> = {};
 
 try {
+  const all = manifests();
+  const versions = new Map([...all].map(([name, { manifest }]) => [name, manifest.version]));
+
   for (const name of PACKAGES) {
-    const packed = run(
-      ['npm', 'pack', '--json', '--pack-destination', fixture],
-      resolve('packages', name)
-    );
+    const { dir, manifest } = all.get(`@expressive/${name}`)!;
+    const stage = join(fixture, 'stage', name);
+    const manifestOut = pinned(manifest, versions);
+    const left = unpinned(manifestOut);
+
+    if (left.length) throw new Error(`@expressive/${name} would publish workspace: ranges: ${left.join(', ')}`);
+
+    mkdirSync(stage, { recursive: true });
+
+    for (const entry of readdirSync(dir))
+      if (entry === 'dist' || /^(readme|license|changelog)/i.test(entry)) cpSync(join(dir, entry), join(stage, entry), { recursive: true });
+
+    if (!existsSync(join(stage, 'dist'))) throw new Error(`@expressive/${name} has no dist - build first.`);
+
+    writeFileSync(join(stage, 'package.json'), JSON.stringify(manifestOut, null, 2));
+
+    const packed = run(['npm', 'pack', '--json', '--pack-destination', fixture], stage);
     const [{ filename }] = JSON.parse(packed);
 
     tarballs[`@expressive/${name}`] = `file:./${filename}`;
