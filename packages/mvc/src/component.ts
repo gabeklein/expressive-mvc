@@ -2,7 +2,7 @@ import { join } from './context';
 import { element } from './element';
 import { listener } from './observable';
 import { set } from './field/set';
-import { Model, adopt, plain, trailing } from './state';
+import { Model, adopt, plain, trailing } from './model';
 
 import type { Host } from './jsx-runtime';
 

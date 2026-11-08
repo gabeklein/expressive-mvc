@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, expectTypeOf } from 'vitest';
-import { Model } from '../state';
+import { Model } from '../model';
 import { def } from './def';
 
 describe('instruction', () => {

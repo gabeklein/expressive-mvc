@@ -1,0 +1,80 @@
+.checkout {
+  display: grid;
+  gap: var(--s3);
+  max-width: 28rem;
+}
+
+.checkout .cart {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkout .cart li {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--s1) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.checkout label {
+  display: grid;
+  gap: var(--s1);
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.checkout input {
+  padding: var(--s2) var(--s3);
+  font: inherit;
+}
+
+.checkout .controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  min-height: 2.25rem;
+}
+
+.checkout .status {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+}
+
+.checkout .notice {
+  margin: 0;
+  color: var(--accent);
+}
+
+.checkout .fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--s1) var(--s4);
+  margin: 0;
+  font-size: var(--t-sm);
+}
+
+.checkout .fields dt {
+  color: var(--muted);
+}
+
+.checkout .fields dd {
+  margin: 0;
+  font-family: var(--font-mono);
+}
+
+.checkout .record {
+  margin: 0;
+  padding: var(--s3) var(--s3) var(--s3) var(--s6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-size: var(--t-sm);
+  min-height: 6rem;
+}
+
+.checkout .undone {
+  color: var(--muted);
+  text-decoration: line-through;
+}
