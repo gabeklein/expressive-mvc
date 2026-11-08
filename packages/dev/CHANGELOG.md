@@ -1,5 +1,11 @@
 # @expressive/dev
 
+## 0.1.1
+
+### Patch Changes
+
+- [#654](https://github.com/gabeklein/expressive-mvc/pull/654) [`bd67894`](https://github.com/gabeklein/expressive-mvc/commit/bd678942e7cb6a1688ff9ada6531624aa8dfd06d) Installs from npm. 0.1.0 was published with `workspace:^` ranges for `@expressive/dom`, `@expressive/rpc`, `@expressive/router` and `@expressive/inspect`, which npm cannot resolve outside this repo.
+
 ## 0.1.0
 
 ### Minor Changes
