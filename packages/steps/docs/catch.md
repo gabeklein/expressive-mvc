@@ -50,7 +50,7 @@ A failure that is expected - no courier, a declined card - is a typed error thro
 - `this.pay().catch(handler)` - the caller's recovery for that call: the branch is the call and all it schedules, `pay` included.
 - `this.then.on({ catch })` in `pay` - its own fallback, covering from registration on, the rest of `pay`'s body included: the branch is what `pay` scheduled - `pay` too if its body threw - and `pay`'s committed effects stay. See [on.md](on.md#handlers).
 
-Inner first: a failure meets the step's own `catch` before a `.catch` on its call - throwing there passes it to the caller's. `retry()` in either replays the step the catch belongs to.
+Inner first: a failure meets the step's own `catch` before a `.catch` on its call - throwing there passes it to the caller's. `retry()` in either replays the step the catch belongs to. Either takes a step method uncalled - `.catch(this.fallback)`, `on({ catch: this.fallback })` - run with the error, recorded.
 
 ## Retry
 

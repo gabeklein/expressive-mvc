@@ -50,7 +50,12 @@ A handler covers its step and everything it schedules - the subtree. Outcomes, d
 
 ### Steps as handlers - durable runs
 
-A function lives in this process. For a durable run - future - whose compensation is an external effect that must survive a restart, a handler can be a step called for it: `{ reset: this.release(hold) }`, several in an array run as one group. A step called for `catch` is scheduled in the failed part's place, one for `close` runs last - each reads the error or reason from `this.then.error`. Claimed, not scheduled; recorded with their args, which they run with; they reach `before`/`after` and are taken back by nothing. An array mixing steps and functions throws `then.on() takes called steps or step references, not both.`; a bare step method throws - call it.
+A function lives in this process. For a durable run - future - whose compensation is an external effect that must survive a restart, a handler can be a step:
+
+- a step method, uncalled - `{ catch: this.fallback, close: this.settle }`: run with the error or reason as its only argument, recorded as `token.catch(this.step)` is - an Error as `{ name, message, cause }`, so a `Steps.Aborted` or `Steps.Stopped` is recognisable by `name` (in process the step gets the original instance; a durable host rebuilds it by name). As `catch` its completion recovers and its throw passes on; it may schedule. As `reset` it is called with no arguments.
+- a step called for it - `{ reset: this.release(hold) }` - with args recorded at registration; several in an array run as one group. For `catch` it is scheduled in the failed part's place, without the error.
+
+Claimed, not scheduled; they reach `before`/`after` and are taken back by nothing. An array mixing steps and functions throws `then.on() takes called steps or step references, not both.`
 
 Entry: `on: { reset: [{ id: 'then#2', key: 'then', args: [] }] }` - by outcome; `then` for a function, the step's node for a step, a group node for several. Ids are minted at registration, so a handler never run leaves a gap.
 
