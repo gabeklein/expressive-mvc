@@ -288,7 +288,6 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - REST over the rpc folder (a `Route` default with uppercase verbs) - assessed after RPC stage 3. Twins of rpc classes are dev's, on stateful hosts only.
 - On the client only the layout chain stays mounted - sibling pages remount (per the generated route tree). Twins inherit that lifetime.
 - Entry follow-ups:
-  - A refusal caught by the refusing folder's own `Catch` (a `Catch` in its own module) shows that Route's stale suspense fallback: dom renders a boundary's fallback once when it hides, and a `catch` setting `fallback` while already hidden is not shown. An ancestor's `Catch` works. Fixed on `main` (#633, re-draws the placeholder when `catch` runs on a hidden boundary) - arrives with the trunk's next `main` merge.
   - `Catch`'s `retry` re-throws the cached refusal - the router keeps a rejected guard's promise for the space until the route is left. Retry from `Catch` should re-run admission - recorded for later.
   - A plain sidecar function called during a held navigation (from an entry hook, say) still fills its path from `location`, which lags the router's path until the page commits.
   - Nested seats attach one depth at a time - a child Route renders only once its parent is admitted.
