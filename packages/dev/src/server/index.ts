@@ -1,3 +1,3 @@
 export { serve } from "./serve";
 export { config, type AppConfig } from "./config";
-export { Current } from "@expressive/rpc";
+export { Cookies, Current, type CookieOptions } from "@expressive/rpc";

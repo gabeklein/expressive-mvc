@@ -318,7 +318,7 @@ describe("Current", () => {
       expect(() => { current.cookies = {}; }).toThrow("Current is read-only.");
     });
   });
-  it("will gather headers and cookies for the reply", async () => {
+  it("will gather headers for the reply", async () => {
     const req = new Request("https://example.com/");
 
     expect(headersOf(req)).toBeUndefined();
@@ -329,27 +329,13 @@ describe("Current", () => {
       current.setHeader("cache-control", "no-store");
       current.setHeader("cache-control", "private");
       current.setHeader("Set-Cookie", "raw=1");
-      current.setCookie("session", "a b;c", { maxAge: 60.5, domain: "example.com", sameSite: "Strict", partitioned: true });
-      current.setCookie("theme", "dark", { httpOnly: false, secure: false, path: "/app" });
-      current.deleteCookie("old");
+      current.setHeader("set-cookie", "raw=2");
     });
 
     const headers = headersOf(req)!;
 
     expect(headers.get("cache-control")).toBe("private");
-    expect(headers.getSetCookie()).toEqual([
-      "raw=1",
-      "session=a%20b%3Bc; Path=/; Max-Age=60; Domain=example.com; Secure; HttpOnly; Partitioned; SameSite=Strict",
-      "theme=dark; Path=/app; SameSite=Lax",
-      "old=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; HttpOnly; SameSite=Lax",
-    ]);
-  });
-
-  it("will leave Secure off over plain http, and refuse a bad name", async () => {
-    await call([], () => {
-      Current.get().setCookie("a", "1");
-      expect(() => Current.get().setCookie("a b", "1")).toThrow('"a b" is not a valid cookie name.');
-    });
+    expect(headers.getSetCookie()).toEqual(["raw=1", "raw=2"]);
   });
 });
 

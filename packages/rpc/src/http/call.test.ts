@@ -4,6 +4,7 @@ import { Model } from "@expressive/mvc";
 
 import type { Endpoint, Seats } from "../call";
 import { Current, install } from "../context";
+import { Cookies } from "../cookies";
 import { dispatch, failure, handler, isCall, reply, type Tier } from "./call";
 
 const TAB = crypto.randomUUID();
@@ -195,17 +196,20 @@ describe("reply", () => {
 describe("headers from a call", () => {
   install();
 
+  class Session extends Cookies {
+    static options = { seen: { httpOnly: false } };
+    session?: string = undefined;
+    seen?: string = undefined;
+  }
+
   const calls = {
     login: async () => {
-      const current = Current.get();
-
-      current.setCookie("session", "abc");
-      current.setCookie("seen", "1", { httpOnly: false });
-      current.setHeader("cache-control", "no-store");
-      current.setHeader("content-type", "text/plain");
+      Session.set({ session: "abc", seen: "1" });
+      Current.get().setHeader("cache-control", "no-store");
+      Current.get().setHeader("content-type", "text/plain");
     },
     logout: async () => {
-      Current.get().deleteCookie("session");
+      Session.set({ session: undefined });
       throw new Error("Signed out.");
     },
   };
@@ -222,7 +226,7 @@ describe("headers from a call", () => {
   });
 
   it("will add them to a failure too", async () => {
-    const response = await dispatch(fetched(request("/auth", "logout", "[]")), () => endpoints, false);
+    const response = await dispatch(fetched(request("/auth", "logout", "[]", "application/json", { cookie: "session=abc" })), () => endpoints, false);
 
     expect(response.status).toBe(500);
     expect(response.headers.getSetCookie()).toEqual(["session=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"]);

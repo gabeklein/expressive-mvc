@@ -254,56 +254,37 @@ function parseCookies(header = ""): Record<string, string> {
   return Object.fromEntries(pairs);
 }
 
-const outgoing = new WeakMap<Request, Headers>();
+interface Outgoing {
+  headers: Headers;
+  flush: Set<() => void>;
+}
+
+const outgoing = new WeakMap<Request, Outgoing>();
+
+/** The request of the call in progress, if any. */
+export function active(): Request | undefined {
+  return store.getStore()?.request;
+}
+
+/** The reply-to-be of the call in progress: headers to add, and work to run just before they are read. */
+export function outgoingOf(request = frame().request): Outgoing {
+  let out = outgoing.get(request);
+
+  if (!out) outgoing.set(request, (out = { headers: new Headers(), flush: new Set() }));
+
+  return out;
+}
 
 /** What the calls on `request` asked to add to its reply. */
 export function headersOf(request: Request): Headers | undefined {
-  return outgoing.get(request);
-}
+  const out = outgoing.get(request);
 
-function out(): Headers {
-  const { request } = frame();
-  let headers = outgoing.get(request);
+  if (!out) return;
 
-  if (!headers) outgoing.set(request, (headers = new Headers()));
+  out.flush.forEach(flush => flush());
+  out.flush.clear();
 
-  return headers;
-}
-
-export interface CookieOptions {
-  /** Seconds until it expires; `0` removes it. */
-  maxAge?: number;
-  expires?: Date;
-  /** Defaults to `/`. */
-  path?: string;
-  domain?: string;
-  /** Defaults to true when the request came over https. */
-  secure?: boolean;
-  /** Defaults to true - client code cannot read it. */
-  httpOnly?: boolean;
-  /** Defaults to `Lax`. */
-  sameSite?: "Strict" | "Lax" | "None";
-  partitioned?: boolean;
-}
-
-const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
-
-function cookie(name: string, value: string, options: CookieOptions): string {
-  if (!TOKEN.test(name)) throw new Error(`"${name}" is not a valid cookie name.`);
-
-  const { maxAge, expires, path = "/", domain, secure, httpOnly = true, sameSite = "Lax", partitioned } = options;
-  const parts = [`${name}=${encodeURIComponent(value)}`, `Path=${path}`];
-
-  if (maxAge !== undefined) parts.push(`Max-Age=${Math.floor(maxAge)}`);
-  if (expires) parts.push(`Expires=${expires.toUTCString()}`);
-  if (domain) parts.push(`Domain=${domain}`);
-  if (secure) parts.push("Secure");
-  if (httpOnly) parts.push("HttpOnly");
-  if (partitioned) parts.push("Partitioned");
-
-  parts.push(`SameSite=${sameSite}`);
-
-  return parts.join("; ");
+  return out.headers;
 }
 
 const readOnly = () => {
@@ -332,19 +313,11 @@ export class Current extends Model {
     readOnly();
   }
 
-  /** Set a header on this call's reply. The reply's own (`content-type` and the like) win. */
+  /** Set a header on this call's reply. The reply's own (`content-type` and the like) win. For cookies, see `Cookies`. */
   setHeader(name: string, value: string): void {
-    if (name.toLowerCase() === "set-cookie") out().append(name, value);
-    else out().set(name, value);
-  }
+    const { headers } = outgoingOf();
 
-  /** Set a cookie with this call's reply - `HttpOnly`, `SameSite=Lax` and `Path=/` unless told otherwise. */
-  setCookie(name: string, value: string, options: CookieOptions = {}): void {
-    out().append("set-cookie", cookie(name, value, { secure: this.url.protocol === "https:", ...options }));
-  }
-
-  /** Remove a cookie - pass the `path` and `domain` it was set with. */
-  deleteCookie(name: string, options: Pick<CookieOptions, "path" | "domain" | "secure" | "sameSite" | "partitioned"> = {}): void {
-    this.setCookie(name, "", { ...options, maxAge: 0, expires: new Date(0) });
+    if (name.toLowerCase() === "set-cookie") headers.append(name, value);
+    else headers.set(name, value);
   }
 }

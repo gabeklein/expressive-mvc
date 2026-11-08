@@ -3,7 +3,7 @@ import { transformWithOxc } from "vite";
 
 import { SCRIPT } from "./manifest";
 
-export const SERVER_ONLY: readonly string[] = ["Current"];
+export const SERVER_ONLY: readonly string[] = ["Cookies", "Current"];
 
 const ROOT = "@expressive/rpc";
 
