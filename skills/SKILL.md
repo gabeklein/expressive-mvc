@@ -1,6 +1,6 @@
 ---
 name: expressive-mvc
-description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router - and when auditing a codebase for fit.
+description: Class-based state backbone for UI apps (Expressive MVC) - reactive MVC in plain classes that React or @expressive/dom renders. Use when writing or refactoring React state - converting useState/useEffect/useMemo hooks, fixing prop drilling, choosing state ownership (Model vs Component, has-pool domain rows, region controls), dependency snapshots, presence boundaries, providing context, async suspense, router, multi-step processes with resets and waits (steps) - and when auditing a codebase for fit.
 ---
 
 # Expressive MVC
@@ -17,6 +17,7 @@ A class-based state backbone - reactive MVC in plain classes, rendered by React 
 | `@expressive/preact` | Private   | Thin wrapper over React adapter via preact/hooks. Prerelease.     |
 | `@expressive/router` | Published | Host-agnostic, class-based router built on MVC.                   |
 | `@expressive/inspect` | Published | In-process inspector: registry, ownership tree, path queries, journal. |
+| `@expressive/steps`  | Preview   | Multi-step processes as Models: steps, resets, waits, retries, concurrency gates. In-process. |
 
 ### Installing
 
@@ -337,6 +338,10 @@ Instructions: `field/*.md`, linked from the [helper table](#instructions--reacti
 ### Inspect
 
 - [inspect.md](inspect.md) - `@expressive/inspect`: install entry, instances in process vs addresses across a boundary, ownership, stored-value reads with `absent`, labels under minification, frame journal with `cause`, `act`, orphans and `health()`, bridge and Vite relay
+
+### Steps
+
+- [steps.md](steps.md) - `@expressive/steps`: `run` as entry and result, `await this`, a step body as a plan, groups, waits and racers, durations, `then.on` outcome handlers (reset/catch/abort/close; functions, or step methods for durable runs), `.catch` handlers, `then.retry()`, `then.only` gates, stop/abort/end, hooks, coordination-first conventions
 
 ### Examples
 
