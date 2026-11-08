@@ -308,11 +308,8 @@ Ideas the context model replaced, kept so they are not re-proposed blind.
 - mvc: demand notification - a key gaining its first or losing its last observer. Serves the demand opt-in and lazy getters.
 - dom: optional `rendering?()` on `HostRuntime` - approved in shape, unused until dom renders in a server process.
 - dom: string renderer + style collector. Replaces the item-9 shim.
-- router: `@jsxImportSource @expressive/mvc` pragma on `link`/`nav`/`route` (on the trunk as a stopgap commit).
 - dom: #454 parent-first ordering (0.21 kB). React: keep uncommitted Model across retries.
 
 ## Release gates
 
-- 100% coverage like every package - dev's `coverage` script runs vitest without `--coverage` until then.
-- `skills/` docs, changeset, `private: false`.
-- Router stopgap replaced by its upstream PR.
+Met on the trunk (`chore/dev-release-prep`): dev's `coverage` gates 100% like every package; `skills/rpc.md` and `skills/dev.md`; changesets publishing dev and rpc as 0.1.0 with `private` dropped; the router stopgap left with 2856a307f. Left: the trunk's `main` merge, and the first npm publish of each new package by hand with its trusted publisher set.
