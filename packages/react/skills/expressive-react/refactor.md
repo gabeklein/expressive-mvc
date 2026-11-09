@@ -2,7 +2,7 @@
 
 Read in full before converting hook-based React code. The common failure is translating hooks one-for-one - setter methods, drilled props, over-promoted getters mirroring the old architecture. Ownership first, translation second; the checklist at the end audits the result.
 
-Examples follow the conventions in [style.md](style.md).
+Examples follow the conventions in [expressive-mvc/style.md](../expressive-mvc/style.md).
 
 **Large apps:** convert route/page controls and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until the parent domain is stable. Coexistence is fine mid-migration.
 
@@ -97,7 +97,7 @@ The forms, by role:
 
 `new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the instance as a field on the control that already exists and let sibling views `.get()` it.
 
-**Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
+**Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [expressive-mvc/component.md](../expressive-mvc/component.md).
 
 ## 4. Give repeated UI entries their own class
 
@@ -435,7 +435,7 @@ const { is: review, confirmed } = ReviewStep.get(); // root object + sibling val
 
 ## 12. Widgets own their gates
 
-Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
+Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([expressive-mvc/style.md](../expressive-mvc/style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
 
 This is for a widget the parent has no reason to mention. A piece split out of a Component's own `render()` (step 13) is the other way round: the parent writes `cond && <Slot />` and the slot paints unconditionally, never opening with `if (!cond) return`.
 
@@ -534,7 +534,7 @@ Classify every finding by severity:
 - **Invariant** - fail unless a real constraint is documented.
 - **Default** - follow unless the alternative has clearer ownership or API value.
 - **Heuristic** - investigate, but never fail on the numerical signal alone; the finding must name a concrete cost.
-- **Style** - apply by default per [style.md](style.md); report separately from architectural correctness.
+- **Style** - apply by default per [expressive-mvc/style.md](../expressive-mvc/style.md); report separately from architectural correctness.
 
 The checklist:
 
@@ -564,6 +564,6 @@ The checklist:
 
 Auditing notes:
 
-- Compare ownership, dependency surfaces, and write behavior - never filenames, file counts, or similarity to a reference implementation. File size and consolidation follow [style.md](style.md) layout unless the project overrides - style lane, scored separately.
+- Compare ownership, dependency surfaces, and write behavior - never filenames, file counts, or similarity to a reference implementation. File size and consolidation follow [expressive-mvc/style.md](../expressive-mvc/style.md) layout unless the project overrides - style lane, scored separately.
 - Report two verdicts - architectural conformance and style adherence - so a formatting miss cannot obscure correct structure, or vice versa.
 - Deliver the filled checklist with the change (PR description or ledger), not only a verdict.

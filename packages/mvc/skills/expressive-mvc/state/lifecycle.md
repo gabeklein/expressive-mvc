@@ -57,7 +57,7 @@ settle     release children → ready handlers → parked effects replay
 
 `new()` is a typed optional member of `Model` (`protected new?(): void | (() => void) | Promise<void>`), not name-based detection - editors autocomplete it, its signature is checked, and `override` catches a misspelling. Same for `catch()` on `Component`.
 
-> **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in an effect declared in `new()` - a host holds it until the owning component commits ([expressive-react/react.md](../../expressive-react/react.md#effects-run-once-committed)), so it never runs on the server.
+> **`new()` runs on the server.** It is part of activation, so it fires wherever the instance is constructed - including during `renderToString`. Its teardown never does (no unmount on the server), so a resource opened in `new()` - socket, subscription, file handle - leaks there once per render. Anything touching `window`, timers or subscriptions belongs in an effect declared in `new()` - a host holds it until the owning component commits (`expressive-react/react.md`), so it never runs on the server.
 
 > **`new()` is for consumers and own-state.** Avoid it in reusable classes meant to be subclassed: it's a public method, so a subclass defining its own `new()` silently replaces yours. For internal init in a shippable base class, pass a trailing init callback to `super` - same phase as `new()`, but can't be clobbered:
 >

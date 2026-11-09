@@ -96,7 +96,7 @@ class TodoApp extends Component {
 }
 ```
 
-Rows that paint themselves become `Component` members placed as `{this.items}` - pool recipes in [expressive-react/patterns.md](../../expressive-react/patterns.md).
+Rows that paint themselves become `Component` members placed as `{this.items}` - pool recipes in `expressive-react/patterns.md`.
 
 ## Async Data (with Suspense)
 
@@ -268,4 +268,4 @@ class Quantity extends Component {
 <Quantity max={5} />;
 ```
 
-Rejecting suits values that are never valid. Input that is not valid *yet* - a half-typed email - lands, and a getter reports on it: [Form with Validation](../../expressive-react/patterns.md#form-with-validation).
+Rejecting suits values that are never valid. Input that is not valid *yet* - a half-typed email - lands, and a getter reports on it: Form with Validation (`expressive-react/patterns.md`).

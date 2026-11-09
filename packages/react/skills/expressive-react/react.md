@@ -251,15 +251,12 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ## Component Class
 
-`Component` extends `Model` and works directly as a React component - full details in `./component.md`.
+`Component` extends `Model` and renders as a React class component. The class contract - props, `render()`, subcomponents, `fallback`, `catch`, `pending()` - is [expressive-mvc/component.md](../expressive-mvc/component.md). Under React:
 
-- Model fields become optional JSX props, applied every render.
-- `render()` controls output; without it, children pass through a context provider.
-- Instances are provided to context for child access via `Model.get()`.
-- Built-in suspense (`fallback` property/prop) and error boundaries (`catch()` method).
-- PascalCase methods become reactive subcomponents.
-- Special props: `is` (creation callback), `ref` (instance ref), `fallback` (suspense UI, or `false` to defer to an ancestor boundary).
-- Strict-mode safe.
+- `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use it for post-mount imperative access; `is` for construction time.
+- The instance also carries React's class members (`state`, `context`, `setState`, `forceUpdate`).
+- `fallback` is a React `Suspense` boundary; `catch()` an error boundary. `pending()` work runs through `startTransition`.
+- Strict Mode: one instance despite double-mount.
 
 ---
 

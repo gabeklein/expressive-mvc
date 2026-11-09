@@ -4,6 +4,8 @@
 /llm/field/* /llm/expressive-mvc/field/:splat 301
 /llm/examples/basic.md /llm/expressive-mvc/examples/basic.md 301
 /llm/examples/audit.md /llm/expressive-mvc/examples/audit.md 301
+/llm/react/component.md /llm/expressive-mvc/component.md 301
+/llm/react/style.md /llm/expressive-mvc/style.md 301
 /llm/react/* /llm/expressive-react/:splat 301
 /llm/router/router.md /llm/expressive-router/SKILL.md 301
 /llm/router/production.md /llm/expressive-router/production.md 301

@@ -36,9 +36,9 @@ This documentation is also distributed as an installable skill: `npx skills add 
 
 ## React
 - [React Adapter](/llm/expressive-react/react.md): Model.get(), Component for, mount()
-- [Component](/llm/expressive-react/component.md): Component class, props, children, subcomponents, error boundaries
+- [Component](/llm/expressive-mvc/component.md): Component class, props, children, subcomponents, error boundaries
 - [Refactoring Guide](/llm/expressive-react/refactor.md): Hook-migration algorithm - ownership triage, dependency snapshots, review checklist
-- [Style Profile](/llm/expressive-react/style.md): Snapshot formatting, affirmative conditions, render fallthrough
+- [Style Profile](/llm/expressive-mvc/style.md): Snapshot formatting, affirmative conditions, render fallthrough
 - [Patterns](/llm/expressive-react/patterns.md): Recipes - forms, async, nested state, debounce, effects
 
 ## DOM renderer
