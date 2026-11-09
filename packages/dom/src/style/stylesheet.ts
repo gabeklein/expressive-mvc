@@ -1,8 +1,10 @@
 import * as appearance from './appearance';
 import { registerEmitter } from './protocol';
 import type { Block } from './protocol';
-import { applyDeclarations } from './declarations';
+import { serialize, token } from './declarations';
 import type { Declaration } from './declarations';
+import { attachRoots, setRoot } from './root';
+import type { Root } from './root';
 import type { Numeric, Single, Unitless } from './numeric';
 
 type Member = Extract<keyof CSSStyleDeclaration, string>;
@@ -17,9 +19,25 @@ type Macro<T> = Extract<
 >;
 
 type Named<T> = Extract<
-  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends string ? K : never : never }[keyof T],
+  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends `--${string}` ? never : T[K] extends style.Condition ? K : string extends T[K] ? K : never : never }[keyof T],
   string
 >;
+
+type Variable<T> = Extract<
+  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends `--${string}` ? K : never : never }[keyof T],
+  string
+>;
+
+type Valued<T> = Extract<
+  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends string ? T[K] extends style.Condition ? never : K : never : never }[keyof T],
+  string
+>;
+
+type Bare<K> = K extends `$${infer N}` ? N : never;
+
+type Define<T> =
+  & { [K in Variable<T> as Bare<K>]?: style.Value }
+  & { [K in Named<T> | style.Condition]?: Define<T> };
 
 type Argument<F> = F extends (...args: infer P) => any
   ? P extends [] ? true : P[0] | (undefined extends P[0] ? true : never)
@@ -31,6 +49,7 @@ type Key<T> =
   | `--${string}`
   | `_${string}`
   | Named<T>
+  | Variable<T>
   | style.Condition;
 
 type Layers<T> = readonly (style.Map<T> | Layers<T> | false | null | undefined)[] & { [K in style.Property | Macro<T>]?: unknown };
@@ -73,7 +92,7 @@ declare namespace style {
       K extends `_${string}` | Condition | Named<T> ? Body<T> :
       K extends Macro<T> ? Argument<T[K]> :
       K extends Single ? number | Literal :
-      K extends Numbers<T> | `--${string}` ? Value :
+      K extends Numbers<T> | Variable<T> | `--${string}` ? Value :
       K extends Numeric ? Zero :
       Literal;
   };
@@ -81,13 +100,31 @@ declare namespace style {
   /** A `style()` whose maps may call the macros of `T`. */
   interface Apply<T> {
     <C extends object>(type: C, ...maps: (Map<T> | false | null | undefined)[]): C;
+
+    /**
+     * Value tokens for the pack's `$name` fields, keyed without the `$`.
+     *
+     * A token is a string, so it survives templates, arrays and macros. Where a
+     * declaration applies, a `--name` alias becomes `var(--name)` and any other
+     * alias its text. A condition used as a value throws.
+     */
+    readonly $: { readonly [K in Valued<T> as Bare<K>]: string };
+
+    /**
+     * Set the pack's variables at `:root`, over defaults from `use()` rules.
+     *
+     * Keys are variable names without the `$`; a condition key holds values
+     * applied while it holds. A later call replaces the last. A name whose alias
+     * does not start with `--` throws.
+     */
+    define(values: Define<T>): void;
   }
 }
 
 /**
  * Base class for a macro pack. Each method is a macro, layered over the class
  * it extends; `default` handles any key no macro owns. A `$name` field holds
- * a condition (`'@media …'` or `':state'`) maps may use as a key.
+ * a condition (`'@media …'` or `':state'`), a variable (`'--name'`) or a constant.
  */
 class Style {
   /**
@@ -106,15 +143,21 @@ class Style {
     if (!apply) {
       let pack: appearance.Pack | undefined;
 
-      apply = (type, ...maps) => {
-        pack ||= {
-          label: this.name,
-          layers: layers(this),
-          rules: given
-        };
+      apply = Object.assign(
+        <C extends object>(type: C, ...maps: unknown[]) => {
+          pack ||= {
+            label: this.name,
+            layers: layers(this),
+            rules: given
+          };
 
-        return register(type, maps, pack);
-      };
+          return register(type, maps, pack);
+        },
+        {
+          $: tokens(this),
+          define: (values: object) => define(this, values)
+        }
+      ) as style.Apply<T>;
 
       if (shared) bound.set(this, apply);
     }
@@ -132,6 +175,8 @@ interface Sheet {
 
 const sheets = new WeakMap<Document, Sheet>();
 const bound = new WeakMap<Function, style.Apply<any>>();
+const fields = new WeakMap<Function, Record<string, unknown>>();
+const valued = new WeakMap<Function, Record<string, string>>();
 let groups = 0;
 
 function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
@@ -146,6 +191,62 @@ function register<T extends object>(type: T, maps: readonly unknown[], pack?: ap
   return type;
 }
 
+function aliases(type: Function) {
+  let known = fields.get(type);
+  if (!known) fields.set(type, (known = { ...new (type as new () => object)() }));
+  return known;
+}
+
+function tokens(type: Function) {
+  let known = valued.get(type);
+
+  if (!known) {
+    known = {};
+
+    for (const [key, value] of Object.entries(aliases(type)))
+      if (key[0] == '$' && typeof value == 'string') known[key.slice(1)] = token(key, value);
+
+    valued.set(type, known);
+  }
+
+  return known;
+}
+
+function define(type: Function, values: object) {
+  const own = aliases(type);
+  const roots: Root[] = [];
+
+  function walk(map: Record<string, unknown>, when: string[]) {
+    const declarations: Declaration = {};
+
+    roots.push({ declarations, when });
+
+    for (const key of Object.keys(map)) {
+      const value = map[key];
+
+      if (value && typeof value == 'object' && !Array.isArray(value)) {
+        const condition = key[0] == '$' ? own[key] : key;
+
+        if (typeof condition != 'string' || condition[0] != '@' && condition[0] != ':')
+          throw new Error(`"${key}" is not a condition of ${type.name}.`);
+
+        walk(value as Record<string, unknown>, [...when, condition]);
+        continue;
+      }
+
+      const alias = own[`$${key}`];
+
+      if (typeof alias != 'string' || !alias.startsWith('--'))
+        throw new Error(`"${key}" is not a variable of ${type.name}.`);
+
+      declarations[alias] = value;
+    }
+  }
+
+  walk(values as Record<string, unknown>, []);
+  setRoot(type, roots, true);
+}
+
 function layers(type: Function) {
   const instance = new (type as new () => object)();
   const maps: appearance.StyleMap[] = [];
@@ -155,8 +256,8 @@ function layers(type: Function) {
     if (key[0] != '$')
       throw new Error(`Field "${key}" on ${type.name} is reserved. Define macros as methods.`);
 
-    if (typeof value != 'string' || value[0] != '@' && value[0] != ':')
-      throw new Error(`Condition "${key}" on ${type.name} must start with "@" or ":".`);
+    if (typeof value != 'string')
+      throw new Error(`"${key}" on ${type.name} must be a string.`);
 
     conditions[key] = value;
   }
@@ -190,6 +291,7 @@ function emit(block: Block, depth: number, document: Document) {
     document.head.append(element);
     sheet = { element, emitted: new WeakMap(), names: new Map(), positions: [] };
     sheets.set(document, sheet);
+    attachRoots(document);
   }
 
   if (block.group) depth = 0;
@@ -241,12 +343,6 @@ function emit(block: Block, depth: number, document: Document) {
 
   byDepth.set(depth, name);
   return name;
-}
-
-function serialize(document: Document, declarations: Declaration) {
-  const value = document.createElement('div').style as any;
-  applyDeclarations(value, declarations);
-  return value.cssText;
 }
 
 export { Style, style };
