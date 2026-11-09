@@ -651,6 +651,27 @@ describe('variables', () => {
     expect(getComputedStyle(node).color).toBe('teal');
   });
 
+  it('will let a later default of a variable win, as a re-run module does', () => {
+    function edition(color: string) {
+      class Edition extends Style {
+        readonly $hue = '--edition-hue';
+      }
+
+      const apply = Edition.use({ $hue: color });
+      const Mark = () => createElement('i', {});
+
+      apply(Mark, { color: apply.$.hue });
+      return place(createElement(Mark, {})).querySelector('i')!;
+    }
+
+    edition('red');
+    const node = edition('blue');
+    const texts = roots().filter((text) => text.includes('--edition-hue'));
+
+    expect(texts).toEqual([':where(:root){--edition-hue: red;}', ':where(:root){--edition-hue: blue;}']);
+    expect(getComputedStyle(node).color).toBe('blue');
+  });
+
   it('will rewrite roots into a recreated head', () => {
     class Late extends Style {
       readonly $hue = '--late-hue';

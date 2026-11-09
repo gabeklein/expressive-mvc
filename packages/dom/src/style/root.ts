@@ -33,7 +33,7 @@ function write(document: Document, key: object) {
   if (!element?.isConnected) {
     element = document.createElement('style');
     element.dataset.expressive = 'root';
-    document.head.prepend(element);
+    document.head.append(element);
     known.set(key, element);
   }
 
