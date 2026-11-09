@@ -1,6 +1,6 @@
 ---
 name: expressive-dev
-description: Expressive app host (@expressive/dev) - expressive dev/build over Vite with @expressive/dom, a generated route tree, inspect and rpc. Use when working in an @expressive/dev app: layout, route modules, sidecars, server Model and seats, twins, commands.
+description: Expressive app host (@expressive/dev) - expressive dev/build over Vite with @expressive/dom, a generated route tree, inspect and rpc. Use when working in an @expressive/dev app - layout, route modules, sidecars, server Model and seats, twins, commands.
 ---
 
 # @expressive/dev
