@@ -5,7 +5,7 @@ import { Model } from "@expressive/mvc";
 import type { Endpoint, Seats } from "../call";
 import { Current, install } from "../context";
 import { Cookies } from "../cookies";
-import { dispatch, failure, handler, isCall, reply, type Tier } from "./call";
+import { dispatch, failure, handler, isCall, reply, scoped, type Tier } from "./call";
 
 const TAB = crypto.randomUUID();
 
@@ -230,5 +230,68 @@ describe("headers from a call", () => {
 
     expect(response.status).toBe(500);
     expect(response.headers.getSetCookie()).toEqual(["session=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"]);
+  });
+});
+
+describe("scoped", () => {
+  install();
+
+  class Prefs extends Cookies {
+    theme?: string = undefined;
+  }
+
+  class App {
+    label = "app";
+
+    async fetch(request: Request): Promise<Response | undefined> {
+      const { pathname } = new URL(request.url);
+
+      if (pathname === "/none") return undefined;
+      if (pathname === "/plain") return new Response("plain");
+      if (pathname === "/again") {
+        // what a call answered inside the route already carries
+        Prefs.set({ theme: "dark" });
+        return new Response("again", { headers: { "set-cookie": "theme=dark; Path=/; HttpOnly; SameSite=Lax" } });
+      }
+
+      Prefs.set({ theme: Prefs.get().theme === "dark" ? "light" : "dark" });
+      Current.get().setHeader("cache-control", "no-store");
+
+      return Response.json({ at: Current.get().url.pathname, label: this.label }, { headers: { "cache-control": "max-age=1" } });
+    }
+
+    scheduled() {
+      return this.label;
+    }
+  }
+
+  it("will run an entry's fetch in the request's scope, adding what it set to the response", async () => {
+    const app = scoped(new App());
+    const response = (await app.fetch(new Request("http://localhost/flip", { headers: { cookie: "theme=dark" } })))!;
+
+    expect(await response.json()).toEqual({ at: "/flip", label: "app" });
+    expect(response.headers.getSetCookie()).toEqual(["theme=light; Path=/; HttpOnly; SameSite=Lax"]);
+    expect(response.headers.get("cache-control")).toBe("max-age=1");
+    expect(app.scheduled()).toBe("app");
+  });
+
+  it("will pass a response through untouched when nothing was set, and nothing when there is none", async () => {
+    const app = scoped(new App());
+    const plain = new Request("http://localhost/plain");
+
+    expect(await (await app.fetch(plain))!.text()).toBe("plain");
+    expect(await app.fetch(new Request("http://localhost/none"))).toBeUndefined();
+  });
+
+  it("will not repeat a cookie the response already sets", async () => {
+    const response = (await scoped(new App()).fetch(new Request("http://localhost/again")))!;
+
+    expect(response.headers.getSetCookie()).toEqual(["theme=dark; Path=/; HttpOnly; SameSite=Lax"]);
+  });
+
+  it("will leave an entry without a fetch as it is", () => {
+    const entry = { scheduled() {} };
+
+    expect(scoped(entry as { fetch?: undefined })).toBe(entry);
   });
 });
