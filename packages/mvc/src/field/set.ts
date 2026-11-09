@@ -9,8 +9,7 @@ declare namespace set {
    *
    * Any other throw propagates to the assigner, value unchanged. A returned function runs on the next
    * assignment, with the new value. Effects created inside are released on the next assignment. Other
-   * return values, promises and `false` included, are ignored. `this` is not the instance - use an
-   * arrow function.
+   * return values, promises and `false` included, are ignored. `this` is the instance.
    */
   type Callback<T, S = any> = (
     this: S,
@@ -181,9 +180,9 @@ function set<T = any>(value?: unknown, argument?: unknown): any {
     if (typeof argument == 'function') {
       let unset: ((next: T) => void) | undefined;
 
-      config.set = function (this: any, value: any, previous: any) {
+      config.set = (value: any, previous: any) => {
         capture((release) => {
-          const returns = argument.call(this, value, previous);
+          const returns = argument.call(subject, value, previous);
 
           if (unset) unset(value);
 

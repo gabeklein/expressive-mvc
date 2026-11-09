@@ -844,7 +844,7 @@ it('will support Promise objects as factory return', async () => {
   expect(test.value).toBe('foobar');
 });
 
-it.fails('will call callback with the instance as this', () => {
+it('will call callback with the instance as this', () => {
   let self: unknown;
 
   class Subject extends Model {
