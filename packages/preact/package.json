@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gabeklein/expressive-mvc.git"
+    "url": "git+https://github.com/gabeklein/expressive.git"
   },
   "type": "module",
   "main": "dist/index.js",
