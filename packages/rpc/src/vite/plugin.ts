@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join, relative, resolve as resolvePath } from "node:path";
 import type { Plugin, RunnableDevEnvironment } from "vite";
 
@@ -82,6 +83,11 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
     sharedDuringBuild: true,
 
     config(user, { command }) {
+      // Built, the server bundles every dependency - what a Worker needs - unless the app set the environment's own
+      // externals, as a Node server does to keep node_modules (pg, firebase-admin) installed beside it.
+      const { noExternal, external } = user.environments?.[ENV]?.resolve ?? {};
+      const chosen = (noExternal ?? external) !== undefined;
+
       return {
         builder: command === "build" ? {} : undefined,
         build: user.build?.outDir ? undefined : { outDir: "dist/client" },
@@ -89,7 +95,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
         environments: {
           [ENV]: {
             consumer: "server",
-            resolve: command === "build" ? { noExternal: true } : { external: SHARED },
+            resolve: command !== "build" ? { external: SHARED } : chosen ? {} : { noExternal: true },
             build: { outDir: "dist/server" },
           },
         },
@@ -118,6 +124,16 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
     async resolveId(id, importer, options) {
       if (id === ENTRY || id === RUNTIME) return id;
+
+      // The built calls replace this module, so it is bundled even when the rest of the package stays installed.
+      if (id === "@expressive/rpc/calls" && this.environment.name === ENV && this.environment.mode === "build") {
+        const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
+
+        if (!resolved?.external) return resolved;
+
+        return { id: createRequire(join(root, "package.json")).resolve(id), external: false };
+      }
+
       if (!("scan" in options && options.scan) || !/^[./]/.test(id)) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
