@@ -11,6 +11,8 @@ description: Multi-step processes as Expressive Models (@expressive/steps) - cla
 npm install @expressive/steps @expressive/mvc
 ```
 
+Per-member contract - signatures, defaults, edge cases, examples - is JSDoc on hover, or `node_modules/@expressive/steps/dist/index.d.ts`. This skill covers how the pieces compose.
+
 ## Shape
 
 ```ts
@@ -197,32 +199,15 @@ protected async scan(site: string) {                     // backoff lives in the
 - `catch` replaces a failed attempt; its resets have already run. To keep partial work, handle the error inside the step with `try`/`catch`.
 - Choosing a catch form: a called step (`on({ catch })` only) - a fixed fallback, args known now, recorded, never sees the error, always recovers unless it fails; a step method - a fallback depending on the error, recorded; a function - judgement, may rethrow or `retry()`, process-local.
 
-## Gate
-
-`this.then.only(max, key?)` - a gate, a token: queues FIFO for one of `max` slots; what the step schedules after it runs holding the slot. Returns nothing.
-
-- `max` - number, or `($) => $.limit` read live through the tracking proxy (a UI can change it mid-run); `0` pauses.
-- `key` - none: the enclosing group's queue; an object (a shared Model): one queue across instances - `only(1, this.manager)` is a mutex; a primitive: per instance.
-- A delay before queueing is a duration ahead of it.
-
 ## Stop and end
 
-- `then.stop(reason?)` - halts, keeping what was done: status `stopped`, pending dropped, in-flight steps' signals aborted, the queue rejected; `await this` rejects with a `Steps.Stopped` (`reason` as `cause`), also the step signals' reason. `set(null)` stops.
-- `then.abort(reason?)` - halts the same way, then unwinds the run as a failure would - `commit`'s counterpart. Status `aborted`; the run rejects with a `Steps.Aborted` (`stop()`: a `Steps.Stopped`), named as such. A reset throwing fails the run (`failed`, its error given the `'Aborted'` error as `cause`).
-- `then.end()` - ends early, keeping everything: in a step at its place in the plan, from outside now. It finishes what's running - signals not aborted, writes standing, what they schedule dropped, only `close` fires - and schedules nothing more; to halt now, `stop()` or `abort()`. `await this` resolves; the tail builds the result from fields. Why it ended early is data - write a field before calling it. Passing a value throws.
-- A failed run nobody awaited throws uncaught two microtasks later.
+`then.stop()` halts keeping what was done; `then.abort()` halts and unwinds - `commit`'s counterpart; `then.end()` ends early, keeping everything. Contracts on each.
+
+A failed run nobody awaited throws uncaught two microtasks later.
 
 ## Hooks
 
-Only `before` and `after` are hooks (any other name is a step; `then`, `end`, `gate`, `wait` are reserved for plan tokens and throw); protected, synchronous, raw instance as `this`, writes unjournaled.
-
-- `before(step, args)` / `after(step, entry)` around every step. `after` gets each committed entry - the Runner keeps no journal, so a log is `this.log.push(entry)`. A try a catch took, and the failure ending the run, arrive with `entry.error`; a called `end` arrives too (an implicit one does not).
-
-Entry: `{ id: 'pay#1', key, args, wrote, next, on?, unwound?, wake?, retried?, error?, irreversible?, committed?, halted?, implicit? }` - no values.
-
-## Runner - `this.then`
-
-`status` (`idle | running | waiting | stopped | aborted | failed`), `active` (step in flight), `queue`, `waiting`, `runs`, `error` - reactive through the instance (`x.get(($) => $.then.status)`, or in a render), enumerable for a `{ ...x.then }` snapshot; `then.get()` snapshots too. `then` is not in `instance.get()`.
+Only `before` and `after` are hooks - any other name is a step; `then`, `end`, `gate`, `wait` are reserved for plan tokens and throw. `after` gets each committed `Steps.Entry` - the Runner keeps no journal, so a log is `this.log.push(entry)`.
 
 ## Conventions
 

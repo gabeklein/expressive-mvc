@@ -36,6 +36,9 @@ jobs:
       - name: Docs agree with code
         run: bun .github/scripts/docs-check.ts
 
+      - name: JSDoc examples typecheck
+        run: bun .github/scripts/example-check.ts
+
       - name: Changeset reminder
         if: github.base_ref == 'main' || github.event.pull_request.stack != null
         continue-on-error: true
