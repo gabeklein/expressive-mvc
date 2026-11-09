@@ -1,6 +1,6 @@
 {
   "name": "@expressive/dev",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "App host for Expressive: expressive dev/build over Vite, file-based routes on @expressive/dom, server calls and server Models.",
   "license": "MIT",
   "author": {
