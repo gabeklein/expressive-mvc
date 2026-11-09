@@ -48,6 +48,15 @@ for await (const path of new Glob('packages/*/skills/*/SKILL.md').scan('.')) {
   const pkg = await Bun.file(join(path.split('/').slice(0, 2).join('/'), 'package.json')).json();
   const deps = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
 
+  try {
+    const meta = Bun.YAML.parse((await Bun.file(path).text()).match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '') as any;
+
+    if (meta?.name !== name || typeof meta.description !== 'string')
+      problems.push(`${path}  frontmatter needs name: ${name} and a description`);
+  } catch (error) {
+    problems.push(`${path}  frontmatter is not valid YAML, so skill installers skip it - ${(error as Error).message}`);
+  }
+
   const listed: string[] = (pkg.skills ?? []).map((entry: string) => entry.replace(/^npm:/, ''));
 
   for (const dep of Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith('@expressive/')))
