@@ -35,6 +35,8 @@ const slugify = (heading: string) =>
 
 type Doc = { path: string; text: string };
 
+const problems: string[] = [];
+
 /** Installed skills sit side by side, so a skill links a sibling as `../expressive-<pkg>/`. */
 const skills = new Map<string, string>();
 
@@ -45,6 +47,12 @@ for await (const path of new Glob('packages/*/skills/*/SKILL.md').scan('.')) {
   const name = path.split('/')[3];
   const pkg = await Bun.file(join(path.split('/').slice(0, 2).join('/'), 'package.json')).json();
   const deps = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
+
+  const listed: string[] = (pkg.skills ?? []).map((entry: string) => entry.replace(/^npm:/, ''));
+
+  for (const dep of Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith('@expressive/')))
+    if (!listed.includes(dep))
+      problems.push(`${pkg.name} depends on ${dep} - list "npm:${dep}" in its package.json skills, or skills sync will not install that skill`);
 
   skills.set(name, dirname(path));
   reach.set(name, new Set([name, ...deps.filter((d) => d.startsWith('@expressive/')).map((d) => d.replace('@expressive/', 'expressive-'))]));
@@ -96,7 +104,6 @@ for (const { path, text } of docs) {
   routes.set(route, anchors);
 }
 
-const problems: string[] = [];
 const at = (path: string, text: string, index: number) =>
   `${path}:${text.slice(0, index).split('\n').length}`;
 
