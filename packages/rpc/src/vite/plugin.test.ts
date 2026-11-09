@@ -298,10 +298,18 @@ describe("dev server", () => {
 const ENTRY = {
   "src/main.ts": `import { tick } from "../api/tally"; console.log(tick);`,
   "lib/count.ts": `export let count = 0; export const bump = () => ++count;`,
-  "api/tally.ts": `import { bump } from "../lib/count"; export async function tick() { return bump(); }`,
+  "lib/prefs.ts": `import { Cookies } from "@expressive/rpc"; export class Prefs extends Cookies { theme?: string = undefined; }`,
+  "api/tally.ts": `
+    import { bump } from "../lib/count";
+    import { Prefs } from "../lib/prefs";
+    export async function tick() { return bump(); }
+    export async function dark() { Prefs.set({ theme: "dark" }); }
+  `,
   "server.ts": `
+    import { Current } from "@expressive/rpc";
     import { handle } from "@expressive/rpc/calls";
     import { count } from "./lib/count";
+    import { Prefs } from "./lib/prefs";
 
     export class Room {}
 
@@ -310,6 +318,11 @@ const ENTRY = {
         const { pathname } = new URL(request.url);
 
         if (pathname === "/count") return Response.json({ count, name: env?.NAME ?? null });
+        if (pathname === "/theme") {
+          const was = Prefs.get().theme ?? null;
+          Prefs.set({ theme: "light" });
+          return Response.json({ was, at: Current.get().url.pathname });
+        }
         if (pathname === "/cf") return new Response(String(await import("cloudflare:workers")));
         if (pathname === "/later") {
           ctx.passThroughOnException();
@@ -429,6 +442,11 @@ describe("build", () => {
     expect(await (await server.fetch(new Request("http://localhost/count"))).json()).toEqual({ count: 1, name: null });
     expect((await server.fetch(new Request("http://localhost/"))).status).toBe(404);
     expect(await server.scheduled()).toBe("ran");
+
+    const theme: Response = await server.fetch(new Request("http://localhost/theme", { headers: { cookie: "theme=dark" } }));
+
+    expect(await theme.json()).toEqual({ was: "dark", at: "/theme" });
+    expect(theme.headers.getSetCookie()).toEqual(["theme=light; Path=/; HttpOnly; SameSite=Lax"]);
     expect(bundled.Room).toBeTypeOf("function");
     expect(code).toContain(`import("cloudflare:workers")`);
     expect(code).not.toMatch(/(?:from|import)\s*"@expressive\/rpc\/calls"/);
@@ -446,6 +464,25 @@ describe("entry", () => {
     expect(await post("/", "tally:tick", [], "a")).toEqual({ status: 200, body: { value: 1 } });
     expect(await post("/", "tally:tick")).toMatchObject({ status: 401 });
     expect(await (await get(server, "/count")).json()).toEqual({ count: 1, name: "dev" });
+    expect(await (await get(server, "/")).text()).toContain(`<script type="module"`);
+  });
+
+  it("will run the entry's routes in the request's scope, with what Cookies set on the response", async () => {
+    const { server } = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts" })] });
+    const theme = await fetch(new URL("/theme", server.resolvedUrls!.local[0]), { headers: { cookie: "theme=dark" } });
+
+    expect(await theme.json()).toEqual({ was: "dark", at: "/theme" });
+    expect(theme.headers.getSetCookie()).toEqual(["theme=light; Path=/; HttpOnly; SameSite=Lax"]);
+
+    await server.transformRequest("/api/tally.ts");
+
+    const call = await fetch(new URL("/", server.resolvedUrls!.local[0]), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-call": "tally:dark", authorization: "Bearer a" },
+      body: "[]",
+    });
+
+    expect(call.headers.getSetCookie()).toEqual(["theme=dark; Path=/; HttpOnly; SameSite=Lax"]);
     expect(await (await get(server, "/")).text()).toContain(`<script type="module"`);
   });
 

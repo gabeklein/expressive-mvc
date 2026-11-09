@@ -30,6 +30,7 @@ type Resolve = (spec: string, importer: string) => Promise<string | undefined>;
 
 interface Runtime {
   handler: typeof import("../http/call").handler;
+  scoped: typeof import("../http/call").scoped;
   verify: typeof import("../call").verify;
 }
 
@@ -39,6 +40,7 @@ const RUNTIME = "\0@expressive/rpc/runtime";
 // `@expressive/rpc/calls` holds this key: its dev server's handler, or - built - the module the calls replace.
 const CALLS = "@expressive/rpc/calls#dev";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
+const NEXT = "x-expressive-next";
 const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
 
 export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): Plugin {
@@ -128,9 +130,12 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
     async load(id) {
       const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
 
-      if (id === ENTRY && main) return `export * from ${JSON.stringify(main)};\nexport { default } from ${JSON.stringify(main)};\n`;
+      if (id === ENTRY && main) {
+        const from = JSON.stringify(main);
+        return `import app from ${from};\nimport { scoped } from "@expressive/rpc/http";\n\nexport * from ${from};\nexport default scoped(app);\n`;
+      }
       if (id === ENTRY) return `import { handle } from "@expressive/rpc/calls";\n\nexport default { async fetch(request, env) { return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not found.", { status: 404 }); } };\n`;
-      if (id === RUNTIME) return `export { handler } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
+      if (id === RUNTIME) return `export { handler, scoped } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
       const at = located(id.split("?")[0]);
@@ -164,14 +169,14 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
       let installed: unknown;
 
       const runtime = async (): Promise<Runtime> => {
-        const { handler, install, verify } = await runner.import(RUNTIME);
+        const { handler, install, scoped, verify } = await runner.import(RUNTIME);
 
         if (installed !== install) {
           installed = install;
           install();
         }
 
-        return { handler, verify };
+        return { handler, scoped, verify };
       };
 
       const endpoints = ({ verify }: Runtime): Endpoint[] =>
@@ -209,11 +214,12 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
         if (typeof app?.fetch != "function") throw new Error(`${relative(root, file)} must default-export { fetch(request, env, ctx) }.`);
 
-        const next = new Response(null, { status: 404 });
-        const ASSETS = { fetch: async () => next };
-        const response = await app.fetch(request, { ...(await (bindings ??= Promise.resolve(env?.() ?? {}))), ASSETS }, ctx);
+        // ASSETS hands the request back to Vite - marked, since the scope may rebuild the response to add cookies
+        const ASSETS = { fetch: async () => new Response(null, { status: 404, headers: { [NEXT]: "1" } }) };
+        const { scoped } = await runtime();
+        const response = await scoped(app).fetch!(request, { ...(await (bindings ??= Promise.resolve(env?.() ?? {}))), ASSETS }, ctx);
 
-        return response === next ? undefined : response;
+        return response?.headers.has(NEXT) ? undefined : response;
       }));
     },
   };
