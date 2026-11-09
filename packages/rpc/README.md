@@ -45,7 +45,7 @@ try {
 - **Values** - `Date`, `BigInt`, `Map`, `Set`, `Uint8Array` and `undefined` in arrays survive the trip, tagged inside plain JSON.
 - **Cookies** - declare them as fields of a `Cookies` subclass; `AppCookies.get().session` reads this request's, `AppCookies.set({ session: id })` sends `Set-Cookie` with the reply.
 - **Request** - `Current.get().request`, `.url` and `.cookies` inside a call, and `setHeader` for its reply.
-- **Client** - `configure({ base, headers, transport, reply })` for cross-origin servers, auth headers or a custom fetch.
+- **Client** - `configure({ base, headers, transport, reply })` for cross-origin servers, auth headers or a custom fetch. `withOptions({ signal, timeout }, () => list())` cancels or times out the calls it starts.
 - **Server entry** - `rpc({ entry: "server.ts" })` makes your own Worker-shaped module the server: it gets the calls as `handle(request)` from `@expressive/rpc/calls` and adds routes, a `scheduled` handler or Durable Objects beside them, sharing their modules in dev and build.
 
 Full reference: [skills/rpc.md](https://github.com/gabeklein/expressive-mvc/blob/main/skills/rpc.md). A runnable app is in [`example/`](https://github.com/gabeklein/expressive-mvc/tree/main/packages/rpc/example).
