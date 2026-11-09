@@ -6,7 +6,7 @@ import { construct, Current, headersOf, install, onBuild, seated, within, type G
 const request = (url = "/", cookie = "") => new Request(`http://localhost${url}`, { headers: { cookie } });
 const call = <T>(segments: string[], run: () => T) => within(request("/" + segments.join("/")), segments, run);
 
-beforeAll(install);
+beforeAll(() => install());
 afterEach(() => vi.useRealTimers());
 
 const walk = <T>(req: Request, segments: string[], seats: (Seat | Gate | undefined)[], run: () => T) => within(req, segments, run, seats);
@@ -37,7 +37,7 @@ describe("seats", () => {
   const as = (user: string) => request("/", `user=${user}`);
 
   it("will seat a layer's default as a call walks through it, found by get() there and below", async () => {
-    class Blog extends Model {}
+    class Blog extends Model { static ttl = 60; }
 
     const here = await walk(request(), ["blog"], [undefined, Blog], () => Blog.get());
     const below = await walk(request(), ["blog", "a"], [undefined, Blog], () => Blog.get());
@@ -46,18 +46,32 @@ describe("seats", () => {
     await expect(walk(request(), ["docs"], [], () => Blog.get())).rejects.toThrow("Could not find Blog in context.");
   });
 
-  it("will keep a seat five minutes after its last call by default", async () => {
-    vi.useFakeTimers();
+  it("will drop a seat after its last call by default", async () => {
     class Tally extends Model {}
 
     const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
 
-    vi.advanceTimersByTime(299_000);
-    expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).toBe(first);
-
-    vi.advanceTimersByTime(300_000);
     expect(first.get(null)).toBe(true);
     expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).not.toBe(first);
+  });
+
+  it("will keep a seat after its last call for the ttl install() names", async () => {
+    vi.useFakeTimers();
+    install({ ttl: 300 });
+    class Tally extends Model {}
+
+    try {
+      const first = await walk(request(), ["tally"], [undefined, Tally], () => Tally.get());
+
+      vi.advanceTimersByTime(299_000);
+      expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).toBe(first);
+
+      vi.advanceTimersByTime(300_000);
+      expect(first.get(null)).toBe(true);
+      expect(await walk(request(), ["tally"], [undefined, Tally], () => Tally.get())).not.toBe(first);
+    } finally {
+      install();
+    }
   });
 
   it("will keep a seat between calls for its ttl", async () => {
@@ -136,6 +150,7 @@ describe("seats", () => {
     class Total extends Model { value = 0; }
     class Draft extends Model {}
     class Tally extends Model {
+      static ttl = 60;
       total = new Total();
       draft = set(() => new Draft());
     }
@@ -168,7 +183,7 @@ describe("seats", () => {
   });
 
   it("will pass the location through when a key is undefined", async () => {
-    class Shared extends Model { static key() { return undefined; } }
+    class Shared extends Model { static ttl = 60; static key() { return undefined; } }
 
     const a = await walk(as("a"), ["docs"], [undefined, Shared], () => Shared.get());
     expect(await walk(as("b"), ["docs"], [undefined, Shared], () => Shared.get())).toBe(a);
@@ -245,6 +260,7 @@ describe("seats", () => {
 
   it("will report a seat's other errors as usual", async () => {
     class Tally extends Model {
+      static ttl = 60;
       total = 0;
     }
     const caught = vi.fn();
