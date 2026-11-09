@@ -23,22 +23,46 @@ declare namespace Context {
   export { Accept, Expect };
 }
 
+/**
+ * Registry through which Models find each other - lookups walk up through parents.
+ *
+ * Every instance has a home context its `get(Type)` lookups start from - its owner's, else the first
+ * context to claim it, else root.
+ *
+ * @example
+ * const context = new Context({ Session, Theme });
+ * const page = context.push(Page, () => log('closed'));
+ *
+ * page.get(Session);
+ * page.pop();
+ */
 class Context {
+  /**
+   * The process-wide context, created on first read.
+   *
+   * An instance without a home reads from it but is not registered there - `root.add()` or a
+   * `.new(Context.root)` argument registers one. Entries are shared across server requests.
+   */
   static get root(): Context {
     return ROOT ??= new Context();
   }
 
-  /** Current context - innermost set by `state.get(Type)` or the `get` instruction, otherwise as the host's {@link resolver} returns it. */
+  /**
+   * The current context - set by `state.get(Type)` or the `get` instruction while they resolve.
+   *
+   * Elsewhere the host's `resolver` decides - root without a host; a rendering host returns its own.
+   */
   static get(): Context;
 
-  /** Get the context a Model was added to - root if none. */
+  /** Home context of `state` - its own, else its owner's, else root. */
   static get(state: Model): Context;
 
   /**
-   * Resolve a static `get` of `Type` by running `compute` against the current
-   * context. Inside `state.get(Type)` or the `get` instruction, `from` is that
-   * Model and a returned Model is tracked through it; otherwise
-   * the host's {@link resolver} decides.
+   * Resolve a static `get` of `Type` by running `compute` against the current context.
+   *
+   * Inside `state.get(Type)` or the `get` instruction, `from` is that Model; from a tracking proxy,
+   * `compute` gets a tracked view of the context and a returned Model is tracked through it. Elsewhere
+   * the host's `resolver` runs `compute` and its return is what the caller gets.
    *
    * @param Type - Class `get` was called on.
    * @param compute - Resolves the value from a context.
@@ -66,8 +90,11 @@ class Context {
     return home(arg.is) || Context.root;
   }
 
+  /** Unique id - `String(context)` is `Context-<id>`. */
   public id = uid();
+  /** Context this was pushed from - none for a root or standalone context. */
   public parent?: Context;
+  /** Child contexts pushed from this one, not yet popped. */
   public scope = new Set<Context>();
   public consume = new Map<
     Model.Extends,
@@ -75,6 +102,13 @@ class Context {
   >();
   public provide = new Map<Model.Extends, Set<[Model, boolean]> | null>();
 
+  /**
+   * Create a context - a child of a given context, or a new tree registering the given Models.
+   *
+   * A class is constructed, owned and destroyed when the context pops; an instance is adopted, not
+   * destroyed. All are registered explicitly before any activates. Throws for anything but a Model
+   * class or instance, and for base `Model`.
+   */
   constructor(arg?: Context | Accept) {
     CLEANUP.set(this, new Set());
 
@@ -118,16 +152,39 @@ class Context {
     return () => set.delete(value);
   }
 
-  /** Find specified type upstream. Throws if not found. */
+  /**
+   * Find an instance of `Type` here or in the nearest parent which has one - throws if none.
+   *
+   * Matches subclasses. Returns `null` where several implicit entries match (ambiguous) - even when
+   * required. Throws when several explicit entries match.
+   */
   public get<T extends Model>(Type: Model.Extends<T>, required?: true): T;
 
-  /** Find specified type upstream. Returns undefined if not found. */
+  /**
+   * Find an instance of `Type` here or in the nearest parent which has one.
+   *
+   * `required: false` returns `undefined` when none is found; `null` where it is ambiguous.
+   */
   public get<T extends Model>(
     Type: Model.Extends<T>,
     required?: boolean,
   ): T | undefined;
 
-  /** Subscribe to a type becoming available in context. */
+  /**
+   * Call `callback` for each instance of `Type` available - upstream, downstream, or both.
+   *
+   * `downstream` - omitted for both, `true` for child contexts only, `false` for this and its parents.
+   * The callback gets the instance and a downstream flag. Instances present now are
+   * passed at once; one added later is passed once ready, and a function it returns runs when that
+   * one is removed. Returns a function to stop.
+   *
+   * @example
+   * const context = Context.get(this);
+   * const stop = context.get(Panel, (panel) => {
+   *   panels.add(panel);
+   *   return () => panels.delete(panel);
+   * }, true);
+   */
   public get<T extends Model>(
     Type: Model.Extends<T>,
     callback: Expect<T>,
@@ -194,6 +251,15 @@ class Context {
     if (arg !== false) throw new Error(`Could not find ${Type} in context.`);
   }
 
+  /**
+   * Register an instance under its class and every superclass up to `Model` - returns a remover.
+   *
+   * `explicit` - outranks implicit entries of a type, though two implicit ones registered before it
+   * still read as ambiguous; two explicit ones throw on lookup.
+   * Implicit is how owned children register. Does not activate the instance. Becomes its home when it
+   * has none - an owned one only when explicit and its owner has no home. Subscribers waiting on the
+   * type are called once it is ready.
+   */
   add(I: Model, explicit = false) {
     const TT: Model.Extends[] = [];
 
@@ -285,9 +351,10 @@ class Context {
   }
 
   /**
-   * Remove all Models from this context.
+   * Close this context and its descendants - entries removed, created Models destroyed.
    *
-   * Will also run any cleanup callbacks registered when Models were added.
+   * Child contexts pop first. `push` cleanups run before entries are removed. Adopted instances
+   * survive; their home is unchanged.
    */
   public pop() {
     this.scope.forEach((x) => x.pop());

@@ -76,30 +76,7 @@ class Form extends Model {
 
 The map function runs lazily on first access per key; its result is cached.
 
-## `ref.Object<T>` Interface
-
-```ts
-interface ref.Object<T> {
-  current: T;           // get/set the value
-  is: Model;            // parent instance
-  key: string;          // property name on instance
-  get(): T | null;      // retrieve current value
-  get(cb: (v: T) => void): () => void; // subscribe to changes
-}
-```
-
-## Type Signatures
-
-```ts
-function ref<T extends Model>(state: T): ref.Proxy<T>;
-function ref<T extends Model, R>(state: T, map: (key: Model.Field<T>) => R): ref.CustomProxy<T, R>;
-function ref<T>(callback?: ref.Callback<T>): ref.Object<T>;
-function ref<T>(callback: ref.Callback<T | null>, ignoreNull: boolean): ref.Object<T>;
-
-type ref.Callback<T> = (argument: T) => ((next: T | null) => void) | Promise<void> | void | boolean;
-type ref.Proxy<T> = { [P in Model.Field<T>]-?: ref.Object<T[P]> } & { get(): T };
-type ref.CustomProxy<T, R> = { [P in Model.Field<T>]-?: R } & { get(): T };
-```
+Per-overload contract and `ref.Object` members: JSDoc on hover, or `node_modules/@expressive/mvc/dist/field/ref.d.ts`.
 
 ## Behavior
 

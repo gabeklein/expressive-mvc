@@ -483,3 +483,17 @@ describe('subscriptions', () => {
     expect(await fires(items, ($) => $.get('counter')?.count, () => counter.count++)).toBe(1);
   });
 });
+
+it.fails('will not insert a destroyed model', () => {
+  class Item extends Model {}
+  class Owner extends Model {
+    items = map<string, Item>();
+  }
+
+  const owner = Owner.new();
+  const dead = Item.new();
+  dead.set(null);
+
+  expect(() => owner.items.set('a', dead)).toThrow();
+  expect(owner.items.size).toBe(0);
+});

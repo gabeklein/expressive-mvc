@@ -4,8 +4,10 @@ import { apply, store } from '../store';
 
 declare namespace def {
   /**
-   * Property initializer, will run upon instance creation.
-   * Optional returned callback will run when once upon first access.
+   * Runs on activation with `(key, instance, values)` - `this` is the instance.
+   *
+   * `values` is the live store of managed values. Return nothing for a side effect only, a function
+   * to run on destroy, or a {@link def.Config} to define the property.
    */
   type Factory<T = any, M extends Model = any> = (
     this: M,
@@ -14,7 +16,9 @@ declare namespace def {
     state: Model.Values<M>
   ) => def.Config<T> | (() => void) | void;
 
+  /** Property definition - `value`, `get`, `set` and `enumerable`, plus a `destroy` hook. */
   interface Config<T = any> extends Model.Apply<T> {
+    /** Runs when the instance is destroyed. */
     destroy?: () => void;
   }
 }
@@ -22,6 +26,25 @@ declare namespace def {
 const APPLY = new Map<symbol, [def.Factory, Model[]] | null>();
 const RESET = () => APPLY.clear();
 
+/**
+ * Custom instruction - define a managed property from a factory run when the instance activates.
+ *
+ * Call only in a field initializer of a Model under construction - otherwise throws. Returns a
+ * placeholder symbol, replaced on activation. One instruction per field - reusing it on another
+ * Model throws, as does a `_` key. The returned config defines the property:
+ * - `value` - initial value, set without an event. With neither `value` nor `get`, reads suspend until assigned.
+ * - `get` - a function computes each read, given the subscriber or the instance; `true` suspends
+ *   while undefined; `false` reads `undefined`. Read from the config on every access.
+ * - `set` - `false` makes it read-only. A function gets `(next, previous)` - throw `false` to
+ *   reject, `true` to skip the event; a returned value replaces `next`.
+ * - `enumerable` - default `true`.
+ *
+ * @example
+ * ticks = def<number>((key, self) => {
+ *   const timer = setInterval(() => self.ticks++, 1000);
+ *   return { value: 0, destroy: () => clearInterval(timer) };
+ * });
+ */
 function def<T>(arg1: def.Factory<T>) {
   if (!PENDING.size || (PENDING.size == 1 && PENDING.has(RESET)))
     throw new Error(

@@ -163,26 +163,4 @@ state.set('child', { value: new Child() }); // registers child instance
 
 ## Type Signatures
 
-```ts
-type OnEvent<T extends Model> = (
-  this: T,
-  key: Signal<T>,
-  source: T
-) => void | (() => void) | null;
-
-type Assign<T> = Record<string, unknown> & {
-  [K in Property<T>]?: T[K] extends (...args: infer A) => infer R
-    ? (this: T, ...args: A) => R
-    : T[K];
-};
-
-type Updated<T extends Model> = readonly Event<T>[] &
-  PromiseLike<readonly Event<T>[]>;
-
-type Apply<T = any> = {
-  value?: T;
-  get?: ((source: Model) => T) | boolean;
-  set?: Setter<T> | boolean;
-  enumerable?: boolean;
-};
-```
+Per-overload contract and `Model.OnEvent` / `Model.Assign` / `Model.Updated` / `Model.Apply`: JSDoc on hover, or `node_modules/@expressive/mvc/dist/model.d.ts`.

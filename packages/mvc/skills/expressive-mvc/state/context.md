@@ -188,11 +188,7 @@ scene.get(Model, (node) => attach(node), true); // direct members only - a, not 
 
 ## Static Context
 
-```ts
-Context.get(): Context                       // current context, else root; a render returns its own
-Context.get(state): Context                  // state's home context
-Context.get(Type, compute): R                // resolve a static get - see get.md#overriding
-```
+`Context.get()` overloads - current context, an instance's home, resolving a static get ([overriding](get.md#overriding)): JSDoc on hover, or `node_modules/@expressive/mvc/dist/context.d.ts`.
 
 `state.get(Type, ...args)` and the `get(Type, ...)` instruction make the instance's home context current and the instance the origin of each static `get` they reach: `compute` receives it as `from`. When it is a tracking proxy, `compute` gets a tracked view of the context - each `context.get` in it follows that context - and a returned Model is tracked through it. There hosts do not track, and React runs no hooks.
 
@@ -202,25 +198,6 @@ A host installs `resolver((Type, compute) => ...)` from `@expressive/mvc/jsx-run
 
 ## API Surface
 
-```ts
-new Context();                         // empty
-new Context(parentContext);            // child of parent
-new Context(StateClass);               // create + register an instance
-new Context(stateInstance);            // register existing instance
-new Context({ a: A, b: B });           // several, registered before any activates
-
-ctx.get(Type);                         // upstream lookup, throws if missing
-ctx.get(Type, false);                  // optional, returns undefined
-ctx.get(Type, callback);               // watch, upstream and downstream
-ctx.get(Type, callback, true);         // downstream only
-ctx.get(Type, callback, false);        // upstream only
-ctx.add(state, explicit?);             // register an instance
-ctx.push(input?, cleanup?);            // child context; input as constructor; owns classes, adopts instances; cleanup runs once on pop
-ctx.pop();                             // destroy this and descendants
-Type.new(context, ...args);            // home: first context argument - see Context Arguments
-Context.get(state);                    // static: state's home context
-Context.get();                         // static: current context, else root
-Context.root;                          // process-wide registry
-```
+Per-member contract - constructor, `get`, `add`, `push`, `pop`, `Context.get`, `Context.root`: JSDoc on hover, or `node_modules/@expressive/mvc/dist/context.d.ts`. Placement through `Type.new(context, ...args)`: [Context Arguments](#context-arguments).
 
 Primarily consumed via the [`get` instruction](../field/get.md) and [`<Component for>`](#providing-with-component).

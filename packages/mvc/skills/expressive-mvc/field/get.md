@@ -62,7 +62,7 @@ class Parent extends Model {
 
 ```ts
 class Parent extends Model {
-  child = get(Child, true, true);   // throws if not found
+  child = get(Child, true, true);   // suspends until found
   maybe = get(Child, true, false);  // T | undefined
 }
 ```
@@ -84,17 +84,7 @@ class Parent extends Model {
 
 `Model` reads ownership instead of context - see [state.get()](../state/get.md#owner). Downstream forms collect the instances this one owns directly - not grandchildren, not context descendants; callbacks and the single forms work as for other types. The owner never changes after activation, so `get(Model)` is a stable reference, not a subscription.
 
-## Type Signatures
-
-```ts
-function get<T extends Model>(Type: Model.Extends<T>, callback?: get.Callback<T>): T;
-function get<T extends Model>(Type: Model.Extends<T>, required: false): T | undefined;
-function get<T extends Model>(Type: Model.Extends<T>, downstream: true, callback?: get.Callback<T>): T[];
-function get<T extends Model>(Type: Model.Extends<T>, downstream: true, single: true): T;
-function get<T extends Model>(Type: Model.Extends<T>, downstream: true, required: false): T | undefined;
-
-type get.Callback<T> = (state: T, subject: Model) => void | boolean | (() => void);
-```
+Per-overload contract: JSDoc on hover, or `node_modules/@expressive/mvc/dist/field/get.d.ts`.
 
 ## Behavior
 

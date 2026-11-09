@@ -6,14 +6,18 @@ import ts from 'typescript';
  * Typechecks every `@example` in public JSDoc against the package's source, so a hover example
  * cannot drift from the API it shows.
  *
- * A fragment is placed where it would be written: statements in a method body, a member in a class
- * body - both on a subclass of the package's host class where it has one, `this` as the instance.
+ * A fragment is placed where it would be written: statements in a method body, members (fields,
+ * methods) in a class body - both on a subclass of the package's host class where it has one, `this`
+ * as the instance.
  * Free names (`stripe`, `Cart`) are placeholders, so "cannot find name" is not reported.
  */
-const HOSTS: Record<string, string> = { steps: 'Steps' };
+const HOSTS: Record<string, string> = { mvc: 'Model', steps: 'Steps' };
 
 const PLACEHOLDER = new Set([2304, 2552, 2582, 2662, 2663, 18004]);
-const MEMBER = /^(?:(?:async|protected|public|private|static|readonly|override|declare)\s+)*(?!(?:if|for|while|switch|catch|function|return|await)\b)[\w$]+\s*(?:<[^>]*>)?\([^)]*\)\s*(?::[^{]*)?\{\s*$/;
+const MODIFIERS = String.raw`^(?:(?:async|protected|public|private|static|readonly|override|declare|get|set)\s+)*`;
+const METHOD = new RegExp(MODIFIERS + String.raw`(?!(?:if|for|while|switch|catch|function|return|await)\b)[\w$]+\s*(?:<[^>]*>)?\([^)]*\)\s*(?::[^{]*)?\{\s*$`);
+const FIELD = new RegExp(MODIFIERS + String.raw`[\w$#]+[?!]?\s*(?::\s*[^=;]+)?(?:=(?![=>])|;\s*$)`);
+const MEMBER = { test: (line: string) => METHOD.test(line) || FIELD.test(line) };
 
 type Example = { file: string; line: number; code: string };
 
@@ -63,7 +67,7 @@ for await (const config of new Glob('packages/*/tsconfig.json').scan('.')) {
     const program = ts.createProgram([entry], options);
     const symbol = program.getTypeChecker().getSymbolAtLocation(program.getSourceFile(entry)!);
 
-    return symbol ? program.getTypeChecker().getExportsOfModule(symbol).map((s) => s.name) : [];
+    return symbol ? program.getTypeChecker().getExportsOfModule(symbol).map((s) => s.name).filter((name) => name !== 'default') : [];
   })();
 
   const host = HOSTS[pkg];

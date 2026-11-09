@@ -141,21 +141,26 @@ function enqueue(handler: Handler, transition?: Transition, owner?: object) {
 }
 
 /**
- * Run `work` now, marking the subscriber updates it queues non-urgent - each
- * replays through whatever scheduler it subscribed with. The callback itself is
- * synchronous; only what it notifies is pending.
+ * Run `work` now, marking the updates it queues non-urgent; resolves once every reader absorbs them.
  *
- * Resolves once every one of those updates has replayed and been absorbed. A
- * subscriber which cannot report absorption resolves on replay; one which can
- * defer brackets its own replay.
+ * `work` runs synchronously - a throw propagates and nothing is returned. Each subscriber replays
+ * through the scheduler it subscribed with - a host's transition, where it has one. Settlement waits
+ * for updates cascading from those replays, and for an effect they suspend until it resumes. A
+ * subscriber which cannot report absorption counts on replay. Nested calls settle on their own and
+ * within the outer one.
+ *
+ * @example
+ * await pending(() => {
+ *   router.path = next;
+ * });
  */
 function pending(work: Handler): Promise<void>;
 
 /**
- * Declare the subscriber currently replaying has not absorbed its update yet -
- * settlement waits on the returned callback rather than on the replay. Call
- * only from inside a replay carrying pending work; elsewhere this returns
- * nothing and the subscriber pays for none of it.
+ * Inside a replay: hold settlement of its pending work until the returned callback runs.
+ *
+ * For a subscriber which absorbs its update after replay - a host holds until commit. Returns
+ * `undefined` outside a replay carrying pending work. Calling the release again does nothing.
  */
 function pending(): (() => void) | undefined;
 

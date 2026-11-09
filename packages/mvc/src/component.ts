@@ -23,49 +23,68 @@ type Acceptable<T> = {
 
 type ForProps<T extends Model> = {
   children?: Component.Node;
+  /** Shown while children suspend - no boundary unless passed. */
   fallback?: Component.Node | false;
   catch?: (error: Error, instance: Component) => Promise<void> | void;
 } & (
-  | { for: Model.Extends<T>; is?: (instance: T) => Model.Assign<T> | void }
-  | { for: T | undefined; is?: never }
+  | {
+      /**
+       * Model to provide to children - a class is constructed, owned and destroyed with this.
+       *
+       * Other props assign to it on every update. Changing `for` releases the previous one first.
+       */
+      for: Model.Extends<T>;
+      /** Receives the constructed Model once; a returned plain object is assigned to it. */
+      is?: (instance: T) => Model.Assign<T> | void;
+    }
+  | {
+      /**
+       * Model to provide to children - an active instance is provided as-is, never destroyed.
+       *
+       * An unactivated one is adopted - destroyed with this. `undefined` provides nothing. Other props
+       * assign to it on every update. Changing `for` releases the previous one first.
+       */
+      for: T | undefined;
+      is?: never;
+    }
 ) & { [K in Acceptable<Pick<T, Exclude<keyof T, keyof Model>>>]?: T[K] };
 
 declare namespace Component {
   /**
-   * Host element type produced by `Component.render`. Delegates to the
-   * {@link Host} manifest on the jsx-runtime entry; falls back to `any`
-   * until an adapter augments it with `node`. `any` (not `unknown`) so an
-   * un-annotated `render` override in a host-agnostic package still emits a
-   * JSX-valid return - `any` is assignable to every host's node type, where
-   * `unknown` is assignable to none.
+   * What `render` returns - the host's node type.
+   *
+   * Read from the `Host` manifest on `@expressive/mvc/jsx-runtime`; `any` until an adapter augments
+   * it with `node`. `any`, not `unknown` - an un-annotated `render` in a host-agnostic package stays
+   * assignable to every host's node type.
    */
   type Node = Host extends { node: infer T } ? T : any;
 
+  /** Props every Component accepts beside its fields: `is`, `fallback`, `catch`. */
   interface BaseProps<T extends Component<any>> {
     /**
-     * Callback for newly created instance. Only called once.
+     * Receives the new instance once - after props apply, before `new()`.
      *
-     * Runs after props apply but **before** the `new()` lifecycle hook - so it
-     * may configure state that `new()` then observes. A returned object is
-     * assigned, like props. To react to a fully initialized instance instead,
-     * use `watch` or an effect.
+     * A returned plain object is assigned once, like props - a seed `new()` then sees. Later props
+     * updates do not call it again.
      */
     is?(instance: T): Model.Assign<T> | void;
 
     /**
-     * Fallback to show when suspended or in error recovery.
-     * Pass `false` to opt out of the component's own suspense boundary,
-     * letting suspension bubble to an ancestor.
+     * Shown while content suspends or `catch` recovers - assigns the `fallback` field.
+     *
+     * `false` - no boundary of its own; suspension reaches an ancestor.
      */
     fallback?: Component.Node;
 
     /**
-     * Called when this element's content throws, in place of the class's own
-     * `catch`. A returned promise retries once settled.
+     * Error handler for this placement - replaces the class's `catch`.
+     *
+     * Same contract as `Component.catch`: a returned promise renders content again once settled.
      */
     catch?(error: Error, instance: T): Promise<void> | void;
   }
 
+  /** Optional props from settable fields - accessors without a setter and `readonly` fields excluded. */
   type ModelProps<T extends Model> = {
     [K in Acceptable<Pick<T, Exclude<keyof T, keyof Component>>>]?: T[K];
   };
@@ -73,41 +92,69 @@ declare namespace Component {
   /** @deprecated Renamed to `ModelProps`. */
   type StateProps<T extends Model> = ModelProps<T>;
 
+  /** Props declared by `render`'s parameter - `{ children? }` when it takes none. */
   type RenderProps<T> = [T] extends [(props: infer P) => any]
     ? [keyof NonNullable<P>] extends [never]
     ? { children?: Component.Node }
     : NonNullable<P>
     : { children?: Component.Node };
 
+  /** Every prop a Component accepts: settable fields, `BaseProps`, and its `render` parameter. */
   type Props<T extends Component<any>> =
     & ModelProps<T>
     & BaseProps<T>
     & RenderProps<T['render']>;
 }
 
+/**
+ * A Model a host renders as an element - fields are props, `render` its output.
+ *
+ * Without `render`, children pass through. Props assign to fields on construction and on every
+ * update; a prop omitted later resets its field to `undefined`. Bare `Component` given `for` provides
+ * one Model to its children.
+ *
+ * @example
+ * class Counter extends Component {
+ *   count = 0;
+ *
+ *   render() {
+ *     return this.count;
+ *   }
+ * }
+ */
 class Component<P = unknown> extends Model {
   /**
-   * All JSX attributes passed to this component.
-   * Includes state-derived props, render props, and built-in props like `is` and `fallback`.
+   * Every prop passed - field props, `render`'s declared props, `is`, `fallback`, `catch`, `children`.
    *
-   * Will incorperate extra props you declare as props parameter in `render` method.
+   * Assigning a new object applies it - field props are written; one passed before and absent now
+   * resets to `undefined`. Non-enumerable once active. With `P` a Model, typed for `for`.
    */
   declare readonly props: [P] extends [Model] ? ForProps<P> : Component.Props<this>;
 
-  /** Stable identity used when this instance is rendered in a collection. */
+  /**
+   * Identity when rendered in a collection - the instance id (`String(this)`) by default.
+   *
+   * Not observed state. Override as a `readonly` field for an app-defined key. A write locks it - a
+   * second throws.
+   */
   declare readonly key: string;
 
   /**
-   * Content to display while this component or its children are suspended.
-   * Will cover suspense by pending properties in `this.render` as well.
-   * Can be set as a class property or overridden via the `fallback` JSX prop.
+   * Shown while content suspends - a pending field read in `render` included - or `catch` recovers.
    *
-   * Defaults to null - nothing will be rendered.
-   * Set `false` to opt out of having a boundary at all - suspension then
-   * bubbles to the nearest ancestor boundary.
+   * Defaults to `null` - nothing. The `fallback` prop assigns it. `false` - no boundary of its own;
+   * suspension reaches an ancestor. Bare `Component` given `for` defaults to `false` unless the prop
+   * is passed.
    */
   fallback: Component.Node = set(null);
 
+  /**
+   * Construct from props - assigned to fields before `is`, then `new()`.
+   *
+   * `rest` are Model arguments - a context places the instance there. A leading function in place of
+   * props runs as a Model init callback. Two instances built from one props object are twins - the
+   * first to activate destroys the other.
+   */
   constructor(props?: any, ...rest: any[]) {
     if (props == null) props = {};
 
@@ -154,13 +201,20 @@ class Component<P = unknown> extends Model {
   }
 
   /**
-   * Output for this component. Override to define custom JSX.
+   * What the instance renders - children by default.
    *
-   * Properties accessed via `this` are reactive and trigger a render when they
-   * change, in addition to props. Accepts an optional parameter to receive extra
-   * props from JSX, beyond those merged to state properties; declare its shape
-   * via `props = {} as { ... }`. Without a parameter (the default below),
-   * children pass through.
+   * Fields read through `this` subscribe; the host renders again when they change. A parameter
+   * declares extra props beside fields - typed into `props`; non-optional ones are required. A subclass
+   * replaces it like any method; `super.render(props)` wraps it.
+   *
+   * @example
+   * class Card extends Component {
+   *   title = '';
+   *
+   *   render(props = {} as { tone?: string }) {
+   *     return [this.title, props.tone];
+   *   }
+   * }
    */
   render(props?: {}): Component.Node {
     const { children } = (props || this.props) as { children?: Component.Node };
@@ -168,13 +222,19 @@ class Component<P = unknown> extends Model {
   }
 
   /**
-   * Called when a child component throws during render.
-   * While this is pending, `fallback` is displayed.
-   * When resolved, the error boundary resets and `render` is called again.
+   * Error boundary - receives what content below throws while rendering.
    *
-   * Override to handle errors - set `this.fallback` for error-specific UI,
-   * await async recovery, or await user interaction before retrying. If you
-   * assign a fallback within catch, it will be reverted after resolved.
+   * Declaring it, or passing the `catch` prop, makes the placement a boundary; the prop takes
+   * precedence. While a returned promise is pending `fallback` shows - assign `this.fallback` for
+   * error UI. Once it settles, content renders again.
+   *
+   * @example
+   * class Panel extends Component {
+   *   async catch(error: Error) {
+   *     this.fallback = error.message;
+   *     await retryClicked;
+   *   }
+   * }
    */
   catch?(error: Error, instance: this): Promise<void> | void;
 }

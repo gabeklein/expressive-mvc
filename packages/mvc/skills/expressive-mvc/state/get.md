@@ -46,7 +46,7 @@ Runs `effect` immediately, then again whenever accessed properties change. Retur
 
 ```ts
 const stop = state.get((current, update) => {
-  // `this` = instance
+  // `this` = `current`, the tracking proxy
   // `current` = tracking proxy - reads create subscriptions
   // `update` = readonly array of changed keys (empty on first run, undefined before ready)
   console.log(current.count);
@@ -187,18 +187,8 @@ class Order extends Model {
 - In `compute`, use only `context.get(Type, required?)` - other members of `context` are unstable. Make the same lookups for every argument - branch on what they return, not on which types to look up; React tracks the lookups of a component's first call.
 - In render or through a tracking proxy, every `context.get` in `compute` follows context - `context.get(Connection).reference(this, id)` re-runs when `Connection`'s provider changes, as `User.get()` does for `User`.
 - Outside render - event handlers, effects, module code - a static `get` resolves from root, untracked, on every host; so does a plain `Other.get()` inside `compute`, except under the instance and instruction forms, which keep it on the caller's context.
-- One signature, typing a key from `T` (`T['id'] | false`) - inference from overloads uses the last, and `get()` and `get(false)` stay callable - a plain `key?: string` fails the static-side check against base `get`. Through `state.get(Type, ...)` and the `get(Type, ...)` instruction, arguments type against the base, not a narrowed override.
+- One signature, typing a key from `T` (`T['id'] | false`) - inference from overloads uses the last, and `get()` and `get(false)` stay callable - a plain `key?: string` fails the static-side check against base `get`. `state.get(Type, ...)` types arguments against the override.
 
 ## Type Signatures
 
-```ts
-type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
-  this: T,
-  current: T,
-  update: readonly Model.Event<T>[] | undefined
-) => R;
-
-type EffectCallback = (update: boolean | null) => void;
-
-type Release<R = void> = (() => void) & PromiseLike<R>;
-```
+Per-overload contract and `Model.Effect` / `Model.Release` / `Model.EffectCallback`: JSDoc on hover, or `node_modules/@expressive/mvc/dist/model.d.ts`.

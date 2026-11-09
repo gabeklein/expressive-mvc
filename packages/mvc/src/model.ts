@@ -77,139 +77,139 @@ type Overlay<T> = Record<string, unknown> & {
 };
 
 declare namespace Model {
-  /** Any type of Model, using own class constructor as its identifier. */
+  /** Any Model class, abstract included - for parameters which accept a class. */
   type Extends<T extends Model = Model> = (abstract new (...args: any[]) => T) &
     typeof Model;
 
-  /** A Model constructor which may be instanciated. */
+  /** A concrete Model class - for parameters which construct one. */
   type Type<T extends Model = Model> = (new (...args: Model.Args<T>) => T) &
     Omit<typeof Model, never>;
 
-  /** Model constructor arguments - the first `Context` given becomes the home, unless already placed. */
+  /**
+   * Constructor arguments - overlays, init callbacks, contexts and nested arrays, applied in order.
+   *
+   * Arrays flatten. The first `Context` homes the instance - ignored when it has an owner or a home already.
+   */
   type Args<T extends Model = any> = (Args<T> | Init<T> | Overlay<T> | Context | void)[];
 
   /**
-   * Model constructor callback - runs during activation, in argument order,
-   * before the `new()` lifecycle hook (so it may configure state `new()`
-   * will observe). Returned function will run when state is destroyed.
+   * Init callback in constructor args - runs at activation, in argument order, before `new()`.
+   *
+   * `this` and the argument are the instance. May return a cleanup (runs on destroy), more args, a plain
+   * object to assign, or a promise - `ready` and effects wait for it; a rejection reports to `catch` as
+   * `setup` and destroys the instance. A returned `Context` is ignored.
    */
   type Init<T extends Model = Model> = (
     this: T,
     thisArg: T
   ) => Promise<void> | (() => void) | Args<T> | Overlay<T> | void;
 
-  /** Lifecycle handlers for `Model.on`, keyed by when they run. */
+  /** Lifecycle handlers for `Model.on`, keyed by stage. */
   interface On<T extends Model = Model> {
     /**
-     * Per-class setup, run once when the class is first bootstrapped - before
-     * its members are classified and bound. Receives the class, so a handler
-     * may inspect or reshape the prototype first. A handler registered on a
-     * base class runs for each subclass too.
+     * Per class, once, when first constructed - before its members are classified and bound.
+     *
+     * Given the class, so it may reshape the prototype. Runs for each subclass of the class registered on.
      */
     type?(type: Model.Extends<T>): void;
 
     /**
-     * Per-instance, once constructed - before own values are observed and
-     * before constructor args and `new()`. May return a cleanup, constructor
-     * args, or an assign overlay.
+     * Per instance, at activation - before own values are observed, constructor args and `new()`.
+     *
+     * May return what an {@link Model.Init} callback may: cleanup, args, an overlay, or a promise which holds `ready`.
      */
     setup?(this: T, self: T): void | (() => void) | Promise<void> | Args<T> | Overlay<T>;
 
     /**
-     * Per-instance, once ready - after own values are observed, constructor
-     * args applied, `new()` has run and any promise those returned resolved.
-     * May return a cleanup function.
+     * Per instance, once ready - args applied, `new()` run, and every promise they returned resolved.
+     *
+     * Skipped if setup rejects or the instance is destroyed first. May return a cleanup.
      */
     ready?(this: T, self: T): void | (() => void);
 
     /**
-     * Runs each time a method is bound to an instance - first access,
-     * reassignment, and the rebind after a hot patch - with the key, the bound
-     * function and the instance. Not run for unbound `_` methods. Tooling and
-     * development use.
+     * Each time a method binds to an instance - first read, a replacement, the rebind after a hot patch.
+     *
+     * Given the key and the bound function. Not run for `_` methods, which never bind. Tooling use.
      */
     method?(this: T, key: string, fn: Function, self: T): void;
 
     /**
-     * Receives what an effect, refreshing getter or async initializer of this Model
-     * or a subclass threw, a destroyed write, or an instance never activated - with
-     * its `kind` (`effect`, `getter`, `setup`, `dead`, `unused`) and `key` where
-     * one applies. Most-derived class first, last registered first, each once. Return the error
-     * (or another) to pass it on; return nothing to handle it; throw to let it escape.
-     * Passed off the end, a destroyed write outputs nothing, `unused` warns,
-     * anything else escapes uncaught.
+     * Receives what an instance threw out of turn, with `kind` and the `key` where one applies.
+     *
+     * Kinds: `effect`, `getter`, `setup` (async construction), `dead` (a write after destroy), `unused`
+     * (never activated). Most-derived class first, last registered first, each handler once. Return the
+     * error (or another) to pass it on; return nothing to handle it; throw to escape uncaught. Passed off
+     * the end, `dead` outputs nothing, `unused` warns, anything else escapes uncaught.
      */
     catch?(this: T, error: unknown, kind: 'effect' | 'getter' | 'setup' | 'dead' | 'unused', key?: string): unknown;
   }
 
-  /** Object overlay to override values and methods on a state. */
+  /** Values to merge with `set()` - unknown keys type-check, then are ignored; methods get `this`. */
   type Assign<T> = Record<string, unknown> & {
     [K in Property<T>]?: T[K];
   } & ThisType<T>;
 
-  /** Subset of `keyof T` not defined by base Model. **/
+  /** Keys of `T` not inherited from Model. **/
   type Property<T> = Exclude<keyof T, keyof Model>;
 
-  /** Managed subset of Property<T> - excludes unmanaged `_` keys. **/
+  /** Managed keys - `Property<T>` less `_` keys and `then`. **/
   type Field<T> = Exclude<Property<T>, `_${string}` | 'then'>;
 
-  /** Any valid key for state, including but not limited to Field<T>. */
+  /** A key `set()` can dispatch or listen to - a field, or any custom string, number or symbol. */
   type Event<T = Model> = Field<T> | number | symbol | (string & {});
 
-  /** Any event signal dispatched to listeners, including lifecycle meta events. */
+  /** What a listener receives - an event, or `true` ready, `false` flush done, `null` destroyed. */
   type Signal<T = Model> = Event<T> | true | false | null;
 
-  /** Export/Import compatible value for a given property in a Model. */
+  /** Exported form of a value - a Model as its `Values`, anything with `get()` as what that returns. */
   type Export<R> = R extends Model
     ? Values<R>
     : R extends { get(): infer T }
     ? T
     : R;
 
-  /**
-   * Values from current state of given state.
-   * Differs from `Values` as values here will drill
-   * into "real" values held by exotics like ref.Object.
-   */
+  /** Plain snapshot of managed fields, child Models and `ref`-like values unwrapped - from `get()`. */
   type Values<T> = { [P in Field<T>]: Export<T[P]> };
 
-  /** Object comperable to data found in T. */
+  /** Some fields of `T`, in exported form. */
   type Partial<T> = { [P in Field<T>]?: Export<T[P]> };
 
-  /** Value for a property applied by a state. */
+  /** Exported value of one field, `unknown` for a custom event. */
   type Value<T extends Model, K extends Model.Event<T>> = K extends keyof T
     ? Export<T[K]>
     : unknown;
 
   type Setter<T> = (value: T, previous: T) => T | void;
 
-  /** Descriptor config for a managed property. */
+  /** Descriptor for a managed property - `value`, `get`, `set`, `enumerable`. */
   type Apply<T = any> = Config<T, Model>;
 
-  /** Descriptor config for set() overload - enforces type when key is a known field. */
+  /** Descriptor for `set(key, config)` - typed by the field when `key` is one. */
   type Define<T, K> = K extends Field<T> ? Apply<T[K] | Export<T[K]>> : Apply;
 
+  /**
+   * Listener for `set(callback)` and `set(key, callback)` - given the key and the instance.
+   *
+   * Return `null` to unsubscribe; return a function to run it when the batch settles.
+   */
   type OnEvent<T extends Model> = (
     this: T,
     key: Signal<T>,
     source: T
   ) => void | (() => void) | null;
 
-  /** Exotic value, where actual value is contained within. */
+  /** Callable ref holding `current`. */
   type Ref<T = any> = {
     (next: T): void;
     current: T | null;
   };
 
   /**
-   * A callback function which is subscribed to parent and updates when accessed properties change.
+   * Effect for `get(effect)` - re-runs when what it read through `current` changes.
    *
-   * @param current - Current state of this state. This is a proxy which detects properties which
-   * where accessed, and thus depended upon to stay current.
-   *
-   * @param update - Set of properties which have changed, and events fired, since last update.
-   *
-   * @returns A callback function which will be called when this effect is stale.
+   * `this` and `current` are the tracking proxy. `update` holds keys changed since the last run - empty on
+   * the first. Return a cleanup, `null` to cancel after this run, or a promise.
    */
   type Effect<T, R = EffectCallback | Promise<void> | null | void> = (
     this: T,
@@ -218,33 +218,48 @@ declare namespace Model {
   ) => R;
 
   /**
-   * Returned by `get(effect)`. Call to stop the effect. Await to stop it once it
-   * has run clean and receive that run's value - a sync run's output, or what its
-   * promise resolved to.
+   * Stops an effect. Await it instead to stop once a run completes and receive that run's value.
+   *
+   * Rejects if the instance is destroyed before a clean run, or the run throws.
    */
   type Release<R = void> = (() => void) & PromiseLike<R>;
 
-  /**
-   * A callback function returned by effect. Will be called when effect is stale.
-   *
-   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if state is destroyed.
-   */
+  /** Effect cleanup - given `true` before a re-run, `false` when cancelled, `null` when destroyed. */
   type EffectCallback = (update: boolean | null) => void;
 
-  /**
-   * A list of keys updated, or events fired, since last update.
-   * This may be awaited to get full list (same array) when update is settled.
-   */
+  /** Keys updated in the pending batch - awaitable for the full list once the batch flushes. */
   type Updated<T extends Model> = readonly Event<T>[] &
     PromiseLike<readonly Event<T>[]>;
 }
 
+/**
+ * Reactive state as a class - fields observable, methods bound, getters computed.
+ *
+ * Writes batch and dispatch on a microtask; a write `===` the current value is skipped. `Model.new()`
+ * constructs and activates - bare `new` only constructs, fine for a child held in a field, which its
+ * parent activates; an instance never activated warns. `_` keys and `then` are unmanaged.
+ *
+ * @example
+ * class Counter extends Model {
+ *   count = 0;
+ *
+ *   increment() {
+ *     this.count++;
+ *   }
+ * }
+ *
+ * const counter = Counter.new({ count: 10 });
+ */
 abstract class Model {
 
   /**
-   * Loopback to instance of this state. This is useful when in a subscribed context,
-   * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
-   **/
+   * The instance itself - unwraps a tracking proxy; reads through it do not subscribe.
+   *
+   * Each tracked read of a child returns a fresh proxy - compare and store instances through `is`.
+   *
+   * @example
+   * const { is: counter, count } = Counter.get();
+   */
   declare is: this;
 
   constructor(...args: Model.Args) {
@@ -253,86 +268,99 @@ abstract class Model {
   }
 
   /**
-   * Optional lifecycle hook called during Model initialization.
-   * Can return a cleanup function to run when state is destroyed.
+   * Lifecycle hook - runs once at activation, after fields, child Models and constructor args.
    *
-   * It is recommended you protect this method.
+   * `this` is the instance. Return a cleanup to run on destroy. Async: `ready` handlers and effects wait
+   * for it; a rejection reports to `catch` as `setup` and destroys the instance. Runs wherever the
+   * instance is built, the server included - put browser-only work in an effect. An instance field
+   * named `new` is ignored.
+   *
+   * @example
+   * protected new() {
+   *   const id = setInterval(() => this.tick(), 1000);
+   *   return () => clearInterval(id);
+   * }
    */
   protected new?(): void | (() => void) | Promise<void>;
 
   /**
-   * Pull current values from state. Flattens all states and exotic values recursively.
+   * Snapshot of every managed value - frozen, child Models and `ref`-like values exported.
    *
-   * @returns Object with all values from this state.
-   **/
+   * Non-enumerable fields included; a field with no value yet is absent. Circular children export once.
+   */
   get(): Model.Values<this>;
 
   /**
-   * Run a function to run automatically when accessed values change.
+   * Run an effect now and again whenever a value it read through `current` changes.
    *
-   * @param effect Function to run, and whenever accessed values change.
-   *               If effect returns a function, it will be called when a change occurs (syncronously),
-   *               effect is cancelled, or parent state is destroyed. A returned promise
-   *               defers re-runs until it settles; its resolved value is treated the same way.
-   * @returns Function to cancel listener - awaited, cancels and yields the effect's value.
+   * Changes in one batch re-run it once. Reads through `this` (the proxy) track; reads inside methods
+   * it calls do not. Before the instance is ready, the first run waits. A thrown suspense retries once it
+   * resolves. Throws if the instance is destroyed.
+   *
+   * @example
+   * this.get(($) => {
+   *   document.title = `${$.count} items`;
+   * });
    */
   get(effect: Model.Effect<this>): Model.Release;
 
   /**
-   * Run a function to run automatically when accessed values change, which
-   * produces a value - sync or async. Await the returned function to cancel the
-   * effect once a run completes and receive what it returned.
+   * Run an async effect, again on change - awaiting the release stops it and yields the run's value.
+   *
+   * Changes while a run is pending re-run it once, after it settles, with every changed key. A rejection
+   * reports to `catch` as `effect` unless the release is awaited.
+   *
+   * @example
+   * const user = await this.get(async ($) => $.user);
    */
   get<R>(effect: Model.Effect<this, Promise<R>>): Model.Release<R>;
 
   /**
-   * Get value of a property. Will fetch underlying value from exotic values like ref.Object.
+   * Value of a field - suspends until it has one; `ref`-like values unwrap through their `get()`.
    *
-   * Any value which implements `get()` (with no arguments) will be treated as such.
+   * No value yet: throws a suspense promise resolving with it - `required: false` returns `undefined`.
+   * A stored `undefined` throws only with `required: true`. Destroyed, returns `undefined`. A method's
+   * name returns the original, unbound method. Does not subscribe, even on a tracking proxy.
    *
-   * @param key - Property to get value of.
-   * @param required - If true, will throw an error if property is not available.
-   * @returns Value of property.
+   * @example
+   * const token = this.get('token', false);
    */
   get<T extends Model.Event<this>>(
     key: T,
     required?: boolean
   ): Model.Value<this, T>;
 
-  /**
-   * Check if state is destroyed.
-   *
-   * @param status - `null` for destroy.
-   */
+  /** Whether the instance is destroyed. */
   get(status: null): boolean;
 
   /**
-   * Callback when state is destroyed.
+   * Run a callback when the instance is destroyed.
    *
-   * @param status - `null` for destroy.
-   * @param callback - Function to call when state is destroyed.
-   * @returns Function to cancel listener.
+   * Throws if it already is. Returns a function to remove the callback.
    */
   get(status: null, callback: () => void): () => void;
 
-  /** Fetch Model of type from context. Throws if not found. */
+  /**
+   * Nearest instance of a class in this instance's context - throws if none.
+   *
+   * Skips this instance. Calls `Type.get()` from here, so an overridden static `get` applies. Through a
+   * tracking proxy, reads off the result subscribe and the lookup follows its provider. Throws
+   * `Could not find {Type} in context.`
+   *
+   * @example
+   * const theme = this.get(Theme);
+   */
   get<T extends Model>(type: Model.Type<T>, required?: true): T;
 
-  /** Fetch a Model from context. Undefined if not found. */
+  /** Nearest instance of a class in this instance's context, or `undefined`. */
   get<T extends Model>(type: Model.Type<T>, required: boolean): T | undefined;
 
   /**
-   * Subscribe to Model becoming available in context.
+   * Run a callback for each instance of a class in context - present now, then as each arrives.
    *
-   * Will search both up and downstream by default.
-   * Normally you can ignore this because Model you expect is rarely both.
-   *
-   * Specify downstream if you only want to watch for Model in children, which can be useful if you expect multiple of the same Model in different branches of the tree.
-   *
-   * @param type - Type of Model to watch for.
-   * @param callback - Function to call when Model is found. Will be called immediately if Model is already available.
-   * @param downstream - If true, will only watch for Model in children, if false will only for parents.
-   * @returns Function to cancel listener.
+   * Searches above and below by default; `downstream: true` only below, `false` only above. The callback
+   * gets the instance and whether it was found below. For an instance arriving later, a returned function
+   * runs when it leaves. Returns a function to stop watching.
    */
   get<T extends Model>(
     type: Model.Type<T>,
@@ -343,24 +371,35 @@ abstract class Model {
   // Owner overloads take `Model` itself only - a subclass would otherwise match
   // them in TypeScript's subtype pass, before the `Model.Type<T>` overloads.
 
-  /** Owner of this Model. Throws if it has none. */
+  /**
+   * Owner of this instance, passing `Model` - throws if it has none.
+   *
+   * The owner constructed it into a field, `has()` or `map()`; failing that, the instance its nearest
+   * context was set up for. Fixed at activation, not reactive. A root, or an instance already active
+   * when something held it, has none. Throws `{instance} has no owner.`
+   *
+   * @example
+   * const owner = this.get(Model);
+   */
   get<T extends typeof Model>(
     type: T & (typeof Model extends T ? unknown : never),
     required?: true
   ): Model;
 
-  /** Owner of this Model. Undefined if it has none. */
+  /** Owner of this instance, passing `Model` - or `undefined`. */
   get<T extends typeof Model>(
     type: T & (typeof Model extends T ? unknown : never),
     required: boolean
   ): Model | undefined;
 
   /**
-   * Run a callback for each Model this one owns - those owned now, then each
-   * one as it activates. Callback may return a function, called when that Model
-   * is destroyed.
+   * Run a callback for each Model this one owns, passing `Model` - owned now, then each as it activates.
    *
-   * @returns Function to stop watching.
+   * Direct children only. A returned function runs when that child is destroyed. Returns a function to
+   * stop watching.
+   *
+   * @example
+   * this.get(Model, (child) => console.log(child), true);
    */
   get<T extends typeof Model>(
     type: T & (typeof Model extends T ? unknown : never),
@@ -369,8 +408,12 @@ abstract class Model {
   ): () => void;
 
   /**
-   * Fetch through `Type.get(...args)` with this instance as origin - its
-   * context, and its subscription when this is a tracking proxy.
+   * Call `Type.get(...args)` from this instance - its context, tracked when this is a tracking proxy.
+   *
+   * For a class overriding static `get` with its own arguments - typed by the override.
+   *
+   * @example
+   * const user = this.get(User, 5);
    */
   get<C extends Model.Extends>(Type: C, ...args: Keyed<C>): Got<C>;
 
@@ -407,69 +450,66 @@ abstract class Model {
   }
 
   /**
-   * Get update in progress.
+   * Keys updated in the pending batch - await for the full list once it flushes; empty if none.
    *
-   * @returns Promise which resolves object with updated values, `undefined` if there no update is pending.
-   **/
+   * Activates an instance built with bare `new`. Waits on this instance only - `pending(work)` waits out
+   * the cascade a write sets off.
+   *
+   * @example
+   * const keys = await this.set();
+   */
   set(): Model.Updated<this>;
 
   /**
-   * Merge argument with current state, updating one or more properties at once.
-   * Properties which are not managed by this state will be ignored.
+   * Merge values into the instance - fields, `_` keys and methods; other keys are ignored.
    *
-   * @param assign - Object with properties to update.
-   * @param silent - If true, listeners will not be notified. If state is destroyed, stores the update without reporting it.
-   * @returns Array of keys updated, syncronously contains keys updated immediately and may be resolved (to itself) when all updates are settled.
+   * Computed getters, `is` and `then` are skipped. `undefined` and `null` present do write. `silent`
+   * skips dispatch and the destroyed-write report. Returns the pending batch, as `set()`.
+   *
+   * @example
+   * counter.set({ count: 0, label: 'reset' });
    */
   set(assign?: Model.Assign<this>, silent?: boolean): Model.Updated<this>;
 
   /**
-   * Call a function when update occurs.
+   * Listen to every dispatched key - each changing write and each explicit event, synchronously.
    *
-   * Given function is called for every assignment (which changes value) or explicit `set`.
+   * Not called for ready, flush or destroy. Return `null` to unsubscribe; return a function to run it
+   * once when the batch settles - the same function returned for several keys runs once. Returns a
+   * remover, `true` if it removed the listener. Throws if the instance is destroyed.
    *
-   * To run logic on final value only, callback may return a function. The same
-   * function for one or more events will be called only once when update is settled.
-   *
-   * Return `null` from callback to stop listening.
-   *
-   * @param callback - Function to call when update occurs.
-   * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
+   * @example
+   * this.set((key) => console.log('updated', key));
    */
   set(callback: Model.OnEvent<this>): () => boolean;
 
   /**
-   * Push an update. This will not change the value of associated property.
+   * Dispatch an update without changing a value - a field mutated in place, or a custom event.
    *
-   * Useful where a property value internally has changed, but the object is the same.
-   * For example: An array has pushed a new value, or a nested property is updated.
+   * Any string, number or symbol is an event - keep custom names clear of field names.
    *
-   * You can also use this to dispatch arbitrary events.
-   * Symbols are recommended as non-property events, however you can use any string.
-   * If doing so, be sure to avoid collisions using property names. An easy way to do this is
-   * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
-   *
-   * @param key - Property or event to dispatch.
-   * @returns Promise resolves an array of keys updated.
+   * @example
+   * this.items.push(item);
+   * this.set('items');
    */
   set(key: Model.Event<this>): Model.Updated<this>;
 
   /**
-   * Declare an end to updates. This event is final - later writes are stored but never dispatched.
-   * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
+   * Destroy the instance - owned children first, then destroy listeners, cleanups and `new()`'s cleanup.
    *
-   * @param status - `null` to end updates.
+   * Dispatch stops. Later writes are stored without dispatch and reported to `catch` as `dead`.
+   * Subscribing then throws. Repeat calls do nothing.
    */
   set(status: null): void;
 
   /**
-   * Register a callback for a specific property or event.
+   * Listen to one key or event; `null` listens for destroy.
    *
-   * Callback receives the key, current value, and source instance.
+   * Return `null` to unsubscribe; return a function to run it once when the batch settles. Returns a
+   * remover. Throws if the instance is destroyed.
    *
-   * @param event - Property or event to watch. If `null`, will callback on destroy.
-   * @param callback - Function to call when event occurs.
-   * @returns Function to remove listener.
+   * @example
+   * this.set('count', () => console.log('count changed'));
    */
   set<K extends Model.Event<this>>(
     event: K | null,
@@ -477,13 +517,14 @@ abstract class Model {
   ): () => boolean;
 
   /**
-   * Define or update a managed property using a descriptor config.
-   * If the property already is managed, config will only accept value.
-   * If the property does not exist, it will be created and made reactive.
+   * Define a managed property from a descriptor, or update a managed one's value.
    *
-   * @param key - Property to define or update.
-   * @param config - Descriptor config with value, get, set, enumerable, and/or destroy.
-   * @returns Promise resolves an array of keys updated.
+   * A new key becomes reactive and trackable. On a managed key, only `value` is accepted - it writes
+   * past any setter; other fields throw `Property {key} on {instance} is already defined.` A child
+   * Model given as `value` is adopted.
+   *
+   * @example
+   * state.set('label', { value: 'draft', set: false });
    */
   set<K extends Model.Event<this>>(
     key: K,
@@ -516,20 +557,19 @@ abstract class Model {
     return queued(self) as Model.Updated<this>;
   }
 
-  /**
-   * Iterate over managed properties in this instance of Model.
-   * Yeilds the key and current value for each property.
-   */
+  /** Iterate `[key, value]` over managed properties - stored values, not exported. */
   [Symbol.iterator](): Iterator<[string, unknown]> {
     return entries(this.is)[Symbol.iterator]();
   }
 
   /**
-   * Create and activate a new instance of this state.
+   * Construct and activate an instance - unlike `new`, which only constructs.
    *
-   * **Important** - Unlike `new this(...)` - this method also activates state.
+   * Args apply in order: objects assign, functions run as init callbacks, the first `Context` homes it.
+   * Effects and `ready` wait for any async setup.
    *
-   * @param args - arguments sent to constructor; a `Context` among them becomes its home
+   * @example
+   * const counter = Counter.new({ count: 10 }, (self) => () => console.log('destroyed', self));
    */
   static new<T extends Model>(this: Model.Type<T>, ...args: Model.Args<T>): T {
     const instance = new this(...args);
@@ -538,16 +578,31 @@ abstract class Model {
   }
 
   /**
-   * Fetch instance of this class from context. Throws if not found.
+   * Instance of this class from context - throws `Could not find {Type} in context.` if none.
    *
-   * Override with a single signature to accept other arguments - delegate
-   * base forms to `super.get(arg)`, and resolve others by calling
-   * `Context.get(this, compute)` once, synchronously, so host context and
-   * tracking still apply.
+   * In a host render, the render's context, tracked. Through `instance.get(Type)` or the `get`
+   * instruction, that instance's context. Elsewhere, the root context, untracked.
+   *
+   * Override with one signature to accept a key - handle it with `Context.get(this, compute)`, once and
+   * synchronously, and pass base forms to `super.get()`.
+   *
+   * @example
+   * class User extends Model {
+   *   id = 0;
+   *
+   *   static get<T extends User>(this: Model.Extends<T>, id?: T['id'] | false): T {
+   *     if (typeof id != 'number') return (id === false ? super.get(false) : super.get()) as T;
+   *
+   *     return Context.get(this, (context) => {
+   *       const found = context.get(this, false);
+   *       return found?.id === id ? found : undefined;
+   *     }) as T;
+   *   }
+   * }
    */
   static get<T extends Model>(this: Model.Extends<T>): T;
 
-  /** Fetch instance of this class from context. Undefined if not found. */
+  /** Instance of this class from context, or `undefined`. */
   static get<T extends Model>(this: Model.Extends<T>, required: false): T | undefined;
 
   static get(this: Model.Extends, required?: false): any {
@@ -561,10 +616,12 @@ abstract class Model {
   }
 
   /**
-   * Static equivalent of `x instanceof this`.
-   * Determines if provided class is a subtype of this one.
-   * If so, language server will make available all static
-   * methods and properties of this class.
+   * Whether a value is this class or a subclass of it - a type guard.
+   *
+   * Compares classes, not instances - use `instanceof` for those.
+   *
+   * @example
+   * if (Counter.is(Type)) Type.new();
    */
   static is<T extends Model.Extends>(this: T, maybe: unknown): maybe is T {
     return (
@@ -574,20 +631,31 @@ abstract class Model {
   }
 
   /**
-   * Register a lifecycle handler for this Model and its subclasses.
+   * Register a `setup` handler for every instance of this class and its subclasses.
    *
-   * Hooks by cadence - `type` (per-class, at bootstrap), `setup` (per-instance,
-   * before values are observed), `ready` (per-instance, after `new()`), and
-   * `method` (per method binding). A function alone is a `setup` handler. A
-   * function returned from `setup` or `ready` runs when the instance is destroyed.
+   * Runs at activation, before own values are observed - see {@link Model.On.setup}. Returns a remover.
    *
-   * @returns Function to remove the handler.
+   * @example
+   * Counter.on((self) => () => console.log('destroyed', self));
    */
   static on<T extends Model>(
     this: Model.Extends<T>,
     setup: NonNullable<Model.On<T>['setup']>
   ): () => boolean;
 
+  /**
+   * Register lifecycle handlers for every instance of this class and its subclasses, keyed by stage.
+   *
+   * Stages: `type`, `setup`, `ready`, `method`, `catch` - see {@link Model.On}. Ancestor classes' handlers
+   * run first; a function registered more than once runs once per stage. Returns a remover.
+   *
+   * @example
+   * Counter.on({
+   *   ready() {
+   *     console.log('ready', this);
+   *   }
+   * });
+   */
   static on<T extends Model>(
     this: Model.Extends<T>,
     handler: Model.On<T>
@@ -1122,7 +1190,17 @@ function uid() {
     .toUpperCase();
 }
 
+/**
+ * Original function behind a bound Model method - any other function returns as given.
+ *
+ * Unwraps an instance's bound method, a prototype method's binding getter, and a `_` method's wrapper.
+ *
+ * @example
+ * const save = unbind(this.save);
+ * save.call(other);
+ */
 function unbind<T extends Function>(fn: T): T;
+/** Original function behind a bound Model method - `undefined` and other functions return as given. */
 function unbind<T extends Function>(fn?: T): T | undefined;
 function unbind(fn?: Function) {
   return UNBIND.get(fn) || fn;

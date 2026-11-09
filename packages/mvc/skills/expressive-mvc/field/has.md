@@ -220,52 +220,7 @@ Member fields read thru a subscribed context track deeply - a parent rendering `
 
 ## Type Signature
 
-```ts
-function has<T>(initial?: Iterable<T> | false | null): has.List<T>;
-function has<T extends Model>(Type: new (...args: Model.Args<T>) => T): has.Create<T>;
-function has<T extends Model, K extends Model.Field<T>>(
-  Type: new (...args: Model.Args<T>) => T,
-  fromKey: K
-): has.From<T, K>;
-function has<R, A extends unknown[]>(
-  make: (...args: A) => R
-): has.Pool<Exclude<R, null | undefined>, A, R>;
-
-class has.List<T> {
-  readonly size: number;
-  get(): Model.Export<T>[];                    // snapshot
-  get(index: number): T | undefined;           // negative counts from end
-  get(start: number, end: number): T[];
-  get(predicate): T | undefined;
-  set(index: number, value: T): void;
-  put(index: number, ...values: T[]): void;
-  push(...values: T[]): number;
-  pop(index?: number, count?: number): T | T[] | undefined;
-  clear(): void;
-  // map / filter / any / all / [Symbol.iterator]
-}
-
-class has.Pool<T, A extends unknown[] = unknown[], R = T> {
-  readonly size: number;
-  add(...args: A): R;                          // constructor's or factory's own signature
-  get(): Model.Export<T>[];                    // snapshot
-  get(predicate): T | undefined;
-  has(value: T): boolean;
-  delete(value: T): boolean;
-  clear(): void;
-  // map / filter / any / all / [Symbol.iterator]
-}
-
-interface has.Create<T extends Model> extends has.Pool<T, Model.Args<T>> {
-  add(...args: Model.Args<T>): T;              // spawn
-  add(instance: T): T;                         // admit
-}
-
-interface has.From<T extends Model, K extends Model.Field<T>> extends has.Pool<T, [from: T[K]]> {
-  add(from: T[K]): T;                          // spawn
-  add(instance: T): T;                         // admit
-}
-```
+Per-member contract: JSDoc on hover, or `node_modules/@expressive/mvc/dist/field/has.d.ts`.
 
 `has.List` and `has.Pool` are the runtime classes (`has.Create` and `has.From` type the class-mode pool) - mode is class identity (`instanceof` works; a list has no `add`, a pool no `push`, as natural TypeErrors). Adapters may extend their prototypes - the seam for rendering facades.
 
