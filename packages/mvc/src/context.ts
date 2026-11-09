@@ -7,6 +7,7 @@ const HOME = new WeakMap<Model, Context>();
 const HELD = new WeakMap<Model, Map<Model, [Set<() => void>, boolean?]>>();
 const HOST = new WeakMap<Context, Model>();
 const CLEANUP = new WeakMap<Context, Set<() => void>>();
+const DONE = new WeakMap<[Model, boolean], Set<() => void>>();
 let ROOT: Context;
 
 type Accept<T extends Model = Model> =
@@ -174,9 +175,9 @@ class Context {
    * Call `callback` for each instance of `Type` available - upstream, downstream, or both.
    *
    * `downstream` - omitted for both, `true` for child contexts only, `false` for this and its parents.
-   * The callback gets the instance and a downstream flag. Instances present now are
-   * passed at once; one added later is passed once ready, and a function it returns runs when that
-   * one is removed. Returns a function to stop.
+   * The callback gets the instance and a downstream flag. Instances present now are passed at once,
+   * one added later once ready - a function returned runs when that instance is removed. Returns a
+   * function to stop.
    *
    * @example
    * const context = Context.get(this);
@@ -206,6 +207,7 @@ class Context {
     skip?: Model,
   ) {
     let found: T | null | undefined;
+    let entry: [Model, boolean] | undefined;
     let priority = false;
 
     for (let ctx: Context | undefined = this; ctx; ctx = above(ctx)) {
@@ -213,32 +215,40 @@ class Context {
       const entries = ctx.provide.get(Type);
       if (!entries) continue;
 
-      for (const [state, explicit] of entries) {
+      for (const next of entries) {
+        const [state, explicit] = next;
+
         if (state === skip || found === state) continue;
-        if (!found || (explicit && !priority)) {
+
+        if (explicit) {
+          if (priority)
+            throw new Error(
+              `Did find ${Type} in context, but multiple were defined.`,
+            );
+
           found = state as T;
-          priority = explicit;
-          continue;
+          entry = next;
+          priority = true;
+        } else if (!priority) {
+          found = found === undefined ? (state as T) : null;
+          entry = next;
         }
-        if (!priority) {
-          found = null;
-          break;
-        }
-        if (explicit)
-          throw new Error(
-            `Did find ${Type} in context, but multiple were defined.`,
-          );
       }
       if (found !== undefined) break;
     }
 
     if (typeof arg === "function") {
-      if (found && !downstream) arg(found, false);
+      const call = (entry: [Model, boolean], downstream: boolean) => {
+        const done = arg(entry[0] as T, downstream);
+        if (done) DONE.get(entry)!.add(done);
+      };
+
+      if (found && !downstream) call(entry!, false);
 
       if (downstream !== false) {
         this.traverse((ctx) => {
           const has = ctx.provide.get(Type);
-          if (has) for (const x of has) if (x[0] !== skip) arg(x[0] as T, true);
+          if (has) for (const x of has) if (x[0] !== skip) call(x, true);
           return has !== undefined;
         });
       }
@@ -254,8 +264,7 @@ class Context {
   /**
    * Register an instance under its class and every superclass up to `Model` - returns a remover.
    *
-   * `explicit` - outranks implicit entries of a type, though two implicit ones registered before it
-   * still read as ambiguous; two explicit ones throw on lookup.
+   * `explicit` - outranks implicit entries of a type; two explicit ones throw on lookup.
    * Implicit is how owned children register. Does not activate the instance. Becomes its home when it
    * has none - an owned one only when explicit and its owner has no home. Subscribers waiting on the
    * type are called once it is ready.
@@ -272,9 +281,12 @@ class Context {
 
     const expects = new Map<Expect, () => void>();
     const onDone = new Set<() => void>();
+    const entry: [Model, boolean] = [I, explicit];
+
+    DONE.set(entry, onDone);
 
     for (const T of TT) {
-      onDone.add(this.register(T, [I, explicit]));
+      onDone.add(this.register(T, entry));
       onDone.add(() => emit(this, T));
       emit(this, T);
     }

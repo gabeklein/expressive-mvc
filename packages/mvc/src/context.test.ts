@@ -1471,7 +1471,7 @@ describe('tracked lookup', () => {
   });
 });
 
-it.fails('will prefer explicit over two earlier implicit entries', () => {
+it('will prefer explicit over two earlier implicit entries', () => {
   class Base extends Model {}
 
   const context = new Context();
@@ -1484,7 +1484,7 @@ it.fails('will prefer explicit over two earlier implicit entries', () => {
   expect(context.get(Base)).toBe(explicit);
 });
 
-it.fails('will call cleanup returned for an already-registered upstream state', () => {
+it('will call cleanup returned for an already-registered upstream state', () => {
   class Upstream extends Model {}
 
   const parent = new Context();

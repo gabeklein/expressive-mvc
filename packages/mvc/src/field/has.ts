@@ -395,8 +395,8 @@ class Pool<T, A extends unknown[] = unknown[], R = T> {
     const values = MEMBERS.get(target) as Set<T>;
 
     if (!values.has(made)) {
-      values.add(made);
       adopt(target, made, made);
+      values.add(made);
       event(target, made as never);
       event(target, SHAPE);
     }
@@ -506,9 +506,9 @@ function adopt(
 ) {
   if (!(value instanceof Model)) return;
 
+  const evict = listener(value, () => void target.delete(key as never), null);
   const owner = parent(target as object);
   const fresh = parent(value, owner ?? null);
-  const evict = listener(value, () => void target.delete(key as never), null);
 
   let detach: (() => void) | undefined;
 
