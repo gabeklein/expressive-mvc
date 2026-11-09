@@ -207,6 +207,16 @@ configure({
 
 `client(options)` builds a separate one. Without a `location`, a relative `base` throws - pass an absolute one.
 
+`withOptions` applies a `signal` or a `timeout` (ms) to the calls a function starts - synchronously, so not one made after an `await` inside it:
+
+```ts
+import { withOptions } from "@expressive/rpc";
+
+const todos = await withOptions({ signal: controller.signal, timeout: 10_000 }, () => list());
+```
+
+An abort rejects with the signal's reason; a timeout with a `TimeoutError`. Nested, the inner options extend the outer.
+
 ## Server entry
 
 To put routes beside the calls - cookies, uploads, downloads, streams, a `scheduled` handler or Durable Object classes - write the server yourself and name it:

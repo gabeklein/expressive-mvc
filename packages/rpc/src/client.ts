@@ -25,6 +25,12 @@ const ABSOLUTE = /^[a-z][a-z\d+.-]*:/i;
 
 export type Transport = (request: Request) => Promise<Response>;
 
+/** For the calls one `withOptions` starts: `signal` aborts them, `timeout` (ms) fails them with a `TimeoutError`. */
+export interface CallOptions {
+  signal?: AbortSignal;
+  timeout?: number;
+}
+
 export interface ClientOptions {
   base?: string;
   transport?: Transport;
@@ -35,9 +41,26 @@ export interface ClientOptions {
 export function client(initial: ClientOptions = {}) {
   const options = { ...initial };
   const { define, rebuild } = registry(ERRORS);
+  let scoped: CallOptions = {};
 
   function configure(next: ClientOptions): void {
     Object.assign(options, next);
+  }
+
+  /**
+   * Run `start`, applying `options` to every call it starts synchronously - `withOptions({ signal }, () => list())`.
+   * A call starts when invoked, so one made after an `await` inside `start` runs without them.
+   */
+  function withOptions<T>(options: CallOptions, start: () => T): T {
+    const outer = scoped;
+
+    scoped = { ...outer, ...options };
+
+    try {
+      return start();
+    } finally {
+      scoped = outer;
+    }
   }
 
   function pathOf(pattern: string[], name: string, from = globalThis.location?.pathname): string {
@@ -66,10 +89,13 @@ export function client(initial: ClientOptions = {}) {
     if (!ABSOLUTE.test(url) && !globalThis.location)
       throw new Error(`Cannot send to ${url} - a relative base needs a page location to resolve against. Pass an absolute base: configure({ base: "https://api.example.com" }).`);
 
-    const init = {
+    const { signal, timeout } = scoped;
+    const signals = [signal, timeout === undefined ? undefined : AbortSignal.timeout(timeout)].filter(s => s !== undefined);
+    const init: RequestInit = {
       method: "POST",
       headers: { "content-type": "application/json", ...options.headers?.(), ...headers },
       body: stringify(body),
+      signal: signals.length > 1 ? AbortSignal.any(signals) : signals[0],
     };
     const res = await (transport ? transport(new Request(new URL(url, globalThis.location?.href), init)) : fetch(url, init));
 
@@ -94,7 +120,7 @@ export function client(initial: ClientOptions = {}) {
     return reply.value;
   }
 
-  return { call, configure, define, pathOf, send };
+  return { call, configure, define, pathOf, send, withOptions };
 }
 
-export const { call, configure, define } = client();
+export const { call, configure, define, withOptions } = client();
