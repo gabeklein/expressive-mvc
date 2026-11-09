@@ -104,9 +104,35 @@ function Keys() {
 
 shell(Keys, { color: 'rgb(21, 21, 21)', _key: { padding: '3px' } });
 
+class Theme extends Css {
+  readonly $ink = '--probe-ink';
+  readonly $gap = '--probe-gap';
+  readonly $wide = '@media (min-width: 1px)';
+  readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
+}
+
+const theme = Theme.use({
+  $ink: 'rgb(30, 30, 30)',
+  $wide: { $gap: '5px' },
+  $dark: { $ink: 'rgb(31, 31, 31)' }
+});
+
+const { $ } = theme;
+
+function Swatch() {
+  return <s>swatch</s>;
+}
+
+function Panel() {
+  return <aside><Swatch /></aside>;
+}
+
+theme(Swatch, { color: $.ink, paddingTop: $.gap, border: ['1px', 'solid', $.ink] });
+theme(Panel, { $ink: 'rgb(32, 32, 32)' });
+
 const root = document.getElementById('app')!;
 
-render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /><Keys /></>, root);
+render(<><Outer /><Inline /><Nested /><Units /><Readout /><Toggle /><Picker /><Tip /><Field /><Keys /><Swatch /><Panel /></>, root);
 
 const leaf = root.querySelector('b')!;
 const inline = root.querySelector('i')!;
@@ -150,7 +176,23 @@ check('own rule beats pack rule', getComputedStyle(key).padding, '3px');
 check('pack rule applies', getComputedStyle(inner).color, 'rgb(20, 20, 20)');
 check('leaf carries door classes', String(leaf.className.includes('-d1') && leaf.className.includes('-d2')), 'true');
 
-document.querySelector('style[data-expressive]')!.remove();
+const [swatch, nested] = root.querySelectorAll('s');
+
+check('variable default at root', getComputedStyle(swatch).color, 'rgb(30, 30, 30)');
+check('variable default under media', getComputedStyle(swatch).paddingTop, '5px');
+check('token in a shorthand', getComputedStyle(swatch).borderTopColor, 'rgb(30, 30, 30)');
+check('variable overridden for a subtree', getComputedStyle(nested).color, 'rgb(32, 32, 32)');
+document.documentElement.dataset.mode = 'dark';
+check('variable default under a root state', getComputedStyle(swatch).color, 'rgb(31, 31, 31)');
+theme.define({ ink: 'rgb(33, 33, 33)' });
+check('define beats defaults', getComputedStyle(swatch).color, 'rgb(33, 33, 33)');
+check('subtree override beats define', getComputedStyle(nested).color, 'rgb(32, 32, 32)');
+theme.define({ ink: 'rgb(34, 34, 34)', $dark: { ink: 'rgb(35, 35, 35)' } });
+check('define replaced, with a condition', getComputedStyle(swatch).color, 'rgb(35, 35, 35)');
+delete document.documentElement.dataset.mode;
+check('define outside its condition', getComputedStyle(swatch).color, 'rgb(34, 34, 34)');
+
+document.querySelector('style[data-expressive=dom]')!.remove();
 
 function Late() {
   return <u _late>late</u>;
