@@ -2,8 +2,8 @@
 
 `@expressive/react` is the React host: a `Component` renders as a React component, `<Component for>` provides a Model to the tree, and function components read it with `Model.get()`.
 
-- Core Model API (properties, reactivity, lifecycle, events): `../state/`.
-- Instructions and reactive helpers (`get`, `set`, `ref`, `map`, `has`, `def`): `../field/*.md`.
+- Core Model API (properties, reactivity, lifecycle, events): `../expressive-mvc/state/`.
+- Instructions and reactive helpers (`get`, `set`, `ref`, `map`, `has`, `def`): `../expressive-mvc/field/*.md`.
 - Examples and patterns: `patterns.md`.
 
 ## Exports
@@ -70,7 +70,7 @@ Commit is an **ownership** signal - it reaches an instance where a component cre
 
 The excluded paths are *many-to-one*: any number of components can `.get()` one instance or place it as `{instance}`, each for less time than the instance lives. To react to an instance a component does not own, subscribe with `Model.get()` or an event.
 
-Nothing commits during server render, so these effects never run there. Children owned as fields follow their root ([../state/lifecycle.md](../state/lifecycle.md#the-new-hook)).
+Nothing commits during server render, so these effects never run there. Children owned as fields follow their root ([expressive-mvc/state/lifecycle.md](../expressive-mvc/state/lifecycle.md#the-new-hook)).
 
 The effect is tracked: a read of `$` subscribes, and each change re-runs it after its cleanup - a socket opened on `$.url` reopens per change. A one-shot resource reads `this`, which is untracked, and runs once.
 
@@ -118,7 +118,7 @@ import expressive from '@expressive/react/vite';
 export default defineConfig({ plugins: [react(), expressive()] });
 ```
 
-Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render` and subcomponents. React Refresh keeps function components. A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members ([../state/lifecycle.md](../state/lifecycle.md#hot-patching)). Dev server only.
+Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render` and subcomponents. React Refresh keeps function components. A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members ([expressive-mvc/state/lifecycle.md](../expressive-mvc/state/lifecycle.md#hot-patching)). Dev server only.
 
 A class must be top-level `class X` or `let X = class` - a `const` binding cannot be patched. `export default X;` exports a snapshot, so its importers are not checked for staleness - prefer `export default class X` or `export { X as default }`; likewise an anonymous `export default`.
 
@@ -181,7 +181,7 @@ function SettingsEditor() {
 
 ### Derived values and effects
 
-Derive from the snapshot in render, or declare a getter on the Model ([../state/computed.md](../state/computed.md)); side effects belong in an instance effect (`state.get(effect)`), declared in `new()`.
+Derive from the snapshot in render, or declare a getter on the Model ([expressive-mvc/state/computed.md](../expressive-mvc/state/computed.md)); side effects belong in an instance effect (`state.get(effect)`), declared in `new()`.
 
 ```tsx
 function Greeting() {
@@ -192,7 +192,7 @@ function Greeting() {
 
 ### Custom lookup
 
-A class overriding static `get` keeps context and render tracking - `User.get(id)` subscribes like `User.get()`. See [../state/get.md](../state/get.md#static-get).
+A class overriding static `get` keeps context and render tracking - `User.get(id)` subscribes like `User.get()`. See [expressive-mvc/state/get.md](../expressive-mvc/state/get.md#static-get).
 
 Bare `Context.get()` returns the render's context in a render, else root - safe anywhere. `state.get(Type)` runs no hooks and does not subscribe the component.
 
@@ -251,21 +251,18 @@ Do not alias `is` merely because something will be written - writes never need t
 
 ## Component Class
 
-`Component` extends `Model` and works directly as a React component - full details in `./component.md`.
+`Component` extends `Model` and renders as a React class component. The class contract - props, `render()`, subcomponents, `fallback`, `catch`, `pending()` - is [expressive-mvc/component.md](../expressive-mvc/component.md). Under React:
 
-- Model fields become optional JSX props, applied every render.
-- `render()` controls output; without it, children pass through a context provider.
-- Instances are provided to context for child access via `Model.get()`.
-- Built-in suspense (`fallback` property/prop) and error boundaries (`catch()` method).
-- PascalCase methods become reactive subcomponents.
-- Special props: `is` (creation callback), `ref` (instance ref), `fallback` (suspense UI, or `false` to defer to an ancestor boundary).
-- Strict-mode safe.
+- `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use it for post-mount imperative access; `is` for construction time.
+- The instance also carries React's class members (`state`, `context`, `setState`, `forceUpdate`).
+- `fallback` is a React `Suspense` boundary; `catch()` an error boundary. `pending()` work runs through `startTransition`.
+- Strict Mode: one instance despite double-mount.
 
 ---
 
 ## Providing state
 
-`<Component for={AppState}>` provides one instance to its children, with no boundary unless `fallback` or `catch` is passed - contract in [context.md](../state/context.md#providing-with-component); commit timing in [Effects run once committed](#effects-run-once-committed). For a render-prop read, write an FC calling `AppState.get()`.
+`<Component for={AppState}>` provides one instance to its children, with no boundary unless `fallback` or `catch` is passed - contract in [expressive-mvc/state/context.md](../expressive-mvc/state/context.md#providing-with-component); commit timing in [Effects run once committed](#effects-run-once-committed). For a render-prop read, write an FC calling `AppState.get()`.
 
 `Provider` was removed - replace `<Provider for={X}>` with `<Component for={X}>`.
 

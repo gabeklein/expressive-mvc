@@ -1,8 +1,8 @@
 # Style Profile
 
-Conventions, not library semantics - they keep reactive dependency snapshots auditable, and [refactor.md](refactor.md) applies them by default. A project may override them: keep the architectural rules, swap only the formatting.
+Conventions, not library semantics - they keep reactive dependency snapshots auditable, and `expressive-react/refactor.md` applies them by default. A project may override them: keep the architectural rules, swap only the formatting.
 
-For `style()` maps under `@expressive/dom`, see [its conventions](../dom/dom.md#conventions).
+For `style()` maps under `@expressive/dom`, see its conventions (`expressive-dom`).
 
 ## Snapshot formatting
 
@@ -52,7 +52,7 @@ function ResolvedFeeClassifications() {
 }
 ```
 
-Don't annotate them as returning `void` - allow inference. Fallthrough is also how an always-mounted widget owns its gate - step 12 of [refactor.md](refactor.md). It is not how a Component's own `render()` splits: a piece cut out of `render()` - a subcomponent or local FC - always paints, and the parent writes the `&&`.
+Don't annotate them as returning `void` - allow inference. Fallthrough is also how an always-mounted widget owns its gate - step 12 of `expressive-react/refactor.md`. It is not how a Component's own `render()` splits: a piece cut out of `render()` - a subcomponent or local FC - always paints, and the parent writes the `&&`.
 
 Operational guards differ: a workflow method uses explicit `return` - it guards behavior, not a render result:
 
@@ -63,7 +63,7 @@ downloadIif() {
 }
 ```
 
-A render guard skipping most of a declared snapshot marks the gated content as a candidate for its own component - step 13 of [refactor.md](refactor.md).
+A render guard skipping most of a declared snapshot marks the gated content as a candidate for its own component - step 13 of `expressive-react/refactor.md`.
 
 ## Member order
 

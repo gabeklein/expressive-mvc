@@ -13,7 +13,8 @@
     "url": "git+https://github.com/gabeklein/expressive-mvc.git"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "type": "module",
   "sideEffects": [

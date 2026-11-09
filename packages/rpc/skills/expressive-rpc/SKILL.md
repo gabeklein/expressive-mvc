@@ -1,3 +1,8 @@
+---
+name: expressive-rpc
+description: Typed server calls for Vite apps (@expressive/rpc) - modules in api/ run on the server, the client imports them as stubs. Use when adding or debugging server calls: module rules, values, http errors, gates and Current, client configure, server entry, Worker/Node deploy.
+---
+
 # @expressive/rpc
 
 Typed server calls for any Vite client build. Modules in one folder (`api/` by default) run on the server; the client imports them as usual and gets stubs that POST per call. Types come from the source - no schema, no codegen step.

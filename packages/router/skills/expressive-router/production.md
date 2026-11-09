@@ -1,6 +1,6 @@
 # Router production guide
 
-Companion to [router.md](router.md). The router owns matching, location,
+Companion to [router.md](SKILL.md). The router owns matching, location,
 history, guards, and presentation settlement. Domain `Model` owns data,
 mutations, caching, retry, and request cancellation.
 

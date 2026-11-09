@@ -2,7 +2,7 @@
 
 Read in full before converting hook-based React code. The common failure is translating hooks one-for-one - setter methods, drilled props, over-promoted getters mirroring the old architecture. Ownership first, translation second; the checklist at the end audits the result.
 
-Examples follow the conventions in [style.md](style.md).
+Examples follow the conventions in [expressive-mvc/style.md](../expressive-mvc/style.md).
 
 **Large apps:** convert route/page controls and their domain pools first; leave mature leaf widgets (inputs, menus) on hooks until the parent domain is stable. Coexistence is fine mid-migration.
 
@@ -97,7 +97,7 @@ The forms, by role:
 
 `new X()` on a parent is for Models and pool members. A nested `new Component()` that is not a pool member or hot-swap either paints - mount it - or is a Model's job wearing paint. Don't wrap a consumer under a provider Component with nothing to paint; hold the instance as a field on the control that already exists and let sibling views `.get()` it.
 
-**Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [component.md](component.md).
+**Anti-pattern - subcomponent overuse.** The sections in `render()` above are freestanding FCs, not PascalCase methods. Subcomponents (`<this.Header />`) are extension points for subclasses. Test: **would a subclass reasonably replace or wrap this renderer?** For ordinary scopes no - a freestanding FC calling `ReviewStep.get()` is clearer. See [expressive-mvc/component.md](../expressive-mvc/component.md).
 
 ## 4. Give repeated UI entries their own class
 
@@ -148,7 +148,7 @@ Selection flags, per-row status, row actions live on the member (`message.select
 
 A row earns a pool with any one of: mutable UI state (selection, expanded), async lifecycle (upload, watch, progress), actions (remove, retry). Demoting it to a plain DTO is not economy: status reads thru lookups, and a method call on a raw instance creates no subscription - progress rendered only thru `page.importFor(id)` never repaints. Tracked reads reach the member thru the pool or its own `render()`.
 
-A factory earns its line only when the seed must transform: fat payload folded to one field (`has((dto: MessageDto) => new Message({ info: dto, id: dto.id }))`), a rename, a colliding key dropped, multi-argument construction (`has((file: File) => new Attachment({ file }))`). Keep members small: promote a payload key to reactive field only when views render it or it changes independently; the rest stays whole as `info`. Normalize API `null` to `undefined` here so presence fields stay optional. See [has.md](../field/has.md) for pool surface, [patterns.md](patterns.md) for worked recipes.
+A factory earns its line only when the seed must transform: fat payload folded to one field (`has((dto: MessageDto) => new Message({ info: dto, id: dto.id }))`), a rename, a colliding key dropped, multi-argument construction (`has((file: File) => new Attachment({ file }))`). Keep members small: promote a payload key to reactive field only when views render it or it changes independently; the rest stays whole as `info`. Normalize API `null` to `undefined` here so presence fields stay optional. See [expressive-mvc/field/has.md](../expressive-mvc/field/has.md) for pool surface, [patterns.md](patterns.md) for worked recipes.
 
 Behavior parity does not exempt this step - parity constrains observable behavior, not code shape ("no redesigns" means UI and public contracts). Entry ownership is an invariant, not a style option.
 
@@ -237,9 +237,9 @@ Once ownership is settled:
 - `useEffect` setup/teardown -> `protected new()` returning cleanup; browser-only resources -> an effect declared in `new()`, which waits for commit.
 - Chains of `useEffect`s reacting to each other -> tracked reactions (`this.get($ => ...)`) registered in `new()`; updates batch, one re-run per flush however many trigger fields changed.
 - `useCallback` handlers -> auto-bound class methods - pass directly to timers and listeners: `setInterval(this.tick, 1000)`, not `() => this.tick()`.
-- `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([state.md](../state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
+- `useRef` handles - unsubscribe functions, snapshots, timer ids -> unmanaged fields ([expressive-mvc/state/state.md](../expressive-mvc/state/state.md#unmanaged-instance-data)) - never reactive, never `#private`.
 - Repeated `postMessage`-style calls over a typed union -> one signal helper (`signal('setLabel', { id })`). The union is the API - no per-message facade methods.
-- Inbound host snapshots -> `this.set(values)` - unknown keys are ignored, missing keys stay; no `apply()`/`pick` facade ([set.md](../state/set.md)).
+- Inbound host snapshots -> `this.set(values)` - unknown keys are ignored, missing keys stay; no `apply()`/`pick` facade ([expressive-mvc/state/set.md](../expressive-mvc/state/set.md)).
 - Route params -> props on the page owner. Working identity (session, selection) is a separate field a reaction soft-syncs - never the URL param itself. Fusing them shows as stale-prop workarounds: fresh ids threaded thru arguments to outrun the route, shadow fields remembering the last route. Router recipe in [patterns.md](patterns.md).
 
 ```tsx
@@ -435,7 +435,7 @@ const { is: review, confirmed } = ReviewStep.get(); // root object + sibling val
 
 ## 12. Widgets own their gates
 
-Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([style.md](style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
+Default: a self-contained widget mounts unconditionally and gates itself - the parent writes `<UndoBar />`; the bar reads `Outbox.get()` and falls thru when `pendingSend` is unset ([expressive-mvc/style.md](../expressive-mvc/style.md) render fallthrough). A parent read existing only to gate belongs in the widget.
 
 This is for a widget the parent has no reason to mention. A piece split out of a Component's own `render()` (step 13) is the other way round: the parent writes `cond && <Slot />` and the slot paints unconditionally, never opening with `if (!cond) return`.
 
@@ -534,7 +534,7 @@ Classify every finding by severity:
 - **Invariant** - fail unless a real constraint is documented.
 - **Default** - follow unless the alternative has clearer ownership or API value.
 - **Heuristic** - investigate, but never fail on the numerical signal alone; the finding must name a concrete cost.
-- **Style** - apply by default per [style.md](style.md); report separately from architectural correctness.
+- **Style** - apply by default per [expressive-mvc/style.md](../expressive-mvc/style.md); report separately from architectural correctness.
 
 The checklist:
 
@@ -564,6 +564,6 @@ The checklist:
 
 Auditing notes:
 
-- Compare ownership, dependency surfaces, and write behavior - never filenames, file counts, or similarity to a reference implementation. File size and consolidation follow [style.md](style.md) layout unless the project overrides - style lane, scored separately.
+- Compare ownership, dependency surfaces, and write behavior - never filenames, file counts, or similarity to a reference implementation. File size and consolidation follow [expressive-mvc/style.md](../expressive-mvc/style.md) layout unless the project overrides - style lane, scored separately.
 - Report two verdicts - architectural conformance and style adherence - so a formatting miss cannot obscure correct structure, or vice versa.
 - Deliver the filled checklist with the change (PR description or ledger), not only a verdict.

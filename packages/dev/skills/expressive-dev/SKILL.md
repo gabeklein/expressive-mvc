@@ -1,3 +1,8 @@
+---
+name: expressive-dev
+description: Expressive app host (@expressive/dev) - expressive dev/build over Vite with @expressive/dom, a generated route tree, inspect and rpc. Use when working in an @expressive/dev app: layout, route modules, sidecars, server Model and seats, twins, commands.
+---
+
 # @expressive/dev
 
 App host: `expressive dev` and `expressive build` over Vite, rendering with `@expressive/dom`, routing with `@expressive/router` from a generated tree, `@expressive/inspect` on the dev server, server calls through `@expressive/rpc`. Sidecar calls are stable; twins (server Models mirrored on the client) are experimental.
@@ -58,7 +63,7 @@ import { add } from "./remote";
 - A call POSTs to the folder's path, params filled from the current location (`/blog/a` for `app/blog/[slug]/remote.ts`).
 - Only the folder and those below it may import its sidecar - the build throws otherwise.
 - A `remote/` folder holds several; every module in it belongs to the parent folder and is never a route.
-- Module rules, errors (`HttpError` family from `@expressive/rpc`), ids and `opaque` are rpc's - [rpc.md](rpc.md). Turn off hashed ids with `config({ remote: { opaque: false } })` in `index.ts`.
+- Module rules, errors (`HttpError` family from `@expressive/rpc`), ids and `opaque` are rpc's - [expressive-rpc](../expressive-rpc/SKILL.md). Turn off hashed ids with `config({ remote: { opaque: false } })` in `index.ts`.
 - Only stubs the client loaded (dev) or the build generated are callable; a helper in `remote/` is never an endpoint.
 
 ## Server Model

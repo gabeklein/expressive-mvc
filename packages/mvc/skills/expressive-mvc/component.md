@@ -2,7 +2,7 @@
 
 Runnable source (complete programs, served as HTML): [`props`](https://expressive.dev/examples/component/props), [`subcomponents`](https://expressive.dev/examples/component/subcomponents), [`lifecycle`](https://expressive.dev/examples/component/lifecycle), [`injection`](https://expressive.dev/examples/component/injection), [`headless`](https://expressive.dev/examples/component/headless), [`suspense`](https://expressive.dev/examples/component/suspense), [`boundary`](https://expressive.dev/examples/component/boundary), [`custom`](https://expressive.dev/examples/component/custom).
 
-`Component` extends `Model` - a persistent class instance owning its rendering, lifecycle, and behavior.
+`Component` extends `Model` - a persistent class instance owning its rendering, lifecycle, and behavior. This is the class contract every host shares; host mechanics (React: `ref`, Strict Mode, Suspense, SSR) are in that host's skill - `expressive-react` or `expressive-dom`.
 
 ## When to use Component vs Model vs function components
 
@@ -47,7 +47,7 @@ class Stick extends Component {
 
 The fused class demotes because scroll-sync was incidental to its paint. `Stick` earns the instance as a feature: unplug is deleting one wrap, and `stick.on` reads off the tree.
 
-Use `Model` for headless domain models/controls, even ones meaningful only in context. A `Component` carries React instance properties (`props`, `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
+Use `Model` for headless domain models/controls, even ones meaningful only in context. A `Component` carries host instance properties (`props`; under React also `state`, `context`, `setState`, `forceUpdate`), making `.get()` noisier where `Model` would suffice.
 
 Prefer an FC when state is reducible or zero and neither boundary nor suspense is wanted. A class of only `inbox = get(Inbox)` and `render()` is a pass-through - an FC snapshotting `Inbox.get()` is the same subscription without an instance. Component earns the class when the instance owns fields, a pool, or its boundary; lifecycle earns it only when managing owned state - a ref plus a reaction mirroring context to the DOM is still an FC (effect over its `.get()` snapshot). Inverse: a leaf widget still on `useState`/`useEffect` whose inputs are its identity - `<Thumbnail src={…} size={…} />` writes class fields; reactions to them live in effects declared in `new()` or `set` callbacks.
 
@@ -90,7 +90,7 @@ const items = [first, second];
 - Mounting subscribes and provides context as usual; unmounting only detaches. The external owner destroys it with `instance.set(null)`.
 - One instance may appear beneath separate parents. Repeating it within one sibling collection repeats the key and intentionally produces the host's duplicate-key warning.
 
-When a render reads more than a value or two, destructure everything it reads from `this` at the top - the dependency-snapshot rule of `.get()` ([react.md](react.md)). Rendering shares the hooks' subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
+When a render reads more than a value or two, destructure everything it reads from `this` at the top - the [dependency-snapshot rule](SKILL.md#the-dependency-snapshot) of `.get()`. Rendering shares its subscription plumbing, so scattered deep reads carry the same conditional-subscription risk:
 
 ```tsx
 render() {
@@ -115,7 +115,7 @@ render() {
 }
 ```
 
-Calling `Inbox.get()` inside `render()` when the class already holds the field opens a second hook subscription to the same instance. Static `Type.get()` belongs in freestanding FCs, which have no `this`.
+Calling `Inbox.get()` inside `render()` when the class already holds the field opens a second subscription to the same instance. Static `Type.get()` belongs in freestanding FCs, which have no `this`.
 
 ## Inheritance and Custom Primitives
 
@@ -138,8 +138,8 @@ abstract class Toggle extends Component {
   }
 
   // Subclasses override to customize each state
-  protected abstract Active(): ReactNode;
-  protected abstract Inactive(): ReactNode;
+  protected abstract Active(): JSX.Element;
+  protected abstract Inactive(): JSX.Element;
 }
 
 class DarkModeSwitch extends Toggle {
@@ -206,7 +206,6 @@ class ChatRoom extends Component {
 ```
 
 - `is` prop - construction-time, fires once: `<ChatRoom is={(c) => void (controller = c)} />`. Use when the instance is needed during construction.
-- `ref` - Component is a real class component, so `ref` receives the instance after mount and clears to `null` on unmount: `<ChatRoom ref={chatRef} />`. Use for post-mount imperative access.
 
 ## Props
 
@@ -244,13 +243,12 @@ Non-optional render props become required JSX attributes. All props (field + ren
 ### Special Props
 
 - `is` - callback receiving the instance on creation, before `new()`. A returned object is assigned once - a seed, where props reassign every render: `<Counter is={() => ({ count: start })} />`. Capturing the instance needs `void` or braces: `is={(c) => void (ref = c)}`.
-- `ref` - standard React ref (object or callback), attached after mount, cleared on unmount
-- `fallback` - ReactNode for suspense/error UI, overrides the instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
+- `fallback` - element for suspense/error UI, overrides the instance property; `false` opts out of the component's own boundary so suspension bubbles to an ancestor
 - `catch` - `(error, instance)` handler for this placement, replacing the member `catch`; a returned promise retries once settled
 
 ## Children and Context
 
-Instances auto-provide to React context. Without `render()`, children pass through the provider:
+Instances auto-provide to context. Without `render()`, children pass through the provider:
 
 ```tsx
 class App extends Component {
@@ -287,7 +285,7 @@ class DataView extends Component {
 
 ## Transitions
 
-`pending()` marks work non-urgent - React keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary; the designation rides with the subscriber updates they queue, including for state this component does not own.
+`pending()` marks work non-urgent - the host keeps current content on screen while a replacement gets ready instead of falling back to `fallback`. Writes inside are ordinary; the designation rides with the subscriber updates they queue, including for state this component does not own.
 
 ```tsx
 import { Component, pending } from '@expressive/mvc';
@@ -355,7 +353,7 @@ class SafeView extends Component {
 
 ## Subcomponents
 
-PascalCase methods become reactive React components scoped to `this`:
+PascalCase methods become reactive components scoped to `this`:
 
 ```tsx
 class Dashboard extends Component {
@@ -412,13 +410,15 @@ function SidebarItems() {
 
 - `new()` - once after init, synchronously; runs during server render. Return cleanup for teardown.
 - `render(props)` - every render.
-- an effect declared in `new()` - first runs once `<MyComponent />` commits, client only; its cleanup runs on destroy. Not held for an instance placed as `{instance}` - the placing component does not own it ([react.md](react.md#effects-run-once-committed)).
+- an effect declared in `new()` - first runs once `<MyComponent />` commits, client only; its cleanup runs on destroy. Not held for an instance placed as `{instance}` - the placing component does not own it.
 - `catch(error, instance)` - error boundary for render failures; lifecycle failures go to `Model.on({ catch })`.
 - Destruction on unmount or `this.set(null)`.
 
+Lifecycle in full: [state/lifecycle.md](state/lifecycle.md).
+
 A Component is rendered (`<MyComponent />` or `{instance}`); for a bare instance use `MyComponent.new()`.
 
-Anything touching `window`, timers or subscriptions is an effect declared in `new()` - it waits for commit, so it never runs on the server ([react.md](react.md#effects-run-once-committed)):
+Anything touching `window`, timers or subscriptions is an effect declared in `new()` - it waits for commit, so it never runs on the server:
 
 ```tsx
 class Viewport extends Component {
@@ -458,7 +458,3 @@ class VideoPlayer extends Component {
   src = '';
 }
 ```
-
-## Strict Mode
-
-One instance despite double-mount.

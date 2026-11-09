@@ -1,3 +1,8 @@
+---
+name: expressive-router
+description: Class-based client router on Expressive MVC (@expressive/router) - nested Route declarations, lexical matching, entry guards, code-split pages, navigation state, query map, Link/NavLinks. Use when adding or changing routing in an Expressive app, choosing Router vs BrowserRouter, or integrating page data with navigation.
+---
+
 # Router
 
 Read [production.md](production.md) when choosing a router, integrating async

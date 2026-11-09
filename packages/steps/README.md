@@ -55,4 +55,4 @@ const { orderId } = await order;       // runs run(), typed by its return
 
 A failed `courier.book` unwinds newest first: `refund`, then `release`, then every taken-back step's fields restored.
 
-Reference: [docs/](docs/README.md), and the `steps` page of the Expressive skill ([skills/steps.md](../../skills/steps.md)).
+Reference: [docs/](docs/README.md), and the package's agent skill ([skills/expressive-steps](skills/expressive-steps/SKILL.md)).

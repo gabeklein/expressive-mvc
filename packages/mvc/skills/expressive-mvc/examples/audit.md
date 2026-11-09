@@ -134,7 +134,7 @@ function ThemeToggle() {
 
 ## After Selection
 
-This guide finds candidates, not the conversion. Once a migration is approved, follow [the refactor guide](../react/refactor.md) for ownership triage, hook mapping, dependency snapshots, and the review rubric.
+This guide finds candidates, not the conversion. Once a migration is approved, follow the refactor guide (`expressive-react/refactor.md`) for ownership triage, hook mapping, dependency snapshots, and the review rubric.
 
 ## Design Questions
 

@@ -210,7 +210,7 @@ if (over.length && gate)
     over.map(({ name, bytes, limit }) =>
       `  ${name}: ${kb(bytes)} exceeds budget ${kb(limit)}`).join('\n') +
     `\n\nLeave budgets alone unless the growth is unintended. Before the next release, land a PR on main that re-sets the budgets in` +
-    ` .github/scripts/size-limit.ts and every size claim in the docs and site (git grep -nE '[0-9] ?kB' website skills).`
+    ` .github/scripts/size-limit.ts and every size claim in the docs and site (git grep -nE '[0-9] ?kB' website 'packages/*/skills').`
   );
 
 console.log(over.length ? `\n${over.length} shape(s) over budget.` : '\nAll import shapes within budget.');

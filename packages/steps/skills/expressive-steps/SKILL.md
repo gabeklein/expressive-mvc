@@ -1,3 +1,8 @@
+---
+name: expressive-steps
+description: Multi-step processes as Expressive Models (@expressive/steps) - class X extends Steps, every method a step, atomic steps that unwind on failure, waits, retries, gates. Use when writing, reviewing or testing a Steps class or modelling a workflow, wizard, saga or job with @expressive/steps.
+---
+
 # Steps
 
 `@expressive/steps` - multi-step processes as Models. `class X extends Steps`: every method is a step, a step schedules the next by calling it, fields carry data between steps. Each step is atomic and registers its own reset; a failure unwinds what committed. Runs repeat, queue, and park on waits answered from outside. `0.1`, in-process only - nothing persists across a restart.
