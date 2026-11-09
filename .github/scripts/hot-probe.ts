@@ -247,6 +247,18 @@ class Pack extends Style {
 
 export const style = Pack.use();
 `,
+  'tint.tsx': `import { Style } from '@expressive/dom';
+
+class Tint extends Style {
+  readonly $hue = '--probe-hue';
+}
+
+const tint = Tint.use({ $hue: 'rgb(255, 0, 0)' });
+
+export const Hued = () => <i id="hued">hued</i>;
+
+tint(Hued, { color: tint.$.hue });
+`,
   'badge.tsx': `import { Component } from '@expressive/mvc';
 import { style } from './pack';
 
@@ -496,7 +508,7 @@ import { Vault } from './vault';
 import { Deck } from './deck';
 import { Guard } from './guard';
 import { Stage } from './stage';
-${badge ? "import { Wrapper } from './badge';\nimport { Shelf } from './folio';\n" : ''}
+${badge ? "import { Wrapper } from './badge';\nimport { Shelf } from './folio';\nimport { Hued } from './tint';\n" : ''}
 export const App = () => (
   <Component for={Settings}>
   <Component for={Theme}>
@@ -519,7 +531,7 @@ export const App = () => (
     <Deck />
     <Guard />
     <Stage />
-    ${badge ? '<Wrapper /><Shelf />' : ''}
+    ${badge ? '<Wrapper /><Shelf /><Hued />' : ''}
   </Component>
   </Component>
 );
@@ -596,6 +608,7 @@ async function run(mode: Mode) {
   if (mode != 'dom') {
     delete files['badge.tsx'];
     delete files['pack.ts'];
+    delete files['tint.tsx'];
     delete files['folio.tsx'];
   }
 
@@ -787,6 +800,14 @@ async function run(mode: Mode) {
         await edit('badge.tsx', "style(Badge, { tone: 'rgb(255, 0, 0)' });", "style(Badge, { tone: 'rgb(0, 128, 0)' });");
         await until(async () => (await browser.color('#badge')) == 'rgb(0, 128, 0)');
         check((await browser.text('#badge')) == 'badge 5', 'clicks reset');
+        check(await alive(), 'page reloaded');
+      });
+
+    if (mode == 'dom')
+      await scenario('variable default edit replaces the stale root (dom)', async () => {
+        await until(async () => (await browser.color('#hued')) == 'rgb(255, 0, 0)');
+        await edit('tint.tsx', "Tint.use({ $hue: 'rgb(255, 0, 0)' })", "Tint.use({ $hue: 'rgb(0, 128, 0)' })");
+        await until(async () => (await browser.color('#hued')) == 'rgb(0, 128, 0)');
         check(await alive(), 'page reloaded');
       });
 
