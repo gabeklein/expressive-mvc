@@ -6,5 +6,6 @@ import { track } from "./version";
 
 export function install() {
   onBuild(track);
-  resolve();
+  // dev's seats hold state between calls; rpc's default drops one after its last.
+  resolve({ ttl: 300 });
 }

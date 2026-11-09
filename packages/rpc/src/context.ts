@@ -34,7 +34,8 @@ type Owned = Model.Type & { ttl?: number };
 
 export type Seat = Owned & { key?(): string | number | undefined };
 
-const TTL = 300;
+/** Seconds a seat outlives its last call unless its class sets `static ttl`; `install()` sets it. */
+let TTL = 0;
 
 const store = new AsyncLocalStorage<Frame>();
 const SEATED = new WeakSet<Owned>();
@@ -235,7 +236,13 @@ export function onBuild(hook: (instance: Model) => void) {
   built = hook;
 }
 
-export function install() {
+/**
+ * Route server `get()` through the call's layer. `ttl` is how long a seat outlives its last call by
+ * default: rpc's gates derive from each request, so 0 - dev's seats hold state, so it passes 300.
+ */
+export function install({ ttl = 0 }: { ttl?: number } = {}) {
+  TTL = ttl;
+
   const previous = resolver((Type, compute) => {
     if (!Type && !store.getStore()) return previous(Type, compute);
     return compute(scope(frame().layer));
