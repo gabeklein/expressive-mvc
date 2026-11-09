@@ -38,8 +38,17 @@ type Doc = { path: string; text: string };
 /** Installed skills sit side by side, so a skill links a sibling as `../expressive-<pkg>/`. */
 const skills = new Map<string, string>();
 
-for await (const path of new Glob('packages/*/skills/*/SKILL.md').scan('.'))
-  skills.set(path.split('/')[3], dirname(path));
+/** Skills a skill may link - its own and its dependencies', the only ones certain to be installed with it. */
+const reach = new Map<string, Set<string>>();
+
+for await (const path of new Glob('packages/*/skills/*/SKILL.md').scan('.')) {
+  const name = path.split('/')[3];
+  const pkg = await Bun.file(join(path.split('/').slice(0, 2).join('/'), 'package.json')).json();
+  const deps = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
+
+  skills.set(name, dirname(path));
+  reach.set(name, new Set([name, ...deps.filter((d) => d.startsWith('@expressive/')).map((d) => d.replace('@expressive/', 'expressive-'))]));
+}
 
 /** Path within the installed skills layout to its source file. */
 const fromSkills = (path: string) => {
@@ -135,7 +144,14 @@ for (const { path, text } of docs) {
   if (path.startsWith('packages/'))
     for (const match of text.matchAll(/\]\((\.{0,2}[^)\s:#]*\.md)(?:#([^)\s]+))?\)/g)) {
       const [, target, anchor] = match;
-      const file = fromSkills(normalize(join(dirname(toSkills(path)), target)));
+      const into = normalize(join(dirname(toSkills(path)), target));
+      const file = fromSkills(into);
+      const from = toSkills(path).split('/')[0];
+
+      if (file && !reach.get(from)!.has(into.split('/')[0])) {
+        problems.push(`${at(path, text, match.index)}  links ${target}, but ${from} does not depend on that package - name the skill in plain text`);
+        continue;
+      }
 
       if (!file || !(await Bun.file(file).exists())) {
         problems.push(`${at(path, text, match.index)}  links ${target}, which is not in any installed skill`);
