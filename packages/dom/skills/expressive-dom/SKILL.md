@@ -177,36 +177,36 @@ A condition's `$name` field starts with `@` or `:`. The `style.Condition` type (
 
 ### Variables
 
-A `$name` field starting with `--` names a CSS variable; any other non-condition string is a constant. Declare them `readonly` so the literal types the key:
+A `$name` field that is not a condition is a CSS variable. Its value is either a default - the variable is named from the key (`$inkLight` → `--ink-light`) - or a `--name` to use as is, with values supplied elsewhere. Declare `$` fields `readonly` so their literals type the keys:
 
 ```ts
 class App extends Css {
-  readonly $ink = '--app-ink';
-  readonly $gap = '--app-gap';
-  readonly $radius = '4px';
-  $mobile = '@media (max-width: 900px)';
-  $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
+  readonly $ink = '#222';
+  readonly $gap = '8px';
+  readonly $brand = '--acme-brand';
+  readonly $mobile = '@media (max-width: 900px)';
+  readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
 }
 
 export const style = App.use({
-  $ink: '#222',
-  $gap: '8px',
   $dark: { $ink: '#eee' },
-  $mobile: { $gap: '4px' },
-  _button: { color: App.use().$.ink }
+  $mobile: { $gap: '4px' }
 });
 
 export const { $ } = style;
 
-style(Card, { border: ['1px', 'solid', $.ink], borderRadius: $.radius, padding: $.gap });
+style(Card, { border: ['1px', 'solid', $.ink], padding: $.gap, color: $.brand });
 style(Callout, { $ink: 'crimson' });
 ```
 
-- As a key, a variable declares `--app-ink` where it is written. In `use()` rules, at the top or under conditions only, it is a default at `:where(:root)`; in a component map or rule, it overrides for that element and its subtree. A constant is not a key.
-- `style.$` holds a token per variable and constant, keyed without `$`. A token is a string - templates, arrays and macros pass it through - rewritten where the declaration applies: a variable to `var(--app-ink)`, a constant to its text. A macro sees the token, not the value, so a constant is final CSS (`'4px'`, not `4`). A condition has no token.
+- A default is emitted once at `:where(:root)`. Values are CSS text - write `'8px'`, not `8`.
+- As a key, a variable declares itself where it is written. In `use()` rules, at the top or under conditions only, it is a default at `:where(:root)`; in a component map or rule, it overrides for that element and its subtree, every consumer below included.
+- `style.$` holds `'var(--ink)'` per variable, keyed without `$` - a plain string, for templates, arrays, macro arguments and computed keys (`$['status' + kind]`). A condition has none.
 - `style.define({ ink: 'red', $dark: { ink: 'pink' } })` sets variables at `:root` over the defaults - document-wide, no re-render; a later call replaces the last. A library's `define` lets an app retheme its components. A key that is not a variable, or an object key that is not a condition, throws.
-- `:root` defaults and `define` values under a `:` condition apply while `<html>` matches - a state meant for both, like `$dark` above, lists the element itself (`[data-mode="dark"], [data-mode="dark"] *`).
-- The name is global CSS - prefix it per app or library. Plain CSS can set it too.
+- `:root` values under a `:` condition apply while `<html>` matches - a state meant for both, like `$dark` above, lists the element itself (`[data-mode="dark"], [data-mode="dark"] *`).
+- Names are global CSS. An app may use bare names; a library uses `--prefix-name` fields so apps and plain CSS can set them without collisions.
+- A theme may live in a CSS file instead: `--name` fields with no defaults give typed keys and tokens, and the stylesheet supplies values and modes.
+- A variable only one component uses needs no field - write `'--today': 'red'` and `'var(--today)'`.
 
 ### The web pack
 

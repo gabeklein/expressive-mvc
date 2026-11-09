@@ -107,6 +107,7 @@ shell(Keys, { color: 'rgb(21, 21, 21)', _key: { padding: '3px' } });
 class Theme extends Css {
   readonly $ink = '--probe-ink';
   readonly $gap = '--probe-gap';
+  readonly $probeTone = 'rgb(40, 40, 40)';
   readonly $wide = '@media (min-width: 1px)';
   readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
 }
@@ -127,7 +128,7 @@ function Panel() {
   return <aside><Swatch /></aside>;
 }
 
-theme(Swatch, { color: $.ink, paddingTop: $.gap, border: ['1px', 'solid', $.ink] });
+theme(Swatch, { color: $.ink, paddingTop: $.gap, border: ['1px', 'solid', $.ink], outlineColor: $.probeTone });
 theme(Panel, { $ink: 'rgb(32, 32, 32)' });
 
 const root = document.getElementById('app')!;
@@ -181,6 +182,7 @@ const [swatch, nested] = root.querySelectorAll('s');
 check('variable default at root', getComputedStyle(swatch).color, 'rgb(30, 30, 30)');
 check('variable default under media', getComputedStyle(swatch).paddingTop, '5px');
 check('token in a shorthand', getComputedStyle(swatch).borderTopColor, 'rgb(30, 30, 30)');
+check('field default named from its key', getComputedStyle(swatch).outlineColor, 'rgb(40, 40, 40)');
 check('variable overridden for a subtree', getComputedStyle(nested).color, 'rgb(32, 32, 32)');
 document.documentElement.dataset.mode = 'dark';
 check('variable default under a root state', getComputedStyle(swatch).color, 'rgb(31, 31, 31)');

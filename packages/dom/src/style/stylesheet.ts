@@ -1,7 +1,7 @@
 import * as appearance from './appearance';
 import { registerEmitter } from './protocol';
 import type { Block } from './protocol';
-import { serialize, token } from './declarations';
+import { serialize } from './declarations';
 import type { Declaration } from './declarations';
 import { attachRoots, setRoot } from './root';
 import type { Root } from './root';
@@ -19,16 +19,11 @@ type Macro<T> = Extract<
 >;
 
 type Named<T> = Extract<
-  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends `--${string}` ? never : T[K] extends style.Condition ? K : string extends T[K] ? K : never : never }[keyof T],
+  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends style.Condition ? K : string extends T[K] ? K : never : never }[keyof T],
   string
 >;
 
 type Variable<T> = Extract<
-  { [K in keyof T]-?: K extends `$${string}` ? T[K] extends `--${string}` ? K : never : never }[keyof T],
-  string
->;
-
-type Valued<T> = Extract<
   { [K in keyof T]-?: K extends `$${string}` ? T[K] extends string ? T[K] extends style.Condition ? never : K : never : never }[keyof T],
   string
 >;
@@ -89,6 +84,7 @@ declare namespace style {
    */
   type Map<T = {}> = {
     [K in Key<T>]?:
+      K extends Named<T> & Variable<T> ? Body<T> | Value :
       K extends `_${string}` | Condition | Named<T> ? Body<T> :
       K extends Macro<T> ? Argument<T[K]> :
       K extends Single ? number | Literal :
@@ -102,20 +98,18 @@ declare namespace style {
     <C extends object>(type: C, ...maps: (Map<T> | false | null | undefined)[]): C;
 
     /**
-     * Value tokens for the pack's `$name` fields, keyed without the `$`.
+     * `var()` references to the pack's variables, keyed without the `$`.
      *
-     * A token is a string, so it survives templates, arrays and macros. Where a
-     * declaration applies, a `--name` alias becomes `var(--name)` and any other
-     * alias its text. A condition used as a value throws.
+     * Each is a plain string - use it in templates, arrays and macro arguments.
      */
-    readonly $: { readonly [K in Valued<T> as Bare<K>]: string };
+    readonly $: { readonly [K in Variable<T> as Bare<K>]: string };
 
     /**
      * Set the pack's variables at `:root`, over defaults from `use()` rules.
      *
      * Keys are variable names without the `$`; a condition key holds values
-     * applied while it holds. A later call replaces the last. A name whose alias
-     * does not start with `--` throws.
+     * applied while it holds. A later call replaces the last. A key that is not
+     * a variable throws.
      */
     define(values: Define<T>): void;
   }
@@ -124,7 +118,8 @@ declare namespace style {
 /**
  * Base class for a macro pack. Each method is a macro, layered over the class
  * it extends; `default` handles any key no macro owns. A `$name` field holds
- * a condition (`'@media …'` or `':state'`), a variable (`'--name'`) or a constant.
+ * a condition (`'@media …'` or `':state'`), or else a variable - its default,
+ * or a `--name` to use as is.
  */
 class Style {
   /**
@@ -143,6 +138,8 @@ class Style {
     if (!apply) {
       let pack: appearance.Pack | undefined;
 
+      const { tokens } = fields(this);
+
       apply = Object.assign(
         <C extends object>(type: C, ...maps: unknown[]) => {
           pack ||= {
@@ -154,7 +151,7 @@ class Style {
           return register(type, maps, pack);
         },
         {
-          $: tokens(this),
+          $: tokens,
           define: (values: object) => define(this, values)
         }
       ) as style.Apply<T>;
@@ -166,6 +163,12 @@ class Style {
   }
 }
 
+interface Fields {
+  aliases: Record<string, string>;
+  instance: object;
+  tokens: Record<string, string>;
+}
+
 interface Sheet {
   element: HTMLStyleElement;
   emitted: WeakMap<Block, Map<number, string>>;
@@ -175,8 +178,7 @@ interface Sheet {
 
 const sheets = new WeakMap<Document, Sheet>();
 const bound = new WeakMap<Function, style.Apply<any>>();
-const fields = new WeakMap<Function, Record<string, unknown>>();
-const valued = new WeakMap<Function, Record<string, string>>();
+const packs = new WeakMap<Function, Fields>();
 let groups = 0;
 
 function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
@@ -191,29 +193,43 @@ function register<T extends object>(type: T, maps: readonly unknown[], pack?: ap
   return type;
 }
 
-function aliases(type: Function) {
-  let known = fields.get(type);
-  if (!known) fields.set(type, (known = { ...new (type as new () => object)() }));
-  return known;
-}
+function fields(type: Function) {
+  let known = packs.get(type);
+  if (known) return known;
 
-function tokens(type: Function) {
-  let known = valued.get(type);
+  const instance = new (type as new () => object)();
+  const aliases: Record<string, string> = {};
+  const tokens: Record<string, string> = {};
+  const defaults: Declaration = {};
 
-  if (!known) {
-    known = {};
+  for (const [key, value] of Object.entries(instance)) {
+    if (key[0] != '$')
+      throw new Error(`Field "${key}" on ${type.name} is reserved. Define macros as methods.`);
 
-    for (const [key, value] of Object.entries(aliases(type)))
-      if (key[0] == '$' && typeof value == 'string') known[key.slice(1)] = token(key, value);
+    if (typeof value != 'string')
+      throw new Error(`"${key}" on ${type.name} must be a string.`);
 
-    valued.set(type, known);
+    if (value[0] == '@' || value[0] == ':') {
+      aliases[key] = value;
+      continue;
+    }
+
+    const name = value.startsWith('--') ? value : `--${key.slice(1).replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`)}`;
+
+    if (name != value) defaults[name] = value;
+
+    aliases[key] = name;
+    tokens[key.slice(1)] = `var(${name})`;
   }
 
+  if (Object.keys(defaults).length) setRoot(aliases, [{ declarations: defaults, when: [] }]);
+
+  packs.set(type, (known = { aliases, instance, tokens }));
   return known;
 }
 
 function define(type: Function, values: object) {
-  const own = aliases(type);
+  const own = fields(type).aliases;
   const roots: Root[] = [];
 
   function walk(map: Record<string, unknown>, when: string[]) {
@@ -248,19 +264,9 @@ function define(type: Function, values: object) {
 }
 
 function layers(type: Function) {
-  const instance = new (type as new () => object)();
+  const { aliases, instance } = fields(type);
   const maps: appearance.StyleMap[] = [];
-  const conditions: appearance.StyleMap = {};
-
-  for (const [key, value] of Object.entries(instance)) {
-    if (key[0] != '$')
-      throw new Error(`Field "${key}" on ${type.name} is reserved. Define macros as methods.`);
-
-    if (typeof value != 'string')
-      throw new Error(`"${key}" on ${type.name} must be a string.`);
-
-    conditions[key] = value;
-  }
+  const conditions: appearance.StyleMap = { ...aliases };
 
   for (let proto = type.prototype; proto !== Style.prototype; proto = Object.getPrototypeOf(proto)) {
     const map = proto === type.prototype ? conditions : {};

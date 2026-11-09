@@ -1,31 +1,10 @@
 type Declaration = Record<string, unknown>;
 
-const TOKEN = /\x01(\d+)\x01/g;
-const tokens: [name: string, alias: string][] = [];
-
-function token(name: string, alias: string) {
-  return `\x01${tokens.push([name, alias]) - 1}\x01`;
-}
-
-function resolve(value: unknown) {
-  if (typeof value != 'string') return value;
-
-  return value.replace(TOKEN, (_, id: string) => {
-    const [name, alias] = tokens[+id];
-
-    if (alias[0] == '@' || alias[0] == ':')
-      throw new Error(`Condition "${name}" is not a value.`);
-
-    return alias.startsWith('--') ? `var(${alias})` : alias;
-  });
-}
-
 function applyDeclarations(style: CSSStyleDeclaration, declarations: Declaration, previous: Declaration = {}) {
   const target = style as any;
 
   for (const key of Object.keys({ ...previous, ...declarations })) {
-    const value = resolve(declarations[key]);
-
+    const value = declarations[key];
     if (key.startsWith('--')) {
       style.setProperty(key, value == null ? '' : String(value));
       continue;
@@ -43,5 +22,5 @@ function serialize(document: Document, declarations: Declaration) {
   return value.cssText;
 }
 
-export { applyDeclarations, serialize, token };
+export { applyDeclarations, serialize };
 export type { Declaration };

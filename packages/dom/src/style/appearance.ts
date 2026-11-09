@@ -551,9 +551,6 @@ function condition(macros: StyleMap, key: string) {
   if (typeof value != 'string')
     throw new Error(`Unknown condition "${key}".`);
 
-  if (value[0] != '@' && value[0] != ':')
-    throw new Error(`"${key}" is a value, not a condition.`);
-
   return value;
 }
 

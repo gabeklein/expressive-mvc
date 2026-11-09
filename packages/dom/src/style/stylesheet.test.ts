@@ -8,8 +8,8 @@ import { Css } from './css';
 import { Style, style } from './stylesheet';
 
 class Sides extends Style {
-  $wide = '@media (min-width: 600px)';
-  $lit = ':hover';
+  readonly $wide = '@media (min-width: 600px)';
+  readonly $lit = ':hover';
   edge(side: 'Top' | 'Left') { return { [`border${side}`]: '1px solid' }; }
   row(gap?: string) { return { display: 'flex', gap }; }
   pill(value: number) { return { marginLeft: `${value}px` }; }
@@ -520,9 +520,8 @@ describe('Style', () => {
 
 describe('variables', () => {
   class Theme extends Css {
-    readonly $ink = '--theme-ink';
-    readonly $gap = '--theme-gap';
-    readonly $tone = 'cyan';
+    readonly $inkLight = '#222';
+    readonly $line = '--theme-line';
     readonly $wide = '@media (min-width: 600px)';
     readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
   }
@@ -532,83 +531,65 @@ describe('variables', () => {
       .map((element) => element.textContent!.replace(/\s+/g, ' '));
   }
 
-  it('will type variables, constants and tokens', () => {
+  function rules(name: string) {
+    return [...document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!.sheet!.cssRules]
+      .map((rule) => rule.cssText.replace(/\s+/g, ' '))
+      .filter((rule) => rule.includes(`.${name}`));
+  }
+
+  it('will type variables, conditions and tokens', () => {
     const apply = Theme.use();
-    const map: style.Map<Theme> = { $ink: 'red', color: apply.$.ink, $wide: { $gap: '4px' } };
+    const map: style.Map<Theme> = { $inkLight: 'red', color: apply.$.line, $wide: { $line: '4px' } };
     // @ts-expect-error - a variable holds a value
-    const scoped: style.Map<Theme> = { $ink: { color: 'red' } };
-    // @ts-expect-error - a constant is not a key
-    const constant: style.Map<Theme> = { $tone: 'red' };
+    const scoped: style.Map<Theme> = { $inkLight: { color: 'red' } };
+    // @ts-expect-error - a condition holds a map
+    const bare: style.Map<Theme> = { $wide: 'red' };
     // @ts-expect-error - a condition has no token
     const token = apply.$.wide;
 
-    apply.define({ ink: 'red', $dark: { ink: 'blue' }, '@media print': { gap: '1px' } });
-    // @ts-expect-error - a constant is not a variable
-    expect(() => apply.define({ tone: 'red' })).toThrow('"tone" is not a variable of Theme.');
+    const themed = () => apply.define({ inkLight: 'red', $dark: { line: 'blue' }, '@media print': { inkLight: 'black' } });
 
-    expect([map, scoped, constant, token]).toHaveLength(4);
+    expect([map, scoped, bare, token, themed]).toHaveLength(5);
   });
 
-  it('will declare a variable from its $ key and read it through a token', () => {
+  it('will name a variable from its field and default it at the root', () => {
     const { $ } = Theme.use();
     const Swatch = () => createElement('i', {});
 
-    Theme.use()(Swatch, { $ink: 'red', color: $.ink });
+    Theme.use()(Swatch, { color: $.inkLight, outline: `1px solid ${$.inkLight}` });
 
     const node = place(createElement(Swatch, {})).querySelector('i')!;
 
-    expect(getComputedStyle(node).getPropertyValue('--theme-ink')).toBe('red');
-    expect(getComputedStyle(node).color).toBe('red');
+    expect($.inkLight).toBe('var(--ink-light)');
+    expect($.line).toBe('var(--theme-line)');
+    expect(roots()).toContain(':where(:root){--ink-light: #222;}');
+    expect(getComputedStyle(node).color).toBe('#222');
   });
 
-  it('will rewrite a token inside a template or an array', () => {
-    const { $ } = Theme.use();
-    const Framed = () => createElement('i', {});
+  it('will declare a variable from its $ key for an element and its subtree', () => {
+    const Shade = () => createElement('i', {});
 
-    Theme.use()(Framed, { boxShadow: ['0 0 1px', $.ink], outline: `2px dashed ${$.tone}` });
+    Theme.use()(Shade, { $inkLight: 'red', $wide: { $line: '9px' } });
+    place(createElement(Shade, {}));
 
-    const node = place(createElement(Framed, {})).querySelector('i')!;
-    const rule = [...document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!.sheet!.cssRules]
-      .find((rule) => rule.cssText.includes('.Framed'))!;
-
-    expect(rule.cssText).toContain('box-shadow: 0 0 1px var(--theme-ink)');
-    expect(getComputedStyle(node).outlineColor).toBe('cyan');
-  });
-
-  it('will rewrite a token in an inline style', () => {
-    const { $ } = Theme.use();
-
-    const node = place(createElement('b', { style: { color: $.tone } })).querySelector('b')!;
-
-    expect(node.style.color).toBe('cyan');
-  });
-
-  it('will declare a variable under a condition', () => {
-    const Wide = () => createElement('i', {});
-
-    Theme.use()(Wide, { $wide: { $gap: '9px' } });
-
-    place(createElement(Wide, {}));
-
-    const rules = [...document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!.sheet!.cssRules]
-      .map((rule) => rule.cssText.replace(/\s+/g, ' '))
-      .filter((rule) => rule.includes('.Wide'));
-
-    expect(rules).toEqual(['@media (min-width: 600px) { .Wide-media_min-width_600px { --theme-gap: 9px; } }']);
+    expect(rules('Shade')).toEqual([
+      '.Shade { --ink-light: red; }',
+      '@media (min-width: 600px) { .Shade-media_min-width_600px { --theme-line: 9px; } }'
+    ]);
   });
 
   it('will set defaults at the root from pack rules', () => {
     class Deck extends Style {
-      readonly $line = '--deck-line';
+      readonly $edge = '--deck-edge';
       readonly $wide = '@media (min-width: 600px)';
       readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
     }
 
     const deck = Deck.use({
-      $line: '#222',
-      _button: { color: Deck.use().$.line },
-      $wide: { $line: '#444', _button: { opacity: 0.5 } },
-      $dark: { $line: '#eee' }
+      $edge: '#222',
+      _button: { color: Deck.use().$.edge },
+      $wide: { $edge: '#444', _button: { opacity: 0.5 } },
+      $dark: { $edge: '#eee' }
     });
 
     const Bar = () => createElement('button', {});
@@ -618,9 +599,9 @@ describe('variables', () => {
     const button = place(createElement(Bar, {})).querySelector('button')!;
 
     expect(roots()).toContain(
-      ':where(:root){--deck-line: #222;}\n'.replace(/\s+/g, ' ') +
-      '@media (min-width: 600px){:where(:root){--deck-line: #444;}} ' +
-      ':where(:root:is(:is([data-mode="dark"], [data-mode="dark"] *))){--deck-line: #eee;}'
+      ':where(:root){--deck-edge: #222;} ' +
+      '@media (min-width: 600px){:where(:root){--deck-edge: #444;}} ' +
+      ':where(:root:is(:is([data-mode="dark"], [data-mode="dark"] *))){--deck-edge: #eee;}'
     );
     expect(getComputedStyle(button).color).toBe('#444');
     expect(button.className).toBe('Deck_button Deck_button-media_min-width_600px');
@@ -628,11 +609,11 @@ describe('variables', () => {
 
   it('will define variables at the root over their defaults', () => {
     class Brand extends Style {
-      readonly $accent = '--brand-accent';
+      readonly $accent = 'blue';
       readonly $print = '@media print';
     }
 
-    const brand = Brand.use({ $accent: 'blue' });
+    const brand = Brand.use();
     const Chip = () => createElement('i', {});
 
     brand(Chip, { color: brand.$.accent });
@@ -641,23 +622,23 @@ describe('variables', () => {
     const node = place(createElement(Chip, {})).querySelector('i')!;
 
     expect(roots()).toContain(
-      ':root{--brand-accent: green;} @media print{:root{--brand-accent: black;}} :root:is(:hover){--brand-accent: red;}'
+      ':root{--accent: green;} @media print{:root{--accent: black;}} :root:is(:hover){--accent: red;}'
     );
     expect(getComputedStyle(node).color).toBe('green');
 
     brand.define({ accent: 'teal' });
 
-    expect(roots()).toContain(':root{--brand-accent: teal;}');
+    expect(roots()).toContain(':root{--accent: teal;}');
     expect(getComputedStyle(node).color).toBe('teal');
   });
 
   it('will let a later default of a variable win, as a re-run module does', () => {
     function edition(color: string) {
       class Edition extends Style {
-        readonly $hue = '--edition-hue';
+        readonly $hue = color;
       }
 
-      const apply = Edition.use({ $hue: color });
+      const apply = Edition.use();
       const Mark = () => createElement('i', {});
 
       apply(Mark, { color: apply.$.hue });
@@ -666,48 +647,38 @@ describe('variables', () => {
 
     edition('red');
     const node = edition('blue');
-    const texts = roots().filter((text) => text.includes('--edition-hue'));
 
-    expect(texts).toEqual([':where(:root){--edition-hue: red;}', ':where(:root){--edition-hue: blue;}']);
+    expect(roots().filter((text) => text.includes('--hue'))).toEqual([':where(:root){--hue: red;}', ':where(:root){--hue: blue;}']);
     expect(getComputedStyle(node).color).toBe('blue');
   });
 
   it('will rewrite roots into a recreated head', () => {
     class Late extends Style {
-      readonly $hue = '--late-hue';
+      readonly $lateHue = 'navy';
     }
 
     const late = Late.use();
     const Dot = () => createElement('i', {});
 
-    late(Dot, { color: late.$.hue });
-    late.define({ hue: 'navy' });
+    late(Dot, { color: late.$.lateHue });
     place(createElement(Dot, {}));
 
     for (const element of document.head.querySelectorAll('style[data-expressive]')) element.remove();
 
     const Again = () => createElement('b', {});
 
-    late(Again, { color: late.$.hue });
+    late(Again, { color: late.$.lateHue });
 
     const node = place(createElement(Again, {})).querySelector('b')!;
 
-    expect(roots()).toContain(':root{--late-hue: navy;}');
+    expect(roots()).toContain(':where(:root){--late-hue: navy;}');
     expect(getComputedStyle(node).color).toBe('navy');
   });
 
   it.each([
-    ['a condition used as a value', { color: (Theme.use().$ as Record<string, string>).wide }, 'Condition "$wide" is not a value.'],
-    ['a constant used as a key', { $tone: { color: 'red' } }, '"$tone" is a value, not a condition.']
-  ] as [string, {}, string][])('will throw for %s', (_, map, message) => {
-    const Misused = () => createElement('i', {});
-
-    Theme.use()(Misused, map);
-
-    expect(() => place(createElement(Misused, {}))).toThrow(message);
-  });
-
-  it('will throw for a define key that is not a condition', () => {
-    expect(() => Theme.use().define({ $tone: { ink: 'red' } } as {})).toThrow('"$tone" is not a condition of Theme.');
+    ['a condition as a define value', { wide: 'red' }, '"wide" is not a variable of Theme.'],
+    ['a variable as a define condition', { $inkLight: { line: 'red' } }, '"$inkLight" is not a condition of Theme.']
+  ] as [string, {}, string][])('will throw for %s', (_, values, message) => {
+    expect(() => Theme.use().define(values)).toThrow(message);
   });
 });
