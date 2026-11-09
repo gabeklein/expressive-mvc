@@ -307,31 +307,31 @@ function transform<T, R>(
 function store<K, V>(target: Managed<K, V>, key: K, value: V) {
   const exists = MAP.has.call(target, key);
 
-  if (exists) {
-    if (MAP.get.call(target, key) === value) return;
+  if (exists && MAP.get.call(target, key) === value) return;
 
-    release(target, key);
-  }
+  const model = value instanceof Model ? value : undefined;
+  const evict = model && listener(model, () => void target.delete(key), null);
+
+  if (exists) release(target, key);
 
   MAP.set.call(target, key, value);
 
-  if (value instanceof Model) {
+  if (model) {
     const owner = parent(target);
-    const fresh = parent(value, owner ?? null);
-    const evict = listener(value, () => void target.delete(key), null);
+    const fresh = parent(model, owner ?? null);
 
     let detach: (() => void) | undefined;
 
     if (fresh && owner)
-      detach = join(owner, value);
+      detach = join(owner, model);
 
     OWNED.get(target)!.set(key, () => {
-      evict();
+      evict!();
       if (detach) detach();
-      if (fresh) value.set(null);
+      if (fresh) model.set(null);
     });
 
-    if (fresh) event(value);
+    if (fresh) event(model);
   }
 
   event(target, key as never);

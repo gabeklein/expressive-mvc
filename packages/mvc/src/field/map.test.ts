@@ -484,7 +484,7 @@ describe('subscriptions', () => {
   });
 });
 
-it.fails('will not insert a destroyed model', () => {
+it('will not insert a destroyed model', () => {
   class Item extends Model {}
   class Owner extends Model {
     items = map<string, Item>();
