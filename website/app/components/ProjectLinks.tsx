@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
-export const githubUrl = 'https://github.com/gabeklein/expressive-mvc';
+export const githubUrl = 'https://github.com/gabeklein/expressive';
 export const discordUrl = 'https://discord.gg/EBWC7HyTBd';
 
 type ProjectStats = {
@@ -29,7 +29,7 @@ function useProjectStats() {
     let cancelled = false;
 
     statsRequest ??= Promise.allSettled([
-      fetch('https://api.github.com/repos/gabeklein/expressive-mvc').then((res) => res.json()),
+      fetch('https://api.github.com/repos/gabeklein/expressive').then((res) => res.json()),
       fetch('/api/discord-stats').then((res) => res.json()),
     ]).then(([repo, discord]) => {
       return {

@@ -395,7 +395,7 @@ figure[data-rehype-pretty-code-figure] pre code,
 @media (min-width: 40rem) and (max-width: 63.999rem) {
   #nd-nav a:is(
     [href='https://discord.gg/EBWC7HyTBd'],
-    [href='https://github.com/gabeklein/expressive-mvc']
+    [href='https://github.com/gabeklein/expressive']
   ) {
     width: 2.25rem;
     height: 2.25rem;
@@ -407,7 +407,7 @@ figure[data-rehype-pretty-code-figure] pre code,
 
   #nd-nav a:is(
     [href='https://discord.gg/EBWC7HyTBd'],
-    [href='https://github.com/gabeklein/expressive-mvc']
+    [href='https://github.com/gabeklein/expressive']
   ) > span > span {
     display: none;
   }
@@ -430,7 +430,7 @@ figure[data-rehype-pretty-code-figure] pre code,
 @media (min-width: 64rem) {
   #nd-nav a:is(
     [href='https://discord.gg/EBWC7HyTBd'],
-    [href='https://github.com/gabeklein/expressive-mvc']
+    [href='https://github.com/gabeklein/expressive']
   ) {
     height: 2.25rem;
     border-radius: 9999px;
@@ -442,7 +442,7 @@ figure[data-rehype-pretty-code-figure] pre code,
 @media (max-width: 39.999rem) {
   #nd-nav .fd-scroll-container a:is(
     [href='https://discord.gg/EBWC7HyTBd'],
-    [href='https://github.com/gabeklein/expressive-mvc']
+    [href='https://github.com/gabeklein/expressive']
   ) {
     height: 2.25rem;
     border-radius: 9999px;
@@ -452,7 +452,7 @@ figure[data-rehype-pretty-code-figure] pre code,
 
   #nd-nav .fd-scroll-container a:is(
     [href='https://discord.gg/EBWC7HyTBd'],
-    [href='https://github.com/gabeklein/expressive-mvc']
+    [href='https://github.com/gabeklein/expressive']
   ) > span > svg {
     display: block;
   }

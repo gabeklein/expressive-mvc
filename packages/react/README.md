@@ -6,12 +6,12 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@expressive/react"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Freact.svg"></a>
-  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/coverage.yml"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgabeklein%2Fexpressive-mvc%2Fbadges%2Fcoverage.json"></a>
+  <a href="https://github.com/gabeklein/expressive/actions/workflows/coverage.yml"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgabeklein%2Fexpressive%2Fbadges%2Fcoverage.json"></a>
 </p>
 
 ---
 
-The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Define state as a class, render it as a component, and reads automatically subscribe - components re-render only when accessed values change.
+The React adapter for [Expressive MVC](https://github.com/gabeklein/expressive). Define state as a class, render it as a component, and reads automatically subscribe - components re-render only when accessed values change.
 
 ```bash
 npm install @expressive/mvc @expressive/react
@@ -100,7 +100,7 @@ class DarkModeSwitch extends Toggle {
 }
 ```
 
-The base owns behavior and structure; subclasses author only the rendering. Override a subcomponent as a **method** when it takes no props, or as an **arrow field** when you want its props type inferred from the base - which is how `@expressive/router`'s [`NavLinks`](https://github.com/gabeklein/expressive-mvc/blob/main/packages/router/README.md#generated-navigation) exposes its overridable `Item` / `List` / `Group` members.
+The base owns behavior and structure; subclasses author only the rendering. Override a subcomponent as a **method** when it takes no props, or as an **arrow field** when you want its props type inferred from the base - which is how `@expressive/router`'s [`NavLinks`](https://github.com/gabeklein/expressive/blob/main/packages/router/README.md#generated-navigation) exposes its overridable `Item` / `List` / `Group` members.
 
 A subclass `render()` replaces the base's like any method - `super.render(props)` wraps it.
 
@@ -207,7 +207,7 @@ function Profile() {
 - **`<Component for={Model}>`** - explicit hierarchical dependency injection.
 - **Suspense & error boundaries** - async values suspend; `catch()` handles child errors.
 
-Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**
+Full guide and API reference → **[github.com/gabeklein/expressive](https://github.com/gabeklein/expressive)**
 
 ## License
 

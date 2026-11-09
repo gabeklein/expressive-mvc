@@ -20,7 +20,7 @@ That gauntlet has already earned its place: it caught a regression that made eve
 
 React Native is a designed target. The adapter's renderer independence is a constraint held deliberately, not a coincidence that might lapse - and consumers shipping to React Native are covered by the same long-term support intent as the web.
 
-The remaining coupling is routing, and it is scoped work rather than an open question. `Link` renders an `<a>` and `NavLinks` a `<ul>`, so both are DOM-bound today. Canonical elements ([#128](https://github.com/gabeklein/expressive-mvc/issues/128)) maps semantic intrinsics onto host components - `anchor` to `Pressable` plus `Linking` - which removes that coupling at the root instead of forking the router per platform.
+The remaining coupling is routing, and it is scoped work rather than an open question. `Link` renders an `<a>` and `NavLinks` a `<ul>`, so both are DOM-bound today. Canonical elements ([#128](https://github.com/gabeklein/expressive/issues/128)) maps semantic intrinsics onto host components - `anchor` to `Pressable` plus `Linking` - which removes that coupling at the root instead of forking the router per platform.
 
 ## Boundaries
 
