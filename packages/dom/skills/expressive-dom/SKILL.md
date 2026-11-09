@@ -106,11 +106,11 @@ style(Card, {
 });
 ```
 - Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([expressive-mvc/state/state.md](../expressive-mvc/state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
-- `$name` is a condition named on the pack ([Conditions](#conditions)); an unknown one throws, as does one written as a value (`color: '$brand'`).
+- `$name` is a condition or variable named on the pack ([Conditions](#conditions), [Variables](#variables)); an unknown one throws, as does one written as a value string (`color: '$brand'`) - values use `style.$`.
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 - Under the dev JSX runtime, a `_name` attribute that no rule matches warns once with the nearest rule name. It counts the writing component's rules, the receiving component's own, and a class Component's `_` field; a `_name` a component received and spreads on is checked where it was written. A rule supplied conditionally (`App.use(wide && rules)`) warns while absent - declare it empty (`_cell: {}`) where it is always present.
 
-Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. Apps extend `Css` (or their own subclass of it); `Style` is the base for a new host's pack. A getter, a `_` or `$` method, or a field other than a `$name` condition throws. Every method is a macro - TypeScript's `private` included, since it only hides the name from types. Keep utilities in `#private` methods or at module level; methods bind to one instance, so a macro may call `this.#helper()`. Statics are never macros. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A macro's parameter may be an object - a bare key is never a scope, so `transform: { translateY: -2 }` reaches a `transform(value: Transform)` macro whole, typed by its interface, and a layer replaces it whole. A function inside a map is a value, not a definition - rules are static, so call a plain function in place.
+Macros are methods of a `Style` subclass, a **pack**; `App.use()` returns the `style` resolving them, one per class. Plain `style` from `@expressive/dom` has none. Apps extend `Css` (or their own subclass of it); `Style` is the base for a new host's pack. A getter, a `_` or `$` method, or a field other than a `$name` string throws. Every method is a macro - TypeScript's `private` included, since it only hides the name from types. Keep utilities in `#private` methods or at module level; methods bind to one instance, so a macro may call `this.#helper()`. Statics are never macros. A component's maps resolve against the pack that styled it wherever it renders, so one component takes one pack - a second throws. `style(X)` with no map joins the pack; subclasses and subcomponents inherit their owner's. A macro's parameter may be an object - a bare key is never a scope, so `transform: { translateY: -2 }` reaches a `transform(value: Transform)` macro whole, typed by its interface, and a layer replaces it whole. A function inside a map is a value, not a definition - rules are static, so call a plain function in place.
 
 A key resolves at its topmost definition, the subclass first; a macro returning its own name falls to the next definition down (or calls `super`), then through any `default(value, key)` method, then to the host. `default` is not a map key. An override must stay assignable to the method it overrides - annotate the base's return as `object` when shapes differ. A macro returning its own name as `true` with no named definition below throws. The host joins arrays with spaces, rejects a function, object or `true` (`No macro handles "gutter"`), and never adds units - a macro owns them, so write `padding: '8px'`, not `padding: 8`.
 
@@ -123,7 +123,7 @@ export const style = App.use(base, {
 });
 ```
 
-They apply only to elements written by a component styled through it, below that component's base declarations and rules; a component's own `_button` merges with the pack's. A declaration outside a rule throws. Each `use()` with maps is a separate scope - one class can serve an app shell and an embeddable widget - while `use()` without maps is shared per class. Children an app passes into a library component keep the app's rules. A component rendering host elements calls `style()`, even with no map - the pack is never inferred from context.
+They apply only to elements written by a component styled through it, below that component's base declarations and rules; a component's own `_button` merges with the pack's. A declaration outside a rule throws, except a variable default ([Variables](#variables)). Each `use()` with maps is a separate scope - one class can serve an app shell and an embeddable widget - while `use()` without maps is shared per class. Children an app passes into a library component keep the app's rules. A component rendering host elements calls `style()`, even with no map - the pack is never inferred from context.
 
 Repeated `style()` calls add layers and return the component unchanged. One call may take several maps - `style(Meta, assetMeta, wide && compact, { whiteSpace: 'normal' })` layers each in order and skips falsy entries. Layers merge rule by rule at every depth - conditions and nested `_` scopes included; spreading (`{ ...assetMeta, _name: … }`) replaces `assetMeta._name` instead. A rule, condition or subcomponent body may be an array, merged the same way, falsy entries skipped - a shared map with nothing to add needs none (`_tabs: tabs`). Prefer it to spreads for overriding a shared map - a spread replaces each nested level, so every level must re-spread its shared counterpart, and a level later added to the shared map is dropped:
 
@@ -173,7 +173,40 @@ style(Select, {
 - CSS names are the vocabulary; each host decides what a condition means. Maps meant to move between hosts should use named conditions (`$mobile` above).
 - Layers and subclasses merge a condition's body key by key, like a rule.
 
-A `$name` field must start with `@` or `:` The `style.Condition` type (`` `:${string}` | `@${string}` ``) types a condition held elsewhere.
+A condition's `$name` field starts with `@` or `:`. The `style.Condition` type (`` `:${string}` | `@${string}` ``) types a condition held elsewhere.
+
+### Variables
+
+A `$name` field starting with `--` names a CSS variable; any other non-condition string is a constant. Declare them `readonly` so the literal types the key:
+
+```ts
+class App extends Css {
+  readonly $ink = '--app-ink';
+  readonly $gap = '--app-gap';
+  readonly $radius = '4px';
+  $mobile = '@media (max-width: 900px)';
+  $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
+}
+
+export const style = App.use({
+  $ink: '#222',
+  $gap: '8px',
+  $dark: { $ink: '#eee' },
+  $mobile: { $gap: '4px' },
+  _button: { color: App.use().$.ink }
+});
+
+export const { $ } = style;
+
+style(Card, { border: ['1px', 'solid', $.ink], borderRadius: $.radius, padding: $.gap });
+style(Callout, { $ink: 'crimson' });
+```
+
+- As a key, a variable declares `--app-ink` where it is written. In `use()` rules, at the top or under conditions only, it is a default at `:where(:root)`; in a component map or rule, it overrides for that element and its subtree. A constant is not a key.
+- `style.$` holds a token per variable and constant, keyed without `$`. A token is a string - templates, arrays and macros pass it through - rewritten where the declaration applies: a variable to `var(--app-ink)`, a constant to its text. A macro sees the token, not the value, so a constant is final CSS (`'4px'`, not `4`). A condition has no token.
+- `style.define({ ink: 'red', $dark: { ink: 'pink' } })` sets variables at `:root` over the defaults - document-wide, no re-render; a later call replaces the last. A library's `define` lets an app retheme its components. A key that is not a variable, or an object key that is not a condition, throws.
+- `:root` defaults and `define` values under a `:` condition apply while `<html>` matches - a state meant for both, like `$dark` above, lists the element itself (`[data-mode="dark"], [data-mode="dark"] *`).
+- The name is global CSS - prefix it per app or library. Plain CSS can set it too.
 
 ### The web pack
 
@@ -224,7 +257,7 @@ A component reading `style` receives a frozen object, or `undefined` when nothin
 Opinionated, applied by default:
 
 - `style(X, …)` sits directly below `X`, never gathered at the end of a file. Shared maps go above their first use.
-- One style module defines the app's pack - a `Css` subclass holding its macros - with its named conditions (`$mobile`), and exports its `style` and shared maps typed `style.Map<App>`. Components import `style` from it.
+- One style module defines the app's pack - a `Css` subclass holding its macros - with its named conditions (`$mobile`) and variables (`$ink`), and exports its `style`, `$` and shared maps typed `style.Map<App>`. Components import them from it.
 - A declaration group repeated in two or three places becomes a macro named for its job (`row`, `line`, `ellipsis`), not its CSS. What varies is its argument; an optional one makes it a flag (`row: true`). Fold repeats as you find them.
 - Shared style: a macro groups declarations; app-wide rules - element defaults (`_button`), app roles (`_muted`) - go in `use()`; a shared map for one kind of thing is layered as an extra `style()` argument. Share a component before sharing a map.
 - Values under `Css`: bare numbers for px, strings for any other unit or mixed value (`'0.2rem 0.45rem'`, `'0 auto'`, `calc()`, `var()`). A structured value that needs typing or units gets a macro taking an object.
