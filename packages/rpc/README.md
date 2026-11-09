@@ -46,6 +46,6 @@ try {
 - **Cookies** - declare them as fields of a `Cookies` subclass; `AppCookies.get().session` reads this request's, `AppCookies.set({ session: id })` sends `Set-Cookie` with the reply.
 - **Request** - `Current.get().request`, `.url` and `.cookies` inside a call, and `setHeader` for its reply.
 - **Client** - `configure({ base, headers, transport, reply })` for cross-origin servers, auth headers or a custom fetch.
-- **Server entry** - `rpc({ entry: "server.ts" })` makes your own Worker-shaped module the server: it gets the calls as `handle(request)` from `@expressive/rpc/calls` and adds routes, a `scheduled` handler or Durable Objects beside them, sharing their modules in dev and build. Its routes run in the request's scope, so `Current` and `Cookies` work there as in a call.
+- **Server entry** - `rpc({ entry: "server.ts" })` makes your own Worker-shaped module the server: it gets the calls as `handle(request)` from `@expressive/rpc/calls` and adds routes, a `scheduled` handler or Durable Objects beside them, sharing their modules in dev and build. Its routes run in the request's scope, so `Current` and `Cookies` work there as in a call. `within("account", () => ...)` runs a route's code behind that folder's gates, as a call there would.
 
 Full reference: [skills/rpc.md](https://github.com/gabeklein/expressive-mvc/blob/main/skills/rpc.md). A runnable app is in [`example/`](https://github.com/gabeklein/expressive-mvc/tree/main/packages/rpc/example).

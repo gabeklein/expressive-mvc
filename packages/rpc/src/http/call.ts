@@ -1,6 +1,6 @@
-import { attempt, fault, inFolder, locate, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
+import { attempt, fault, inFolder, locate, seatsAlong, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
 import { parse, stringify } from "../codec";
-import { headersOf, within } from "../context";
+import { active, headersOf, within } from "../context";
 import { ERRORS } from "../errors";
 
 export function isCall(request: Request): boolean {
@@ -54,6 +54,24 @@ export async function dispatch<E extends Exports>(request: Request, endpoints: (
   if (!args) return reply(400, { message: "Expected a JSON array of arguments." });
 
   return withHeaders(await handle(args), headersOf(request));
+}
+
+/**
+ * `within(folder, run)` for an entry's routes: runs `run` in the request's scope at `folder`, with the
+ * gates along it seated and ready. `known` says which folders exist - any other is a mistake, not an open door.
+ */
+export function folders(seats: Seats, known: (pattern: string[]) => boolean) {
+  return async <T>(folder: string, run: () => T): Promise<Awaited<T>> => {
+    const request = active();
+
+    if (!request) throw new Error(`within("${folder}") runs only inside the server entry's fetch.`);
+
+    const pattern = folder.split("/").filter(Boolean);
+
+    if (!known(pattern)) throw new Error(`within("${folder}") names no folder of calls.`);
+
+    return within(request, pattern, run, await seatsAlong(seats, pattern));
+  };
 }
 
 type Fetch = (request: Request, ...rest: any[]) => Response | undefined | Promise<Response | undefined>;

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { join, relative, resolve as resolvePath } from "node:path";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { join, relative, resolve as resolvePath, sep } from "node:path";
 import type { Plugin, RunnableDevEnvironment } from "vite";
 
 import type { Endpoint, Seats } from "../call";
@@ -29,6 +29,7 @@ interface Entry {
 type Resolve = (spec: string, importer: string) => Promise<string | undefined>;
 
 interface Runtime {
+  folders: typeof import("../http/call").folders;
   handler: typeof import("../http/call").handler;
   scoped: typeof import("../http/call").scoped;
   verify: typeof import("../call").verify;
@@ -67,9 +68,21 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
     if (at && (await scanned(at, resolve)).gate) return at;
   }
 
+  /** Every folder under `dir`, as the patterns `within()` may name. */
+  function folders(): string[][] {
+    if (!existsSync(folder)) return [[]];
+
+    const nested = readdirSync(folder, { recursive: true, withFileTypes: true })
+      .filter(item => item.isDirectory())
+      .map(item => relative(folder, join(item.parentPath, item.name)).split(sep));
+
+    return [[], ...nested];
+  }
+
   async function gates(resolve: Resolve): Promise<Located[]> {
     const patterns = new Map<string, string[]>();
 
+    for (const pattern of folders()) patterns.set(pattern.join("/"), pattern);
     for (const { pattern } of manifest.modules.values())
       for (let i = 0; i <= pattern.length; i++) patterns.set(pattern.slice(0, i).join("/"), pattern.slice(0, i));
 
@@ -135,7 +148,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
         return `import app from ${from};\nimport { scoped } from "@expressive/rpc/http";\n\nexport * from ${from};\nexport default scoped(app);\n`;
       }
       if (id === ENTRY) return `import { handle } from "@expressive/rpc/calls";\n\nexport default { async fetch(request, env) { return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not found.", { status: 404 }); } };\n`;
-      if (id === RUNTIME) return `export { handler, scoped } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
+      if (id === RUNTIME) return `export { folders, handler, scoped } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
       const at = located(id.split("?")[0]);
@@ -154,7 +167,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
       if (this.environment.name === ENV && this.environment.mode === "build" && code.includes(CALLS)) {
         const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
-        return { code: manifest.calls(await gates(resolve)), map: null };
+        return { code: manifest.calls(await gates(resolve), folders()), map: null };
       }
 
       const problem = this.environment.config.consumer === "client" && (await guardScript(code, file));
@@ -169,14 +182,14 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
       let installed: unknown;
 
       const runtime = async (): Promise<Runtime> => {
-        const { handler, install, scoped, verify } = await runner.import(RUNTIME);
+        const { folders, handler, install, scoped, verify } = await runner.import(RUNTIME);
 
         if (installed !== install) {
           installed = install;
           install();
         }
 
-        return { handler, scoped, verify };
+        return { folders, handler, scoped, verify };
       };
 
       const endpoints = ({ verify }: Runtime): Endpoint[] =>
@@ -195,9 +208,15 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
         return loaded.handler(endpoints(loaded), { dev: true, seats })(request);
       };
 
-      Object.assign(globalThis, { [Symbol.for(CALLS)]: handle });
+      const isFolder = (pattern: string[]) => statSync(join(folder, ...pattern), { throwIfNoEntry: false })?.isDirectory() === true;
+      const calls = {
+        handle,
+        within: async <T>(path: string, run: () => T) => (await runtime()).folders(seats, isFolder)(path, run),
+      };
+
+      Object.assign(globalThis, { [Symbol.for(CALLS)]: calls });
       server.httpServer?.once("close", () => {
-        if (Reflect.get(globalThis, Symbol.for(CALLS)) === handle) Reflect.deleteProperty(globalThis, Symbol.for(CALLS));
+        if (Reflect.get(globalThis, Symbol.for(CALLS)) === calls) Reflect.deleteProperty(globalThis, Symbol.for(CALLS));
       });
 
       if (!main) return void server.middlewares.use(toNode(handle));

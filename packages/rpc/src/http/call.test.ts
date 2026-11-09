@@ -5,7 +5,8 @@ import { Model } from "@expressive/mvc";
 import type { Endpoint, Seats } from "../call";
 import { Current, install } from "../context";
 import { Cookies } from "../cookies";
-import { dispatch, failure, handler, isCall, reply, scoped, type Tier } from "./call";
+import { Unauthorized } from "../errors";
+import { dispatch, failure, folders, handler, isCall, reply, scoped, type Tier } from "./call";
 
 const TAB = crypto.randomUUID();
 
@@ -293,5 +294,42 @@ describe("scoped", () => {
     const entry = { scheduled() {} };
 
     expect(scoped(entry as { fetch?: undefined })).toBe(entry);
+  });
+});
+
+describe("folders", () => {
+  install();
+
+  class Session extends Model {
+    static ttl = 0;
+    user = "";
+
+    protected async new() {
+      await Promise.resolve();
+      const user = Current.get().cookies.user;
+      if (!user) throw new Unauthorized("Sign in.");
+      this.user = user;
+    }
+  }
+
+  const seats: Seats = async pattern => (pattern.join("/") === "account" ? Session : undefined);
+  const within = folders(seats, pattern => ["", "account", "account/files"].includes(pattern.join("/")));
+  const app = scoped({
+    fetch: (request: Request) => within(new URL(request.url).pathname.slice(1), () => new Response(Session.get().user)),
+  });
+
+  it("will run a route behind the gates along a folder, their new() awaited", async () => {
+    const response = (await app.fetch(new Request("http://localhost/account/files", { headers: { cookie: "user=ada" } })))!;
+
+    expect(await response.text()).toBe("ada");
+  });
+
+  it("will throw what a gate refuses with", async () => {
+    await expect(app.fetch(new Request("http://localhost/account"))).rejects.toThrow(Unauthorized);
+  });
+
+  it("will refuse a folder it does not know, and a call outside a request", async () => {
+    await expect(app.fetch(new Request("http://localhost/acount"))).rejects.toThrow(`within("acount") names no folder of calls.`);
+    await expect(within("account", () => 1)).rejects.toThrow(`within("account") runs only inside the server entry's fetch.`);
   });
 });

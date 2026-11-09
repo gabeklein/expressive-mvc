@@ -307,7 +307,8 @@ const ENTRY = {
   `,
   "server.ts": `
     import { Current } from "@expressive/rpc";
-    import { handle } from "@expressive/rpc/calls";
+    import { handle, within } from "@expressive/rpc/calls";
+    import Admin from "./api/admin";
     import { count } from "./lib/count";
     import { Prefs } from "./lib/prefs";
 
@@ -323,6 +324,8 @@ const ENTRY = {
           Prefs.set({ theme: "light" });
           return Response.json({ was, at: Current.get().url.pathname });
         }
+        if (pathname === "/admin" || pathname === "/nowhere")
+          return within(pathname.slice(1), async () => { const { default: Admin } = await import("./api/admin"); return new Response(String(Admin.get() instanceof Admin)); }).catch(error => new Response(error.message, { status: error.status ?? 500 }));
         if (pathname === "/cf") return new Response(String(await import("cloudflare:workers")));
         if (pathname === "/later") {
           ctx.passThroughOnException();
@@ -432,6 +435,12 @@ describe("build", () => {
     expect(await post("/", "ping")).toEqual({ status: 200, body: { value: "pong" } });
   });
 
+  it("will build a server with no folder of calls", async () => {
+    const { server } = await build(project(), { dir: "none" });
+
+    expect((await server.fetch(new Request("http://localhost/"))).status).toBe(404);
+  });
+
   it("will bundle the entry as the server, sharing its modules with the calls", async () => {
     const root = project(ENTRY);
     const { server, post } = await build(root, { entry: "server.ts", opaque: false });
@@ -448,6 +457,12 @@ describe("build", () => {
     expect(await theme.json()).toEqual({ was: "dark", at: "/theme" });
     expect(theme.headers.getSetCookie()).toEqual(["theme=light; Path=/; HttpOnly; SameSite=Lax"]);
     expect(bundled.Room).toBeTypeOf("function");
+
+    const admin = (token?: string) => server.fetch(new Request("http://localhost/admin", { headers: token ? { authorization: `Bearer ${token}` } : {} }));
+
+    expect(await (await admin("admin")).text()).toBe("true");
+    expect((await admin("ada")).status).toBe(403);
+    expect(await (await server.fetch(new Request("http://localhost/nowhere"))).text()).toBe(`within("nowhere") names no folder of calls.`);
     expect(code).toContain(`import("cloudflare:workers")`);
     expect(code).not.toMatch(/(?:from|import)\s*"@expressive\/rpc\/calls"/);
   });
@@ -465,6 +480,16 @@ describe("entry", () => {
     expect(await post("/", "tally:tick")).toMatchObject({ status: 401 });
     expect(await (await get(server, "/count")).json()).toEqual({ count: 1, name: "dev" });
     expect(await (await get(server, "/")).text()).toContain(`<script type="module"`);
+  });
+
+  it("will run a route's code behind a folder's gates", async () => {
+    const { server } = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts" })] });
+    const admin = (token?: string) => fetch(new URL("/admin", server.resolvedUrls!.local[0]), { headers: token ? { authorization: `Bearer ${token}` } : {} });
+
+    expect(await (await admin("admin")).text()).toBe("true");
+    expect((await admin("ada")).status).toBe(403);
+    expect((await admin()).status).toBe(401);
+    expect(await (await get(server, "/nowhere")).text()).toBe(`within("nowhere") names no folder of calls.`);
   });
 
   it("will run the entry's routes in the request's scope, with what Cookies set on the response", async () => {

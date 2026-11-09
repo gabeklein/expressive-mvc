@@ -120,8 +120,11 @@ export class Manifest<E extends Exposed = Exposed> {
     return { calls, classes };
   }
 
-  /** The calls as a module: `handle(request)` answers a call and gives anything else `undefined`. */
-  calls(gates: Located[]): string {
+  /**
+   * The calls as a module: `handle(request)` answers a call and gives anything else `undefined`;
+   * `within(folder, run)` runs an entry route's code behind the gates along one of `folders`.
+   */
+  calls(gates: Located[], folders: string[][] = [[]]): string {
     const json = JSON.stringify;
     const files = [...new Set([...this.modules.keys(), ...gates.map(gate => gate.file)])];
     const alias = (file: string) => `m${files.indexOf(file)}`;
@@ -135,14 +138,17 @@ export class Manifest<E extends Exposed = Exposed> {
 
     return [
       `import { install, verify } from "@expressive/rpc/protocol";`,
-      `import { handler } from "@expressive/rpc/http";`,
+      `import { folders, handler } from "@expressive/rpc/http";`,
       ...files.map(file => `import * as ${alias(file)} from ${json(file)};`),
       "",
       "install();",
       "",
       ...endpoints.flat(),
       `const gates = new Map([${gates.map(gate => `[${json(gate.pattern.join("/"))}, ${alias(gate.file)}.default]`).join(", ")}]);`,
-      `export const handle = handler([${this.byPattern().map((group, i) => `{ pattern: ${json(group[0].pattern)}, exports: async () => e${i} }`).join(", ")}], { seats: async pattern => gates.get(pattern.join("/")) });`,
+      `const seats = async pattern => gates.get(pattern.join("/"));`,
+      `const known = new Set(${json(folders.map(pattern => pattern.join("/")))});`,
+      `export const handle = handler([${this.byPattern().map((group, i) => `{ pattern: ${json(group[0].pattern)}, exports: async () => e${i} }`).join(", ")}], { seats });`,
+      `export const within = folders(seats, pattern => known.has(pattern.join("/")));`,
       "",
     ].join("\n");
   }

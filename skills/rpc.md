@@ -147,13 +147,15 @@ export default defineConfig({ plugins: [rpc({ entry: "server.ts" })] });
 
 ```ts
 // server.ts
-import { handle } from "@expressive/rpc/calls";
+import { handle, within } from "@expressive/rpc/calls";
+import Session from "./api/account";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
 
     if (url.pathname === "/health") return Response.json({ ok: true });
+    if (url.pathname.startsWith("/files/")) return within("account", () => download(Session.get(), url.pathname));
 
     return (await handle(request)) ?? env.ASSETS.fetch(request);
   },
@@ -164,8 +166,9 @@ export { Room } from "./room";   // a Durable Object, say
 ```
 
 - `handle(request)` answers a call and gives anything else `undefined`.
+- `within(folder, run)` runs a route's code behind the gates of a folder under `dir` (`""` is the root) - naming a folder that isn't there throws.
 - The entry and the calls share one copy of every module, in dev and in the build.
-- The entry's `fetch` runs in the request's scope, as a call does: `Current.get()` is the request and a `Cookies` subclass reads and sets cookies in any route, what it sets joining the route's response. A folder's gate is the calls' - a route checks its own access.
+- The entry's `fetch` runs in the request's scope, as a call does: `Current.get()` is the request and a `Cookies` subclass reads and sets cookies in any route, what it sets joining the route's response. To check access as the calls do, `await within("account", () => ...)` runs that code as a call in `api/account/` would: each gate along the folder is seated and its `new()` awaited, so `Session.get()` works inside, and a gate that refuses throws its error there.
 - `vite build` bundles the entry as `dist/server/index.js`, its other exports included.
 - In dev the entry's `fetch` runs on every request before Vite, with `ctx.waitUntil` logging a rejection. `env` is `rpc({ env })`'s result (say, wrangler's `getPlatformProxy().env`) plus an `ASSETS` that hands the request back to Vite.
 - `@expressive/rpc/calls` is the server's: a client import fails the build, and a call to `handle` outside a server the plugin builds or runs throws. One rpc dev server per process serves it.
