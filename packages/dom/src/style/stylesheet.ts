@@ -30,6 +30,10 @@ type Variable<T> = Extract<
 
 type Bare<K> = K extends `$${infer N}` ? N : never;
 
+type Tokens<T> = { readonly [K in Variable<T> as Bare<K>]: string };
+
+type Rules<T> = style.Map<T> | ((tokens: Tokens<T>) => style.Map<T>) | false | null | undefined;
+
 type Define<T> =
   & { [K in Variable<T> as Bare<K>]?: style.Value }
   & { [K in Named<T> | style.Condition]?: Define<T> };
@@ -95,14 +99,19 @@ declare namespace style {
 
   /** A `style()` whose maps may call the macros of `T`. */
   interface Apply<T> {
-    <C extends object>(type: C, ...maps: (Map<T> | false | null | undefined)[]): C;
+    /**
+     * Style a component with maps that may call the macros of `T`.
+     *
+     * A map may be a function of the pack's `$` tokens, called once here.
+     */
+    <C extends object>(type: C, ...maps: Rules<T>[]): C;
 
     /**
      * `var()` references to the pack's variables, keyed without the `$`.
      *
      * Each is a plain string - use it in templates, arrays and macro arguments.
      */
-    readonly $: { readonly [K in Variable<T> as Bare<K>]: string };
+    readonly $: Tokens<T>;
 
     /**
      * Set the pack's variables at `:root`, over defaults from `use()` rules.
@@ -125,20 +134,20 @@ class Style {
   /**
    * The `style()` for this pack. Without maps, one per class. Each call with
    * maps is its own scope - their rules style only elements written by
-   * components it styles, below their own declarations.
+   * components it styles, below their own declarations. A map may be a
+   * function of the pack's `$` tokens, called once here.
    */
   static use<T extends Style>(
     this: new () => T,
-    ...rules: (style.Map<T> | false | null | undefined)[]
+    ...rules: Rules<T>[]
   ): style.Apply<T> {
-    const given = rules.filter(Boolean) as appearance.StyleMap[];
+    const { tokens } = fields(this);
+    const given = resolve(rules, tokens);
     const shared = !given.length;
     let apply = shared ? bound.get(this) : undefined;
 
     if (!apply) {
       let pack: appearance.Pack | undefined;
-
-      const { tokens } = fields(this);
 
       apply = Object.assign(
         <C extends object>(type: C, ...maps: unknown[]) => {
@@ -148,7 +157,7 @@ class Style {
             rules: given
           };
 
-          return register(type, maps, pack);
+          return register(type, resolve(maps, tokens), pack);
         },
         {
           $: tokens,
@@ -183,6 +192,12 @@ let groups = 0;
 
 function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
   return register(type, maps);
+}
+
+function resolve(maps: readonly unknown[], tokens: object) {
+  return maps
+    .map((map) => (typeof map == 'function' ? map(tokens) : map))
+    .filter(Boolean) as appearance.StyleMap[];
 }
 
 function register<T extends object>(type: T, maps: readonly unknown[], pack?: appearance.Pack): T {

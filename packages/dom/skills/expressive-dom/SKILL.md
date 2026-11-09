@@ -188,20 +188,20 @@ class App extends Css {
   readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
 }
 
-export const style = App.use({
+export const style = App.use(($) => ({
   $dark: { $ink: '#eee' },
-  $mobile: { $gap: '4px' }
-});
+  $mobile: { $gap: '4px' },
+  _a: { color: $.brand }
+}));
 
-export const { $ } = style;
-
-style(Card, { border: ['1px', 'solid', $.ink], padding: $.gap, color: $.brand });
+style(Card, ($) => ({ border: ['1px', 'solid', $.ink], padding: $.gap }));
 style(Callout, { $ink: 'crimson' });
 ```
 
 - A default is emitted once at `:where(:root)`. Values are CSS text - write `'8px'`, not `8`.
 - As a key, a variable declares itself where it is written. In `use()` rules, at the top or under conditions only, it is a default at `:where(:root)`; in a component map or rule, it overrides for that element and its subtree, every consumer below included.
 - `style.$` holds `'var(--ink)'` per variable, keyed without `$` - a plain string, for templates, arrays, macro arguments and computed keys (`$['status' + kind]`). A condition has none.
+- A map given to `style()` or `use()` may be a function of `style.$`, called once at that call - not per render, and without props. In `use()` it is the only way to reach tokens, since `style` does not exist yet.
 - `style.define({ ink: 'red', $dark: { ink: 'pink' } })` sets variables at `:root` over the defaults - document-wide, no re-render; a later call replaces the last. A library's `define` lets an app retheme its components. A key that is not a variable, or an object key that is not a condition, throws.
 - `:root` values under a `:` condition apply while `<html>` matches - a state meant for both, like `$dark` above, lists the element itself (`[data-mode="dark"], [data-mode="dark"] *`).
 - Names are global CSS. An app may use bare names; a library uses `--prefix-name` fields so apps and plain CSS can set them without collisions.

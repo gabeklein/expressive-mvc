@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import { Component } from '@expressive/mvc';
 
@@ -605,6 +605,31 @@ describe('variables', () => {
     );
     expect(getComputedStyle(button).color).toBe('#444');
     expect(button.className).toBe('Deck_button Deck_button-media_min-width_600px');
+  });
+
+  it('will pass tokens to a map given as a function', () => {
+    class Tone extends Style {
+      readonly $tint = '#123';
+    }
+
+    const rules = vi.fn(($: { tint: string }) => ({ _b: { color: $.tint } }));
+    const tone = Tone.use(rules, null);
+    const Badge = () => createElement('i', {}, createElement('b', {}));
+
+    tone(Badge, ($) => ({ outlineColor: $.tint }), false);
+
+    // @ts-expect-error - a pack has no such token
+    const typo = () => tone(Badge, ($) => ({ color: $.hue }));
+    // @ts-expect-error - pack rules get the same tokens
+    const early = () => Tone.use(($) => ({ $tint: $.tint, _b: { color: $.hue } }));
+
+    const node = place(createElement(Badge, {})).querySelector('i')!;
+
+    expect(rules).toHaveBeenCalledOnce();
+    expect(rules).toHaveBeenCalledWith(tone.$);
+    expect(getComputedStyle(node).outlineColor).toBe('#123');
+    expect(getComputedStyle(node.querySelector('b')!).color).toBe('#123');
+    expect([typo, early]).toHaveLength(2);
   });
 
   it('will define variables at the root over their defaults', () => {
