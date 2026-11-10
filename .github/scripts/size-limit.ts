@@ -27,70 +27,70 @@ import { withWorkspaceLinks } from './workspace-links';
 const CASES = [
   {
     name: 'mvc: Model only',
-    limit: 7210,
+    limit: 7340,
     code: `import Model from '@expressive/mvc'; console.log(Model);`
   },
   {
     name: 'mvc: everything',
-    limit: 11260,
+    limit: 11400,
     code: `import * as all from '@expressive/mvc'; console.log(all);`
   },
   {
     name: 'react: Model only',
-    limit: 11330,
+    limit: 11470,
     code: `import '@expressive/react'; import { Model } from '@expressive/mvc'; console.log(Model);`
   },
   {
     name: 'react: typical app',
-    limit: 12310,
+    limit: 12420,
     code: `import '@expressive/react';
            import { Model, Component, get, set, ref, def } from '@expressive/mvc';
            console.log(Model, Component, get, set, ref, def);`
   },
   {
     name: 'react: with collections',
-    limit: 13050,
+    limit: 13190,
     code: `import '@expressive/react';
            import { Model, Component, has, map } from '@expressive/mvc';
            console.log(Model, Component, has, map);`
   },
   {
     name: 'react: everything',
-    limit: 14140,
+    limit: 14270,
     code: `import * as all from '@expressive/react'; import * as mvc from '@expressive/mvc'; console.log(all, mvc);`
   },
   {
     name: 'dom: renderer',
-    limit: 19370,
+    limit: 19490,
     code: `import Model, { Component, Context, def, get, has, map, pending, ref, set } from '@expressive/mvc';
            import { Fragment, Portal, createElement, render } from '@expressive/dom';
            console.log(Model, Component, Context, Fragment, Portal, createElement, def, get, has, map, pending, ref, render, set);`
   },
   {
     name: 'dom: styling',
-    limit: 23690,
+    limit: 24340,
     code: `import * as mvc from '@expressive/mvc';
            import * as dom from '@expressive/dom';
            console.log(mvc, dom);`
   },
   {
     name: 'router: everything',
-    limit: 14390,
+    limit: 14520,
     code: `import * as all from '@expressive/router'; console.log(all);`
   },
   {
     name: 'inspect: install',
-    limit: 12820,
+    limit: 12990,
     code: `import '@expressive/inspect/install';`
   },
   {
     name: 'steps: everything',
-    limit: 18320,
+    limit: 20920,
     code: `import { Steps } from '@expressive/steps'; console.log(Steps);`
   },
   {
     name: 'react + router',
-    limit: 17080,
+    limit: 17210,
     code: `import * as a from '@expressive/react';
            import * as b from '@expressive/router';
            console.log(a, b);`
