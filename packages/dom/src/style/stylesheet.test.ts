@@ -311,6 +311,28 @@ describe('Style', () => {
     ]);
   });
 
+  it('will name a class for a component named only by symbols', () => {
+    const named = (name: string, tag: string) =>
+      Object.defineProperty(() => createElement(tag, {}), 'name', { value: name });
+
+    const Pointer = named('_', 'u');
+    const Red = named('_', 'b');
+    const Same = named('$', 's');
+
+    style(Pointer, { cursor: 'pointer' });
+    style(Red, { color: 'red' });
+    style(Same, { cursor: 'pointer' });
+
+    const root = place([createElement(Pointer, {}), createElement(Red, {}), createElement(Same, {})]);
+    const [pointer, red, same] = ['u', 'b', 's'].map((tag) => root.querySelector(tag)!);
+
+    expect(pointer.className).toBe('c');
+    expect(red.className).toBe('c-2');
+    expect(same.className).toBe('c');
+    expect(getComputedStyle(pointer).cursor).toBe('pointer');
+    expect(getComputedStyle(red).color).toBe('red');
+  });
+
   it('will throw for default as a map key', () => {
     const Fallback = () => createElement('i', {});
 

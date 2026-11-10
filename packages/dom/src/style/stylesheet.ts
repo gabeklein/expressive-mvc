@@ -217,7 +217,7 @@ function emit(block: Block, depth: number, document: Document) {
     ...when.map((condition) => typeof condition == 'string' ? condition : condition.on.name + condition.state),
     ...block.group ? ['group'] : []
   ].join('-');
-  const base = label.replace(/[^\w-]+/g, '_').replace(/_*(-)_*|_+$/g, '$1');
+  const base = label.replace(/[^\w-]+/g, '_').replace(/_*(-)_*|_+$/g, '$1') || 'c';
   let name = base;
 
   for (let index = 2; sheet.names.has(name) && sheet.names.get(name) !== key; index++)
