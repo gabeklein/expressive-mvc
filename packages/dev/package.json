@@ -16,12 +16,6 @@
     "dist",
     "skills"
   ],
-  "skills": [
-    "npm:@expressive/dom",
-    "npm:@expressive/inspect",
-    "npm:@expressive/router",
-    "npm:@expressive/rpc"
-  ],
   "type": "module",
   "sideEffects": [
     "./dist/jsx-runtime.js",

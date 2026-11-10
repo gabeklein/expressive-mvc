@@ -13,7 +13,7 @@ npm install @expressive/dev @expressive/mvc
 
 tsconfig: `"jsxImportSource": "@expressive/dev"` - dom's runtime and its `Model` augmentation.
 
-`@expressive/dev` exports `Route`, `Router` and `NotFound`, and re-exports `Link`, `NavLinks` and `Redirect` from [expressive-router](../expressive-router/SKILL.md) and `render`, `style`, `Css`, `Style`, `Portal`, `Fragment`, `createElement` and `JSX` from [expressive-dom](../expressive-dom/SKILL.md). `Model`, `Component` and instructions come from `@expressive/mvc`. The dev server's inspector is [expressive-inspect](../expressive-inspect/SKILL.md). Per-symbol contracts are JSDoc on hover.
+`@expressive/dev` exports `Route`, `Router` and `NotFound`, and re-exports `Link`, `NavLinks` and `Redirect` from `expressive-router` and `render`, `style`, `Css`, `Style`, `Portal`, `Fragment`, `createElement` and `JSX` from `expressive-dom`. `Model`, `Component` and instructions come from `@expressive/mvc`. The dev server's inspector is `expressive-inspect`. Per-symbol contracts are JSDoc on hover.
 
 ## Layout
 
@@ -65,7 +65,7 @@ import { add } from "./remote";
 - A call POSTs to the folder's path, params filled from the current location (`/blog/a` for `app/blog/[slug]/remote.ts`).
 - Only the folder and those below it may import its sidecar - the build throws otherwise.
 - A `remote/` folder holds several; every module in it belongs to the parent folder and is never a route.
-- Module rules, errors (`HttpError` family from `@expressive/rpc`), ids and `opaque` are rpc's - [expressive-rpc](../expressive-rpc/SKILL.md). Turn off hashed ids with `config({ remote: { opaque: false } })` in `index.ts`.
+- Module rules, errors (`HttpError` family from `@expressive/rpc`), ids and `opaque` are rpc's - `expressive-rpc`. Turn off hashed ids with `config({ remote: { opaque: false } })` in `index.ts`.
 - Only stubs the client loaded (dev) or the build generated are callable; a helper in `remote/` is never an endpoint.
 
 ## Server Model
