@@ -2,6 +2,7 @@
 
 import type { Component } from "@expressive/mvc";
 
+/** Default 404 page - replaced by the root module's `NotFound` export. */
 export function NotFound(): Component.Node {
   return (
     <main style={{ font: "1rem/1.5 system-ui, sans-serif", padding: "2rem" }}>

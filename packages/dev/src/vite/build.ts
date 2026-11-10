@@ -4,7 +4,9 @@ import { viteConfigFile } from "./config";
 import { expressive } from "./plugin";
 
 export interface BuildOptions {
+  /** Unminified client output with stable filenames and no sourcemaps. */
   pretty?: boolean;
+  /** Default true; false builds in memory. */
   write?: boolean;
 }
 
@@ -39,6 +41,7 @@ export function serverBuild(root: string, { write = true }: BuildOptions = {}): 
   };
 }
 
+/** `expressive build` - the client into `dist/client`, then the server into `dist/server/index.js`. */
 export async function runBuild(root = process.cwd(), options: BuildOptions = {}): Promise<void> {
   await build(clientBuild(root, options));
   await build(serverBuild(root, options));

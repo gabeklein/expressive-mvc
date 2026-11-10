@@ -4,6 +4,7 @@ import { createServer } from "vite";
 import { viteConfigFile } from "./config";
 import { expressive } from "./plugin";
 
+/** `expressive dev` - a Vite dev server with the host plugin and inspect's relay. */
 export async function runDev(root = process.cwd()): Promise<void> {
   const host = expressive();
 

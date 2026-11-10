@@ -13,6 +13,8 @@ npm install @expressive/dev @expressive/mvc
 
 tsconfig: `"jsxImportSource": "@expressive/dev"` - dom's runtime and its `Model` augmentation.
 
+`@expressive/dev` exports `Route`, `Router` and `NotFound`, and re-exports `Link`, `NavLinks` and `Redirect` from [expressive-router](../expressive-router/SKILL.md) and `render`, `style`, `Css`, `Style`, `Portal`, `Fragment`, `createElement` and `JSX` from [expressive-dom](../expressive-dom/SKILL.md). `Model`, `Component` and instructions come from `@expressive/mvc`. The dev server's inspector is [expressive-inspect](../expressive-inspect/SKILL.md). Per-symbol contracts are JSDoc on hover.
+
 ## Layout
 
 ```
@@ -37,10 +39,10 @@ Bare-named files under `app/` are support modules. Siblings match static before 
 - `Page` - a function (params via `Route.get().match`) or `class Page extends Route` (from `@expressive/dev`) with `this.match`, fields and `render()`.
 - `Layout` - wraps the folder's pages; `children` is the content slot.
 - `Loading` - placeholder for the slot of the `Layout` beside it, for any page below still loading code, an entry hook or data, until a nested `Layout`. A page's own `Loading` covers it first. Shown on cold arrival only - in-app navigation holds the current page (`Router.get().navigating`).
-- `Catch` - error boundary for the route.
+- `Catch` - error boundary for the route, given `{ error, retry }`.
 - `NotFound` - replaces the default 404 below the folder.
 - `default`, read by kind:
-  - a function is the entry hook: runs with the Route before render; a returned string redirects, `null` falls through to the 404.
+  - a function is the entry hook: runs with the Route before render, may be async; a returned string redirects, `null` falls through to the 404. Under a seat it runs after the first pull - type it `(route: Route & { remote: Seat })`.
   - a Model or Component class renders around the content (around `Layout` if present) and is provided below.
 
 Each module is its own chunk, loaded on first entry, unless it is the root or exports `Loading` or `Catch`.

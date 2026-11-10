@@ -50,6 +50,12 @@ export interface ServeOptions {
   seats?: { pattern: string[]; Type: Seat }[];
 }
 
+/**
+ * Production server for a built app - the generated `dist/server/index.js` calls it.
+ *
+ * Answers calls and twin streams, serves `client` with an `index.html` fallback, and caches `/assets/` immutably.
+ * Listens only after every sidecar's error classes verify.
+ */
 export function serve({ config, client, sidecars = [], seats = [] }: ServeOptions): Server {
   install();
 
