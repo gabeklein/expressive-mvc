@@ -1,4 +1,11 @@
+import { render } from "@expressive/dom";
+import { jsx } from "@expressive/dom/jsx-runtime";
+import { Context } from "@expressive/mvc";
+import { BrowserRouter } from "@expressive/router";
 import { afterEach, beforeEach } from "vitest";
+
+// Imported up front, not inside mount(): a cold load of the dom and router sources under
+// coverage can outlast the first test's timeout when every package runs at once.
 
 let release: (() => void) | undefined;
 
@@ -9,8 +16,6 @@ afterEach(() => {
 });
 
 export async function mount(Type: any) {
-  const { render } = await import("@expressive/dom");
-  const { jsx } = await import("@expressive/dom/jsx-runtime");
   const container = document.createElement("div");
   document.body.append(container);
   release = render(jsx(Type, {}), container);
@@ -25,9 +30,7 @@ export const settle = () => tick().then(tick);
 export function browserRouter() {
   const ctx = {} as { current: { set(value: null): void } };
 
-  beforeEach(async () => {
-    const { BrowserRouter } = await import("@expressive/router");
-    const { Context } = await import("@expressive/mvc");
+  beforeEach(() => {
     window.history.replaceState(null, "", "/");
     ctx.current = BrowserRouter.new(Context.root);
   });
