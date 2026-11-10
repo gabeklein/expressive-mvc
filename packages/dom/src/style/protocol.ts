@@ -26,7 +26,7 @@ interface AppearanceContext {
   ): ResolvedAppearance | undefined;
 }
 
-type EnterAppearance = (parent?: AppearanceContext, key?: string) => AppearanceContext | undefined;
+type EnterAppearance = (parent?: AppearanceContext, key?: string, defines?: boolean) => AppearanceContext | undefined;
 type Emit = (block: Block, depth: number, document: Document) => string;
 
 const SUBCOMPONENT = /^_[A-Z]/;
@@ -47,17 +47,21 @@ function emitClass(block: Block, depth: number, document: Document) {
 }
 
 function enterAppearance(type: Function, key?: string) {
-  const chain: EnterAppearance[] = [];
+  const chain: [EnterAppearance, boolean][] = [];
   let parent: AppearanceContext | undefined;
-  let current: object | null = type;
+  let current: any = type;
+  let found = !key;
 
   while (current && current !== Function.prototype) {
     const enter = registrations.get(current);
-    if (enter) chain.unshift(enter);
+    const defines = !found && Object.hasOwn(current.prototype, key!);
+
+    if (defines) found = true;
+    if (enter) chain.unshift([enter, defines]);
     current = Object.getPrototypeOf(current);
   }
 
-  for (const enter of chain) parent = enter(parent, key);
+  for (const [enter, defines] of chain) parent = enter(parent, key, defines);
   return parent;
 }
 

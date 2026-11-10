@@ -958,41 +958,147 @@ describe('subcomponent', () => {
     }
 
     style(Card, { _active: { color: 'red' }, _Title: { _active: { color: 'blue' } } });
-    style(Page, { _active: { color: 'green' }, _Title: { _active: { color: 'pink' } } });
+    style(Page, { _active: { color: 'green' } });
 
     const root = place(<Page />);
 
     expect(root.querySelector('h1')!.className).toBe('Card_Title_active');
   });
 
-  it('will compose subcomponent maps through the class chain', () => {
+  it('will keep the definer\'s styles on an inherited subcomponent', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title /></div>;
+      }
+    }
+
+    class Fancy extends Card {}
+
+    style(Card, { _active: { color: 'red' }, _Title: { _active: { color: 'blue' } } });
+    style(Fancy, { _active: { color: 'green' } });
+
+    const root = place(<Fancy />);
+
+    expect(root.querySelector('h1')!.className).toBe('Card_Title_active');
+  });
+
+  it('will style an overriding subcomponent by its own map only', () => {
     class Card extends Component {
       Title() {
         return <h1 _active _muted>title</h1>;
       }
 
-      render() {
-        return <div><this.Title /><this.Badge /></div>;
+      Badge() {
+        return <b _active>badge</b>;
       }
 
-      Badge() {
-        return null as Component.Node;
+      render() {
+        return <div><this.Title /><this.Badge /></div>;
       }
     }
 
     class Fancy extends Card {
+      Title() {
+        return <h1 _active _muted>fancy</h1>;
+      }
+
       Badge() {
-        return <b _active>badge</b>;
+        return <b _active>fancy</b>;
       }
     }
 
-    style(Card, { _active: { color: 'red' }, _Title: { _active: { color: 'blue' } } });
+    style(Card, {
+      _Title: { _active: { color: 'blue' } },
+      _Badge: { _active: { color: 'red' } }
+    });
     style(Fancy, { _Title: { _muted: { opacity: 0.5 } } });
+
+    const fancy = place(<Fancy />);
+
+    expect(fancy.querySelector('h1')!.className).toBe('Fancy_Title_muted');
+    expect(fancy.querySelector('b')!.className).toBe('');
+
+    const card = place(<Card />);
+
+    expect(card.querySelector('h1')!.className).toBe('Card_Title_active');
+    expect(card.querySelector('b')!.className).toBe('Card_Badge_active');
+  });
+
+  it('will style a subcomponent from its nearest definer', () => {
+    class Card extends Component {
+      Title() {
+        return <h1 _active>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title /></div>;
+      }
+    }
+
+    class Fancy extends Card {
+      Title() {
+        return <h1 _active>fancy</h1>;
+      }
+    }
+
+    class Fancier extends Fancy {}
+
+    style(Card, { _Title: { _active: { color: 'blue' } } });
+    style(Fancy, { _Title: { _active: { color: 'pink' } } });
+
+    const root = place(<Fancier />);
+
+    expect(root.querySelector('h1')!.className).toBe('Fancy_Title_active');
+  });
+
+  it('will throw if a subclass styles a subcomponent it does not define', () => {
+    class Card extends Component {
+      Title() {
+        return <h1>title</h1>;
+      }
+    }
+
+    class Fancy extends Card {}
+
+    expect(() => style(Fancy, { _Title: { color: 'red' } })).toThrow(
+      'Subcomponent "_Title" styles only a Title() method defined on Fancy. ' +
+      'Override Title() there, or have the owner put a rule on the element - <this.Title _rule /> - and style that rule.'
+    );
+  });
+
+  it('will throw for a subcomponent on a function component', () => {
+    function Card() {
+      return null;
+    }
+
+    expect(() => style(Card, { _Title: { color: 'red' } })).toThrow(
+      'Subcomponent "_Title" styles only a Title() method defined on Card.'
+    );
+    expect(() => style(() => null, { _Title: { color: 'red' } })).toThrow('Subcomponent "_Title"');
+  });
+
+  it('will style a subcomponent a subclass does not define through a rule its owner places', () => {
+    class Card extends Component {
+      Title() {
+        return <h1>title</h1>;
+      }
+
+      render() {
+        return <div><this.Title _title /></div>;
+      }
+    }
+
+    class Fancy extends Card {}
+
+    style(Fancy, { _title: { color: 'red' } });
 
     const root = place(<Fancy />);
 
-    expect(root.querySelector('h1')!.className).toBe('Card_Title_active Fancy_Title_muted');
-    expect(root.querySelector('b')!.className).toBe('');
+    expect(root.querySelector('h1')!.className).toBe('Fancy_title-d1');
   });
 
   it('will still apply rules a caller hands a subcomponent', () => {
@@ -1068,6 +1174,50 @@ describe('hot patch', () => {
     await flushMicrotasks();
 
     expect(rule()).toContain('blue');
+  });
+
+  it('will style a subcomponent by its definer across a patch', async () => {
+    const version = (override: boolean) => {
+      class Plate extends Component {
+        Title() {
+          return <h1 _active>title</h1>;
+        }
+
+        render() {
+          return <div><this.Title /></div>;
+        }
+      }
+
+      style(Plate, { _Title: { _active: { color: 'red' } } });
+
+      const Base = hot.accept('dom-piece', { Plate }).Plate;
+
+      class Gilded extends Base {}
+
+      if (override)
+        Object.defineProperty(Gilded.prototype, 'Title', {
+          configurable: true,
+          writable: true,
+          value() {
+            return <h1 _active>fancy</h1>;
+          }
+        });
+
+      style(Gilded, override ? { _Title: { _active: { color: 'blue' } } } : { color: 'green' });
+
+      return hot.accept('dom-piece', { Gilded }).Gilded;
+    };
+
+    const Gilded = version(false);
+    const root = place(<Gilded />);
+
+    expect(root.querySelector('h1')!.className).toBe('Plate_Title_active');
+
+    version(true);
+    await flushMicrotasks();
+
+    expect(root.querySelector('h1')!.textContent).toBe('fancy');
+    expect(root.querySelector('h1')!.className).toMatch(/^Gilded\d*_Title_active$/);
   });
 });
 
