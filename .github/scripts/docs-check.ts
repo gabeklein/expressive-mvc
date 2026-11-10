@@ -44,16 +44,11 @@ type Doc = { path: string; text: string };
 
 const problems: string[] = [];
 
-/** Installed skills sit side by side, so a skill links a sibling as `../expressive-<pkg>/`. */
+/** Skill name to its source directory. Installed, a skill sits at `node_modules/@expressive/<pkg>/skills/expressive-<pkg>/`. */
 const skills = new Map<string, string>();
 
-/** Skills a skill may link - its own and its dependencies', the only ones certain to be installed with it. */
-const reach = new Map<string, Set<string>>();
-
-for await (const path of new Glob('packages/*/skills/*/SKILL.md').scan('.')) {
-  const name = path.split('/')[3];
-  const pkg = await Bun.file(join(path.split('/').slice(0, 2).join('/'), 'package.json')).json();
-  const deps = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
+for (const pattern of ['packages/*/skills/*/SKILL.md', 'skills/*/SKILL.md']) for await (const path of new Glob(pattern).scan('.')) {
+  const name = path.split('/').at(-2)!;
 
   try {
     const meta = Bun.YAML.parse((await Bun.file(path).text()).match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '') as any;
@@ -64,14 +59,7 @@ for await (const path of new Glob('packages/*/skills/*/SKILL.md').scan('.')) {
     problems.push(`${path}  frontmatter is not valid YAML, so skill installers skip it - ${(error as Error).message}`);
   }
 
-  const listed: string[] = (pkg.skills ?? []).map((entry: string) => entry.replace(/^npm:/, ''));
-
-  for (const dep of Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith('@expressive/')))
-    if (!listed.includes(dep))
-      problems.push(`${pkg.name} depends on ${dep} - list "npm:${dep}" in its package.json skills, or skills sync will not install that skill`);
-
   skills.set(name, dirname(path));
-  reach.set(name, new Set([name, ...deps.filter((d) => d.startsWith('@expressive/')).map((d) => d.replace('@expressive/', 'expressive-'))]));
 }
 
 /** Path within the installed skills layout to its source file. */
@@ -82,11 +70,11 @@ const fromSkills = (path: string) => {
   return dir && join(dir, ...rest);
 };
 
-const toSkills = (path: string) => path.replace(/^packages\/[^/]+\/skills\//, '');
+const toSkills = (path: string) => path.replace(/^(packages\/[^/]+\/)?skills\//, '');
 
 const docs: Doc[] = [];
 
-for (const pattern of ['packages/*/skills/**/*.md', 'website/content/**/*.{md,mdx}', 'website/public/llms.txt'])
+for (const pattern of ['packages/*/skills/**/*.md', 'skills/**/*.md', 'website/content/**/*.{md,mdx}', 'website/public/llms.txt'])
   for await (const path of new Glob(pattern).scan('.'))
     docs.push({ path, text: await Bun.file(path).text() });
 
@@ -163,27 +151,33 @@ for (const { path, text } of docs) {
       problems.push(`${at(path, text, match.index)}  links /llm/${target}, but no such document exists`);
   }
 
-  // --- links between skill files must resolve once installed, anchors included ---
-  if (path.startsWith('packages/'))
+  // --- a skill links only its own files; other skills are named in plain text, and those names must resolve ---
+  if (toSkills(path) !== path) {
+    const from = toSkills(path).split('/')[0];
+
     for (const match of text.matchAll(/\]\((\.{0,2}[^)\s:#]*\.md)(?:#([^)\s]+))?\)/g)) {
       const [, target, anchor] = match;
       const into = normalize(join(dirname(toSkills(path)), target));
       const file = fromSkills(into);
-      const from = toSkills(path).split('/')[0];
 
-      if (file && !reach.get(from)!.has(into.split('/')[0])) {
-        problems.push(`${at(path, text, match.index)}  links ${target}, but ${from} does not depend on that package - name the skill in plain text`);
-        continue;
-      }
-
-      if (!file || !(await Bun.file(file).exists())) {
-        problems.push(`${at(path, text, match.index)}  links ${target}, which is not in any installed skill`);
-        continue;
-      }
-
-      if (anchor && !headings(await Bun.file(file).text()).has(anchor))
+      if (into.split('/')[0] !== from)
+        problems.push(`${at(path, text, match.index)}  links ${target} outside its own skill - name it in plain text, as \`${into}\``);
+      else if (!file || !(await Bun.file(file).exists()))
+        problems.push(`${at(path, text, match.index)}  links ${target}, which does not exist`);
+      else if (anchor && !headings(await Bun.file(file).text()).has(anchor))
         problems.push(`${at(path, text, match.index)}  links ${target}#${anchor}, but that file has no such heading`);
     }
+
+    for (const match of text.matchAll(/`(expressive-[a-z]+\/[^`\s#]+\.md)(?:#([^`\s]+))?`/g)) {
+      const [, target, anchor] = match;
+      const file = fromSkills(target);
+
+      if (!file || !(await Bun.file(file).exists()))
+        problems.push(`${at(path, text, match.index)}  names ${target}, which is not in any skill`);
+      else if (anchor && !headings(await Bun.file(file).text()).has(anchor))
+        problems.push(`${at(path, text, match.index)}  names ${target}#${anchor}, but that file has no such heading`);
+    }
+  }
 
   // --- internal docs links must resolve, anchors included ---
   for (const match of text.matchAll(/\]\((\/docs\/[^)\s]*)\)/g)) {

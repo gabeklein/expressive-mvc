@@ -94,7 +94,7 @@ style(Button, {
 - A rule named for a tag (`_label`, `_small`, `_time`) also styles every such element the component renders - pick another name for a flag-only rule.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
 - A map never reaches inside a child component, placed as an element or an instance. Rules, base declarations, tag matches and descendant scopes apply only to elements the component's own JSX writes - a `_rule` on a child component element styles that child's root, never its internals. JSX resolves in the scope that wrote it: `children` passed to a wrapper keep the author's rules - including rules nested in a `_rule` on the wrapper element - and the wrapper's rules do not reach them; its base declarations still apply where they are its roots. Only the class chain inherits - `Derived` sees `Base`'s rules.
-- A map styles `render()` output only, not subcomponents ([expressive-mvc/component.md](../expressive-mvc/component.md#subcomponents)). `_` plus a capital letter addresses one by key: its body is that subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders. A `_Title` body composes through the class chain like the top-level map; `_Title` nested in a rule, or as an attribute on any element, throws. To share rules, pass one map to both: `style(Card, shared, { _Title: shared })`.
+- A map styles `render()` output only, not subcomponents (`expressive-mvc/component.md#subcomponents`). `_` plus a capital letter addresses one by key: its body is that subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders. A `_Title` body composes through the class chain like the top-level map; `_Title` nested in a rule, or as an attribute on any element, throws. To share rules, pass one map to both: `style(Card, shared, { _Title: shared })`.
 
 ```tsx
 style(Card, {
@@ -105,7 +105,7 @@ style(Card, {
   }
 });
 ```
-- Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([expressive-mvc/state/state.md](../expressive-mvc/state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
+- Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value (`expressive-mvc/state/state.md#unmanaged-instance-data`). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
 - `$name` is a condition or variable named on the pack ([Conditions](#conditions), [Variables](#variables)); an unknown one throws, as does one written as a value string (`color: '$brand'`) - values use tokens ([Variables](#variables)).
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 - Under the dev JSX runtime, a `_name` attribute that no rule matches warns once with the nearest rule name. It counts the writing component's rules, the receiving component's own, and a class Component's `_` field; a `_name` a component received and spreads on is checked where it was written. A rule supplied conditionally (`App.use(wide && rules)`) warns while absent - declare it empty (`_cell: {}`) where it is always present.
@@ -273,11 +273,11 @@ function Total() {
 
 `Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent; outside render it reads the root context, untracked. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it. The lookup follows context - a provider replaced, arriving after mount or leaving renders the scope. Once the provider leaves, `get(false)` returns `undefined` and a required `get()` throws.
 
-An FC owns nothing - same as React. Owned state is a class field or `<Component for={Type}>` above the FC; per-render arguments are attributes assigning fields - [expressive-mvc/component.md](../expressive-mvc/component.md#props).
+An FC owns nothing - same as React. Owned state is a class field or `<Component for={Type}>` above the FC; per-render arguments are attributes assigning fields - `expressive-mvc/component.md#props`.
 
 Only a `Component` renders - as an element or placed inline (`{page}`). A plain `Model` is data: `<Session />` or `{session}` throws; extend `Component` to render, or provide it with `<Component for={Session} name="x">`. A view of a Model owns it as a field. A PascalCase method on any Model rendered as an element (`<this.Label />`, `<session.Badge />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. Host-read members on a Component are `render`, `fallback`, `catch` and `key`; a field or method by one of these names opts into that behavior.
 
-`<Component for>` ([expressive-mvc/state/context.md](../expressive-mvc/state/context.md#providing-with-component)), implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
+`<Component for>` (`expressive-mvc/state/context.md#providing-with-component`), implicit Component context, and context through portals use MVC `Context`; no renderer context API is exposed.
 
 ## Code splitting, boundaries, transitions
 
@@ -332,7 +332,7 @@ import expressive from '@expressive/dom/vite';
 export default defineConfig({ plugins: [expressive()] });
 ```
 
-Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps ([expressive-mvc/state/lifecycle.md](../expressive-mvc/state/lifecycle.md#hot-patching)). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
+Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps (`expressive-mvc/state/lifecycle.md#hot-patching`). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
 
 A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place. An anonymous `export default` is not refreshed - the module reloads.
 

@@ -11,7 +11,7 @@ description: Multi-step processes as Expressive Models (@expressive/steps) - cla
 npm install @expressive/steps @expressive/mvc
 ```
 
-Per-member contract - signatures, defaults, edge cases, examples - is JSDoc on hover, or `node_modules/@expressive/steps/dist/index.d.ts`. This skill covers how the pieces compose. A Steps class is a `Model` - fields, `has`, `map`, `set`, `get` and `this.is` are [expressive-mvc](../expressive-mvc/SKILL.md)'s.
+Per-member contract - signatures, defaults, edge cases, examples - is JSDoc on hover, or `node_modules/@expressive/steps/dist/index.d.ts`. This skill covers how the pieces compose. A Steps class is a `Model` - fields, `has`, `map`, `set`, `get` and `this.is` are `expressive-mvc`'s.
 
 ## Shape
 

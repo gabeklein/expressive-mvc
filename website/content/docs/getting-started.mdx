@@ -26,26 +26,14 @@ It exports nothing for app code - everything comes from `@expressive/mvc` by nam
 
 ### Agent skills
 
-Each package ships a skill for coding agents, versioned with the package. Link the installed packages' skills into your project with the [`skills`](https://github.com/vercel-labs/skills) CLI:
+Each package ships a skill for coding agents, versioned with the package, at `node_modules/@expressive/<pkg>/skills/`. Point your agent at them with a line in `AGENTS.md` (or `CLAUDE.md`):
 
-```bash
-npm install -D skills
-npx skills experimental_sync -y
+```md
+Before working with an `@expressive/*` package, read its skill at
+`node_modules/@expressive/<pkg>/skills/expressive-<pkg>/SKILL.md` - `expressive-mvc` first.
 ```
 
-Run it from `prepare` so the skills follow every install and upgrade, and ignore the links it creates:
-
-```json
-// package.json
-"scripts": { "prepare": "skills experimental_sync -y" }
-```
-
-```text
-.agents/skills/expressive-*
-.claude/skills/expressive-*
-```
-
-Trying the library before installing it? `npx skills add gabeklein/expressive` copies the skills from GitHub instead - choose which ones, or pass `--skill expressive-mvc`.
+Or install the same instruction as a skill with the [`skills`](https://github.com/vercel-labs/skills) CLI - `npx skills add gabeklein/expressive`. Either way the docs your agent reads always match the installed version, with nothing to re-run after an upgrade. Before the packages are installed, the skill reads them from expressive.dev instead.
 
 ### Requirements
 

@@ -301,7 +301,7 @@ Every broad rule here has a locality constraint. Apply both halves. When auditin
 
 Fetch these for detailed documentation when the task requires deeper knowledge. **Read `expressive-react/refactor.md` in full before any hook-migration or refactor task.**
 
-Each package ships its own skill, installed side by side (`.claude/skills/`, `.agents/skills/`) - or, reading from `node_modules`, at `node_modules/@expressive/<pkg>/skills/expressive-<pkg>/`. A skill links only its dependencies' skills; others are named in plain text (`expressive-react/refactor.md`) and present only when that package is installed.
+Each package ships its own skill at `node_modules/@expressive/<pkg>/skills/expressive-<pkg>/` - read it by that path, since `.gitignore`-aware search skips `node_modules`. Skills name each other in plain text: `expressive-react/refactor.md` is `refactor.md` in the `expressive-react` skill, present only when `@expressive/react` is installed.
 
 ### Design intent
 
