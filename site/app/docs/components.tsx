@@ -74,19 +74,19 @@ export function Card({ title, href, description }: CardProps) {
   );
 }
 
-style(Card, {
+style(Card, $ => ({
   _card: {
     display: "flex",
     flexDirection: "column",
     gap: 4,
     padding: [12, 14],
-    border: "1px solid #e3e3e8",
+    border: ["1px", "solid", $.line],
     borderRadius: 8,
     color: "inherit",
-    ":hover": { borderColor: "#3a5bd9" },
+    ":hover": { borderColor: $.accent },
   },
-  _description: { fontSize: "0.9rem", color: "#6e6e73" },
-});
+  _description: { fontSize: "0.9rem", color: $.muted },
+}));
 
 export class Compare extends Component {
   labels: string[] = [];
@@ -114,8 +114,6 @@ export class Compare extends Component {
 style(Compare, {
   _compare: { margin: [16, 0] },
   _tabs: { row: 4, marginBottom: -8 },
-  _tab: { font: "inherit", fontSize: "0.85rem", padding: [4, 10], border: "1px solid #e3e3e8", borderRadius: 6, background: "white", cursor: "pointer" },
-  _selected: { borderColor: "#3a5bd9", color: "#3a5bd9" },
 });
 
 export class Tabs extends Component {
@@ -143,8 +141,6 @@ export class Tabs extends Component {
 
 style(Tabs, {
   _bar: { row: 4 },
-  _tab: { font: "inherit", padding: [4, 10], border: "1px solid #e3e3e8", borderRadius: 6, background: "white", cursor: "pointer" },
-  _selected: { borderColor: "#3a5bd9" },
 });
 
 export function Tab({ value, children }: { value: string; children?: Component.Node }) {
@@ -164,6 +160,6 @@ export function Playground({ of, height = 480 }: { of: string; height?: number }
   );
 }
 
-style(Playground, {
-  _playground: { display: "flex", alignItems: "center", justifyContent: "center", border: "1px dashed #c7c7cc", borderRadius: 8, color: "#6e6e73", margin: [16, 0] },
-});
+style(Playground, $ => ({
+  _playground: { display: "flex", alignItems: "center", justifyContent: "center", border: ["1px", "dashed", $.line], borderRadius: 8, color: $.muted, margin: [16, 0] },
+}));

@@ -1,4 +1,4 @@
-import type { Component } from "@expressive/mvc";
+import { Component, set } from "@expressive/mvc";
 import { Route } from "@expressive/dev";
 
 import { style } from "../style";
@@ -17,8 +17,8 @@ function viewOf(slug: string) {
 }
 
 export function Page() {
-  const { match } = Route.get();
-  const slug = match?.["*"] ?? "";
+  const { base, match = {} } = Route.get();
+  const slug = [...base.split("/").slice(2), match["*"]].filter(Boolean).join("/");
 
   if (!docOf(slug)) return <h1>Page not found</h1>;
 
@@ -29,24 +29,37 @@ export function Page() {
 
 style(Page);
 
-function Doc({ module }: { module: Module }) {
-  const { default: Content, frontmatter = {}, toc } = module;
-  const { title, description } = frontmatter;
+class Doc extends Component {
+  module = set<Module>();
 
-  if (title) document.title = `${title} - Expressive`;
+  protected new() {
+    this.get(() => {
+      const { title } = this.module.frontmatter ?? {};
+      const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
 
-  return (
-    <div _page>
-      <article>
-        {title && <H1 id="top">{title}</H1>}
-        {description && <p _lead>{description}</p>}
-        <Content />
-      </article>
-      <aside _aside>
-        <Toc entries={toc} />
-      </aside>
-    </div>
-  );
+      document.title = title ? `${title} - Expressive` : "Expressive";
+
+      if (target) target.scrollIntoView();
+      else scrollTo(0, 0);
+    });
+  }
+
+  render() {
+    const { default: Content, frontmatter: { title, description } = {}, toc } = this.module;
+
+    return (
+      <div _page>
+        <article>
+          {title && <H1 id="top">{title}</H1>}
+          {description && <p _lead>{description}</p>}
+          <Content />
+        </article>
+        <aside _aside>
+          <Toc entries={toc} />
+        </aside>
+      </div>
+    );
+  }
 }
 
 style(Doc, $ => ({

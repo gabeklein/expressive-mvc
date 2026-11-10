@@ -30,5 +30,7 @@ export const style = Site.use($ => ({
   _blockquote: { margin: [16, 0], padding: [4, 16], borderInlineStart: ["3px", "solid", $.line], color: $.muted },
   _table: { borderCollapse: "collapse", width: "100%", margin: [16, 0], display: "block", overflowX: "auto" },
   _th: { textAlign: "start", borderBottom: ["1px", "solid", $.line], padding: [6, 10] },
+  _tab: { font: "inherit", fontSize: "0.85rem", padding: [4, 10], border: ["1px", "solid", $.line], borderRadius: 6, background: "white", cursor: "pointer" },
+  _selected: { borderColor: $.accent, color: $.accent },
   _td: { borderBottom: ["1px", "solid", $.line], padding: [6, 10], verticalAlign: "top" },
 }));
