@@ -75,7 +75,8 @@ export function serve({ config, client, sidecars = [], seats = [] }: ServeOption
 
     const { pathname } = new URL(request.url);
 
-    if (sendFile(res, client, pathname) || sendFile(res, client, "/index.html")) return;
+    if (sendFile(res, client, pathname) || sendFile(res, client, join(pathname, "index.html"))) return;
+    if (sendFile(res, client, "/200.html") || sendFile(res, client, "/index.html")) return;
 
     res.statusCode = 404;
     res.end("Not found");

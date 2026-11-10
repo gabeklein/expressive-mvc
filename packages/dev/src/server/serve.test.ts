@@ -84,6 +84,30 @@ describe("serve", () => {
     vi.restoreAllMocks();
   });
 
+  it("will serve a page's index.html, else the 200.html shell", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const dir = mkdtempSync(join(tmpdir(), "client-"));
+    mkdirSync(join(dir, "about"));
+    writeFileSync(join(dir, "index.html"), "home");
+    writeFileSync(join(dir, "200.html"), "shell");
+    writeFileSync(join(dir, "about", "index.html"), "about");
+
+    const server = serve({ config: { port: 0 }, client: dir });
+    await new Promise(done => server.once("listening", done));
+
+    const base = `http://localhost:${(server.address() as AddressInfo).port}`;
+    const text = async (path: string) => (await fetch(base + path)).text();
+
+    expect(await text("/")).toBe("home");
+    expect(await text("/about")).toBe("about");
+    expect(await text("/about/")).toBe("about");
+    expect(await text("/blog/hello")).toBe("shell");
+
+    server.closeAllConnections();
+    server.close();
+    vi.restoreAllMocks();
+  });
+
   it("will reply 404 with no file and no shell", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
 
