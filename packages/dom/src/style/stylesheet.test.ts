@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import { Component } from '@expressive/mvc';
 
@@ -8,8 +8,8 @@ import { Css } from './css';
 import { Style, style } from './stylesheet';
 
 class Sides extends Style {
-  $wide = '@media (min-width: 600px)';
-  $lit = ':hover';
+  readonly $wide = '@media (min-width: 600px)';
+  readonly $lit = ':hover';
   edge(side: 'Top' | 'Left') { return { [`border${side}`]: '1px solid' }; }
   row(gap?: string) { return { display: 'flex', gap }; }
   pill(value: number) { return { marginLeft: `${value}px` }; }
@@ -531,12 +531,189 @@ describe('Style', () => {
 
   it.each([
     ['a field', class Field extends Style { tone = 'red'; }, 'Field "tone" on Field is reserved. Define macros as methods.'],
-    ['a condition without a prefix', class Bare extends Style { $tone = 'red'; }, 'Condition "$tone" on Bare must start with "@" or ":".'],
-    ['a condition that is not a string', class Count extends Style { $size = 2; }, 'Condition "$size" on Count must start with "@" or ":".'],
+    ['an alias that is not a string', class Count extends Style { $size = 2; }, '"$size" on Count must be a string.'],
     ['a prefixed method', class Prefixed extends Style { _rule() { return {}; } }, '"_rule" on Prefixed must be a method with a bare name.'],
     ['a getter', class Getter extends Style { get tone() { return {}; } }, '"tone" on Getter must be a method with a bare name.'],
     ['a $ method', class Hook extends Style { $tone() { return {}; } }, '"$tone" on Hook must be a method with a bare name.']
   ] as [string, typeof Style, string][])('will throw for %s', (_, type, message) => {
     expect(() => type.use()({}, { color: 'red' })).toThrow(message);
+  });
+});
+
+describe('variables', () => {
+  class Theme extends Css {
+    readonly $inkLight = '#222';
+    readonly $line = '--theme-line';
+    readonly $wide = '@media (min-width: 600px)';
+    readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
+  }
+
+  function roots() {
+    return [...document.head.querySelectorAll('style[data-expressive=root]')]
+      .map((element) => element.textContent!.replace(/\s+/g, ' '));
+  }
+
+  function rules(name: string) {
+    return [...document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!.sheet!.cssRules]
+      .map((rule) => rule.cssText.replace(/\s+/g, ' '))
+      .filter((rule) => rule.includes(`.${name}`));
+  }
+
+  it('will type variables, conditions and tokens', () => {
+    const Swatch = () => createElement('i', {});
+    const map: style.Map<Theme> = { $inkLight: 'red', color: 'var(--theme-line)', $wide: { $line: '4px' } };
+    // @ts-expect-error - a variable holds a value
+    const scoped: style.Map<Theme> = { $inkLight: { color: 'red' } };
+    // @ts-expect-error - a condition holds a map
+    const bare: style.Map<Theme> = { $wide: 'red' };
+    // @ts-expect-error - a condition has no token
+    const token = () => Theme.use()(Swatch, ($) => ({ color: $.wide }));
+
+    expect([map, scoped, bare, token]).toHaveLength(4);
+  });
+
+  it('will name a variable from its field and default it at the root', () => {
+    const Swatch = () => createElement('i', {});
+    const tokens = vi.fn(($: { inkLight: string; line: string }) => ({ color: $.inkLight, outline: `1px solid ${$.inkLight}` }));
+
+    Theme.use()(Swatch, tokens);
+
+    const node = place(createElement(Swatch, {})).querySelector('i')!;
+
+    expect(tokens).toHaveBeenCalledWith(expect.objectContaining({ inkLight: 'var(--ink-light)', line: 'var(--theme-line)' }));
+    expect(roots()).toContain(':where(:root){--ink-light: #222;}');
+    expect(getComputedStyle(node).color).toBe('#222');
+  });
+
+  it('will declare a variable from its $ key for an element and its subtree', () => {
+    const Shade = () => createElement('i', {});
+
+    Theme.use()(Shade, { $inkLight: 'red', $wide: { $line: '9px' } });
+    place(createElement(Shade, {}));
+
+    expect(rules('Shade')).toEqual([
+      '.Shade { --ink-light: red; }',
+      '@media (min-width: 600px) { .Shade-media_min-width_600px { --theme-line: 9px; } }'
+    ]);
+  });
+
+  it('will set defaults at the root from pack rules', () => {
+    class Deck extends Style {
+      readonly $edge = '--deck-edge';
+      readonly $wide = '@media (min-width: 600px)';
+      readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
+    }
+
+    const deck = Deck.use(($) => ({
+      $edge: '#222',
+      _button: { color: $.edge },
+      $wide: { $edge: '#444', _button: { opacity: 0.5 } },
+      $dark: { $edge: '#eee' }
+    }));
+
+    const Bar = () => createElement('button', {});
+
+    deck(Bar);
+
+    const button = place(createElement(Bar, {})).querySelector('button')!;
+
+    expect(roots()).toContain(
+      ':where(:root){--deck-edge: #222;} ' +
+      '@media (min-width: 600px){:where(:root){--deck-edge: #444;}} ' +
+      ':where(:root:is(:is([data-mode="dark"], [data-mode="dark"] *))){--deck-edge: #eee;}'
+    );
+    expect(getComputedStyle(button).color).toBe('#444');
+    expect(button.className).toBe('Deck_button Deck_button-media_min-width_600px');
+  });
+
+  it('will pass tokens to a map given as a function', () => {
+    class Tone extends Style {
+      readonly $tint = '#123';
+    }
+
+    const rules = vi.fn(($: { tint: string }) => ({ _b: { color: $.tint } }));
+    const tone = Tone.use(rules, null);
+    const Badge = () => createElement('i', {}, createElement('b', {}));
+
+    tone(Badge, ($) => ({ outlineColor: $.tint }), false);
+
+    // @ts-expect-error - a pack has no such token
+    const typo = () => tone(Badge, ($) => ({ color: $.hue }));
+    // @ts-expect-error - pack rules get the same tokens
+    const early = () => Tone.use(($) => ({ $tint: $.tint, _b: { color: $.hue } }));
+
+    const node = place(createElement(Badge, {})).querySelector('i')!;
+
+    expect(rules).toHaveBeenCalledOnce();
+    expect(rules).toHaveBeenCalledWith({ tint: 'var(--tint)' });
+    expect(getComputedStyle(node).outlineColor).toBe('#123');
+    expect(getComputedStyle(node.querySelector('b')!).color).toBe('#123');
+    expect([typo, early]).toHaveLength(2);
+  });
+
+  it('will let a later default of a variable win, as a re-run module does', () => {
+    function edition(color: string) {
+      class Edition extends Style {
+        readonly $hue = color;
+      }
+
+      const apply = Edition.use();
+      const Mark = () => createElement('i', {});
+
+      apply(Mark, ($) => ({ color: $.hue }));
+      return place(createElement(Mark, {})).querySelector('i')!;
+    }
+
+    edition('red');
+    const node = edition('blue');
+
+    expect(roots().filter((text) => text.includes('--hue'))).toEqual([':where(:root){--hue: red;}', ':where(:root){--hue: blue;}']);
+    expect(getComputedStyle(node).color).toBe('blue');
+  });
+
+  it('will rewrite roots into a recreated head', () => {
+    class Late extends Style {
+      readonly $lateHue = 'navy';
+    }
+
+    const late = Late.use();
+    const Dot = () => createElement('i', {});
+
+    late(Dot, ($) => ({ color: $.lateHue }));
+    place(createElement(Dot, {}));
+
+    for (const element of document.head.querySelectorAll('style[data-expressive]')) element.remove();
+
+    const Again = () => createElement('b', {});
+
+    late(Again, ($) => ({ color: $.lateHue }));
+
+    const node = place(createElement(Again, {})).querySelector('b')!;
+
+    expect(roots()).toContain(':where(:root){--late-hue: navy;}');
+    expect(getComputedStyle(node).color).toBe('navy');
+  });
+
+  it('will keep roots in place when only the sheet is recreated', () => {
+    class Kept extends Style {
+      readonly $keptHue = 'teal';
+    }
+
+    const kept = Kept.use();
+    const Dot = () => createElement('i', {});
+
+    kept(Dot, ($) => ({ color: $.keptHue }));
+    place(createElement(Dot, {}));
+
+    document.head.querySelector('style[data-expressive=dom]')!.remove();
+
+    const Again = () => createElement('b', {});
+
+    kept(Again, ($) => ({ color: $.keptHue }));
+
+    const node = place(createElement(Again, {})).querySelector('b')!;
+
+    expect(roots().filter((text) => text.includes('--kept-hue'))).toEqual([':where(:root){--kept-hue: teal;}']);
+    expect(getComputedStyle(node).color).toBe('teal');
   });
 });

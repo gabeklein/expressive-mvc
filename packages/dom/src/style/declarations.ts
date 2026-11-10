@@ -16,5 +16,11 @@ function applyDeclarations(style: CSSStyleDeclaration, declarations: Declaration
   }
 }
 
-export { applyDeclarations };
+function serialize(document: Document, declarations: Declaration) {
+  const value = document.createElement('div').style;
+  applyDeclarations(value, declarations);
+  return value.cssText;
+}
+
+export { applyDeclarations, serialize };
 export type { Declaration };

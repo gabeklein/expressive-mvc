@@ -1,5 +1,7 @@
 import { createAppearanceToken, registerAppearance, SUBCOMPONENT } from './protocol';
 import type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearance } from './protocol';
+import { setRoot } from './root';
+import type { Root } from './root';
 
 type StyleMap = Record<string, unknown>;
 
@@ -66,6 +68,7 @@ const contexts = new WeakMap<StyleScope, AppearanceContext>();
 const rootScopes = new WeakMap<object, StyleScope>();
 const STYLES = Symbol('@expressive/dom.styles');
 const entered = new WeakSet<object>();
+const rooted = new WeakMap<StyleScope, StyleMap>();
 const LOW = 2 ** 20;
 
 function createStyleScope(parent: StyleScope | undefined, value: unknown, label?: string, pack?: Pack, low?: boolean): StyleScope | undefined {
@@ -83,8 +86,9 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
   const defines = pack && !low;
   const macros = defines ? Object.create(parent?.macros || null) as StyleMap : parent?.macros || Object.create(null);
 
-  for (const key of Object.keys(value)) {
-    const entry = flatten((value as StyleMap)[key], key);
+  for (const written of Object.keys(value)) {
+    const key = defines ? written : alias(macros, written);
+    const entry = flatten((value as StyleMap)[written], key);
 
     if (SUBCOMPONENT.test(key))
       throw new Error(`Subcomponent "${key}" must be at the top of a style() map.`);
@@ -140,8 +144,9 @@ function createStyleScope(parent: StyleScope | undefined, value: unknown, label?
 function lift(frame: Frame, paths: string[][], body: StyleMap, own: string[], source: StyleMap, macros: StyleMap) {
   const rest: StyleMap = {};
 
-  for (const key of Object.keys(body)) {
-    const entry = flatten(body[key], key);
+  for (const written of Object.keys(body)) {
+    const key = alias(macros, written);
+    const entry = flatten(body[written], key);
 
     if (key[0] == '_') {
       const name = key.slice(1);
@@ -187,12 +192,13 @@ function extendContext(parent: AppearanceContext | undefined, maps: readonly Sty
   for (const map of maps) {
     scope = createStyleScope(scope, map, label, pack, low);
 
-    const loose = low && declared(scope!.own);
+    const declarations = low ? hoistRoot(scope!) : scope!.own;
+    const loose = low && declared(declarations);
 
     if (loose)
       throw new Error(`Pack rules must be _rules; "${loose}" would style every root.`);
 
-    Object.assign(base, mergeRule(base, scope!.own));
+    Object.assign(base, mergeRule(base, declarations));
     const own = ownGroups.get(scope!);
     if (own) anchors.add(own);
   }
@@ -201,6 +207,37 @@ function extendContext(parent: AppearanceContext | undefined, maps: readonly Sty
   if (anchors.size) groups.set(scope!, [...anchors]);
 
   return createContext(scope!);
+}
+
+function hoistRoot(scope: StyleScope) {
+  let own = rooted.get(scope);
+
+  if (!own) {
+    const roots: Root[] = [];
+
+    rooted.set(scope, (own = strip(scope.macros, scope.own, [], roots)));
+    if (roots.some((root) => Object.keys(root.declarations).length)) setRoot(scope, roots);
+  }
+
+  return own;
+}
+
+function strip(macros: StyleMap, map: StyleMap, when: readonly string[], roots: Root[]) {
+  const rest: StyleMap = {};
+  const declarations: Declaration = {};
+
+  roots.push({ declarations, when });
+
+  for (const key of Object.keys(map)) {
+    const entry = map[key];
+
+    if (key.startsWith('--')) declarations[key] = entry;
+    else if (isCondition(key) && isObject(entry))
+      rest[key] = strip(macros, entry, [...when, condition(macros, key)], roots);
+    else rest[key] = entry;
+  }
+
+  return rest;
 }
 
 function baseToken(scope: StyleScope) {
@@ -421,7 +458,8 @@ function expand(scope: StyleScope, value: unknown, depths: Depths, frame: Frame)
       return;
     }
 
-    for (const [name, raw] of Object.entries(value as Declaration)) {
+    for (const [written, raw] of Object.entries(value as Declaration)) {
+      const name = alias(scope.macros, written);
       const entry = flatten(raw, name);
 
       if (name[0] == '_') {
@@ -499,15 +537,25 @@ function isCondition(key: string) {
   return key[0] == ':' || key[0] == '@' || key[0] == '$' || key[0] == '\0';
 }
 
+function alias(macros: StyleMap, key: string) {
+  const value = key[0] == '$' && macros[key];
+
+  return typeof value == 'string' && value.startsWith('--') ? value : key;
+}
+
+function condition(macros: StyleMap, key: string) {
+  if (key[0] != '$') return key;
+
+  const value = macros[key];
+
+  if (typeof value != 'string')
+    throw new Error(`Unknown condition "${key}".`);
+
+  return value;
+}
+
 function split(macros: StyleMap, key: string) {
-  if (key[0] == '$') {
-    const condition = macros[key];
-
-    if (typeof condition != 'string')
-      throw new Error(`Unknown condition "${key}".`);
-
-    key = condition;
-  }
+  key = condition(macros, key);
 
   if (key[0] != ':') return [key];
 
