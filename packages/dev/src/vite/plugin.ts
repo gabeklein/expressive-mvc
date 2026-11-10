@@ -24,6 +24,7 @@ const SERVER = "server.ts";
 const CALL = "call.ts";
 const REMOTE_IMPORT = /(^|\/)remote(\/|\.[cm]?[jt]s$|$)/;
 
+/** The plugin's API - `config()` loads the app's `index.ts` settings. */
 export interface Host {
   config(): Promise<AppConfig>;
 }
@@ -48,6 +49,12 @@ const builds = new Map<string, Exposure>();
 
 const SHARED = ["@expressive/mvc", "@expressive/dom", "@expressive/router", "@expressive/inspect", "@expressive/rpc", "@expressive/dev"];
 
+/**
+ * The app host as a Vite plugin, for a hand-written Vite config.
+ *
+ * Serves the virtual shell, entry and route tree under `/.expressive/`, and builds sidecars and twins.
+ * Add `inspect()` from `@expressive/inspect/vite` beside it for the dev relay.
+ */
 export function expressive(): Plugin<Host> {
   let root = process.cwd();
   let project: Project;

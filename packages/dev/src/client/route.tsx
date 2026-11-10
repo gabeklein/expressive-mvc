@@ -12,14 +12,33 @@ type EntryHook = (route: Route) => Verdict | Promise<Verdict>;
 const SEATS = new WeakMap<Route, Model.Type>();
 const HOOKS = new WeakMap<Route, EntryHook | undefined>();
 
+/**
+ * Router's `Route` with a route module's exports - the generated tree builds one per module.
+ *
+ * Extend it for a class `Page`; the tree sets `enter`, `remote`, `Catch`, `NotFound` and `fallback`.
+ */
 export class Route extends Base {
+  /** Shown while this route or a page below suspends on a cold load - the folder's `Loading`. Default none. */
   fallback: Component.Node = false;
 
+  /**
+   * Entry hook - a function `default` export, run with the Route before render.
+   *
+   * A returned string redirects and `null` falls through to the 404. It may be async.
+   * Under a seat it runs after the seat's first pull, with `route.remote` set.
+   * A thrown error with a 3xx `status` and a `location` redirects there; any other reaches `Catch`.
+   */
   enter = set<EntryHook | undefined>(undefined, hook => {
     HOOKS.set(this, hook);
     if (!SEATS.has(this)) arm(this);
   });
 
+  /**
+   * The folder's seat - its server Model's twin - inherited from the nearest seated ancestor.
+   *
+   * Assigning a Model class seats the route: each entry builds a fresh instance and waits for its first pull.
+   * Leaving the route clears it.
+   */
   remote?: Model = def<Model | undefined>((_key, route: Route) => {
     const config: Model.Apply = {
       get: self => ((self as Route).parent as Route | undefined)?.remote,
@@ -42,8 +61,10 @@ export class Route extends Base {
     return config;
   });
 
+  /** Error UI for this route - `retry` re-renders the content. */
   Catch?: CatchUI = undefined;
 
+  /** Rendered for a path under this route that no child matches. */
   NotFound?: (props: { children?: Component.Node }) => Component.Node = undefined;
 
   protected get children(): Component.Node {
