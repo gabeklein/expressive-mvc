@@ -46,15 +46,15 @@
     },
     "packages/dev": {
       "name": "@expressive/dev",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "bin": {
         "expressive": "dist/cli.js",
       },
       "dependencies": {
-        "@expressive/dom": "^0.10.1",
-        "@expressive/inspect": "^0.6.2",
-        "@expressive/router": "^0.10.2",
-        "@expressive/rpc": "^0.1.0",
+        "@expressive/dom": "^0.11.0",
+        "@expressive/inspect": "^0.6.3",
+        "@expressive/router": "^0.10.3",
+        "@expressive/rpc": "^0.1.1",
         "es-module-lexer": "^1.6.0",
         "vite": "^8.0.0",
       },
@@ -65,12 +65,12 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.2",
       },
     },
     "packages/dom": {
       "name": "@expressive/dom",
-      "version": "0.10.1",
+      "version": "0.11.0",
       "devDependencies": {
         "@expressive/mvc": "workspace:^",
         "@types/node": "^25.2.0",
@@ -78,7 +78,7 @@
         "vite": "^7.3.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.1",
+        "@expressive/mvc": "^0.94.2",
         "vite": ">=5",
       },
       "optionalPeers": [
@@ -87,14 +87,14 @@
     },
     "packages/inspect": {
       "name": "@expressive/inspect",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "devDependencies": {
         "@expressive/mvc": "workspace:*",
         "tsdown": "^0.20.1",
         "vite": "^7.3.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.1",
+        "@expressive/mvc": "^0.94.2",
         "vite": ">=5",
       },
       "optionalPeers": [
@@ -103,7 +103,7 @@
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.94.1",
+      "version": "0.94.2",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",
@@ -124,15 +124,15 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.1",
+        "@expressive/mvc": "^0.94.2",
         "preact": "^10.0.0",
       },
     },
     "packages/react": {
       "name": "@expressive/react",
-      "version": "0.94.1",
+      "version": "0.94.2",
       "devDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.2",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
@@ -144,7 +144,7 @@
         "vite": "^7.3.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.2",
         "react": ">=16.14.0 <20.0.0",
         "vite": ">=5",
       },
@@ -154,10 +154,10 @@
     },
     "packages/router": {
       "name": "@expressive/router",
-      "version": "0.10.2",
+      "version": "0.10.3",
       "devDependencies": {
-        "@expressive/mvc": "^0.94.1",
-        "@expressive/react": "^0.94.1",
+        "@expressive/mvc": "^0.94.2",
+        "@expressive/react": "^0.94.2",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
@@ -166,12 +166,12 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.1",
+        "@expressive/mvc": "^0.94.2",
       },
     },
     "packages/rpc": {
       "name": "@expressive/rpc",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "es-module-lexer": "^1.6.0",
       },
@@ -182,7 +182,7 @@
         "vite": "^8.0.0",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.0",
+        "@expressive/mvc": "^0.94.2",
         "vite": "^8.0.0",
       },
       "optionalPeers": [
@@ -201,13 +201,13 @@
     },
     "packages/steps": {
       "name": "@expressive/steps",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@expressive/mvc": "workspace:*",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.1",
+        "@expressive/mvc": "^0.94.2",
       },
     },
     "website": {

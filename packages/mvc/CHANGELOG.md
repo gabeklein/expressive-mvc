@@ -1,5 +1,19 @@
 # @expressive/mvc
 
+## 0.94.2
+
+### Patch Changes
+
+- [#655](https://github.com/gabeklein/expressive/pull/655) [`5fec34c`](https://github.com/gabeklein/expressive/commit/5fec34c05a268718f4dec2bdafd13de22264821c) Hover docs: every public overload of `Model`, `set`, `def`, `get`, `ref`, `has`, `map`, `Component`, `Context` and `pending` leads with a one-line summary, then its contract, with typechecked examples on the non-obvious ones. Several older doc claims that disagreed with the runtime are corrected. The skill's signature listings now point at them.
+
+- [#657](https://github.com/gabeklein/expressive/pull/657) [`11e3c48`](https://github.com/gabeklein/expressive/commit/11e3c48fbb1f27e80128a5209c5ad2ff099ddd64) Fix four filed defects:
+  - A `set()` callback now runs with the instance as `this`.
+  - `Context.get` prefers an explicit entry even after two implicit ones of the same type.
+  - A cleanup returned from a `Context.get` callback for an instance already registered now runs when that instance is removed.
+  - Adding a destroyed Model to a `has()` pool or `map()` throws without inserting it or releasing what it would replace.
+
+- [#651](https://github.com/gabeklein/expressive/pull/651) [`173a60c`](https://github.com/gabeklein/expressive/commit/173a60ce8245f509da4a1735c4788472dea5462e) Ship each package's agent skill in the package, at `skills/expressive-<pkg>/SKILL.md`, so the docs an agent reads match the installed version. `npx skills experimental_sync` links them into `.claude/skills/` and `.agents/skills/`; `expressive-mvc` holds the core, and each package's skill links its siblings as installed side by side. On expressive.dev the skills move to `/llm/expressive-<pkg>/`, with the old `/llm/` paths redirecting.
+
 ## 0.94.1
 
 ### Patch Changes
