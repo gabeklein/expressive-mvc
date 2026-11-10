@@ -30,6 +30,12 @@ export class Route extends Component {
    * (a fellow Route subclass included), but not an intrinsic host tag. */
   as?: Exclude<JSX.ElementType, string> = undefined;
 
+  /**
+   * URL pattern segment, composed against the parent's path.
+   *
+   * `:name` captures a param; a trailing `*` matches the remaining segments as `params['*']`.
+   * Omit for an index route. A leading `/` ignores the parent's base.
+   */
   to: string = '';
 
   /** Consumer-agnostic display name (ignored by matching) - for NavLinks,
@@ -192,10 +198,18 @@ export class Route extends Component {
     return (this.props as { children?: Component.Node }).children;
   }
 
+  /** Resolve a relative url against this Route's anchor; absolute and external urls pass through. */
   resolve(url: string): string {
     return this.router.resolve(this, url);
   }
 
+  /**
+   * Navigate relative to this Route.
+   *
+   * A string resolves against its anchor - default `'.'`, the route itself.
+   * An object sets this route's own params in place; a param it does not declare throws.
+   * Throws if the result still holds an unresolved `:param`. `replace` overwrites the current entry.
+   */
   goto(to: string | Route.Params = '.', replace = false) {
     let path: string;
 

@@ -264,6 +264,11 @@ export class Instance {
   }
 }
 
+/**
+ * Observe every instance of `Type` set up from now on; returns its detach.
+ *
+ * Default `Model`, so every class. Repeat calls for a class reuse the first. Instances set up before it stay unregistered.
+ */
 export function attach(Type: typeof Model = Model): () => void {
   if (!unwatch) watchCopies();
 
@@ -324,6 +329,7 @@ export function attach(Type: typeof Model = Model): () => void {
   };
 }
 
+/** Stop observing every class and reset the registry, journal, labels and health counts. */
 export function detach(): void {
   for (const stop of hooks.values()) stop();
   hooks.clear();
@@ -364,6 +370,7 @@ export function find(target: string): Instance | undefined {
   return first && Instance.of(first);
 }
 
+/** Every mainline instance - claimed, or too young to judge; orphans excluded. */
 export function instances(): Instance[] {
   return [...mainline()].map(Instance.of);
 }
@@ -394,16 +401,19 @@ export function health(): Health {
   return { orphans: orphans().length, collected: lost, copies, caught: { ...tally } };
 }
 
+/** Mainline instances with no owner. */
 export function roots(): Instance[] {
   const parents = ownership();
   return instances().filter((instance) => !parents.has(instance.state));
 }
 
+/** One row per mainline instance, with its parent's id. */
 export function models(): ModelInfo[] {
   const parents = ownership();
   return [...mainline()].map((state) => describe(state, parents));
 }
 
+/** Mainline instances nested by ownership. */
 export function tree(): Node[] {
   const parents = ownership();
   const nodes = new Map<Model, Node>();
@@ -430,12 +440,22 @@ export async function act(work: () => unknown, options: Act = {}): Promise<Frame
   return frames;
 }
 
+/**
+ * Stored value at an address - `Type.path` or `id.path` - serialized, with no accessor fired.
+ *
+ * No address returns `models()`. An address naming no instance returns `undefined`.
+ */
 export function get(address?: string, select?: Select): unknown {
   if (!address) return models();
   const { target, path } = parsePath(address);
   return find(target)?.get(path, select);
 }
 
+/**
+ * Assign at an address - a Model field, a `Map` key or an object property.
+ *
+ * Throws `No model at …` when the address resolves to nothing.
+ */
 export function set(address: string, value: unknown): void {
   const { target, path } = parsePath(address);
   const instance = find(target);
@@ -451,6 +471,11 @@ export function set(address: string, value: unknown): void {
   else (owner as Record<string, unknown>)[key] = value;
 }
 
+/**
+ * Call a method by address; resolves to its result, serialized.
+ *
+ * Throws `No method at …` when the key is not a function.
+ */
 export async function call(address: string, ...args: unknown[]): Promise<unknown> {
   const { target, path } = parsePath(address);
   const state = find(target)?.state;

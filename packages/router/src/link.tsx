@@ -26,8 +26,15 @@ export namespace Link {
   };
 }
 
+/**
+ * An anchor that navigates in-app - `to` resolves against the nearest Route.
+ *
+ * An external url, a modified or non-primary click, `download`, or a `target` other than `_self` falls through to the browser.
+ * Subclass it to style the active state through `match` or `active`.
+ */
 export class Link extends Component {
   to = '';
+  /** Replace the current history entry instead of pushing. */
   replace = false;
   fallback = false;
 

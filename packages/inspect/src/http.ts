@@ -13,6 +13,11 @@ const USAGE = 'GET describes this process; POST with [method, ...args] calls the
 
 /** Serve an installed inspector over HTTP, to loopback callers only. */
 export function handle(req: Request, source: Source): Promise<Response>;
+/**
+ * Serve an installed inspector to a Node request - `node:http`, Express, Connect.
+ *
+ * Loopback callers only, by `req.socket.remoteAddress`. A JSON array a body parser left on `req.body` is used as is.
+ */
 export function handle(req: NodeRequest, res: NodeResponse): Promise<void>;
 export async function handle(req: Request | NodeRequest, second: Source | NodeResponse) {
   if (typeof (second as NodeResponse).end == 'function') {
