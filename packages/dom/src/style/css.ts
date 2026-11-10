@@ -62,37 +62,47 @@ type Timing = Time | { duration: Time; easing?: string; delay?: Time };
 type Transitions = { [K in style.Property | 'all' | `--${string}`]?: Timing | false | null };
 
 /**
- * Web macro pack - pixels for numbers where a property needs a unit,
- * milliseconds for `transition`, durations and delays, degrees for `rotate`
- * and `offsetRotate`, and the `size` shorthand. Extend it, or use it as is with `Css.use()`.
+ * The web macro pack - units for bare numbers, ms for times, degrees for rotation, `size`.
+ *
+ * A number gets `px` only where the property needs a unit. Extend it with macros, or use it as is with `Css.use()`.
  */
 class Css extends Style {
   default(value: unknown, key: string) {
     return { [key]: sized(key, value) };
   }
 
+  /** `width` and `height` - one value for both, or `[width, height]`. */
   size(value: style.Value) {
     return Array.isArray(value)
       ? { width: value[0], height: value[1] }
       : { width: value, height: value };
   }
 
+  /** A number is milliseconds; a list joins with commas. */
   transitionDuration(value: Time | readonly Time[]) {
     return time('transitionDuration', value);
   }
 
+  /** A number is milliseconds; a list joins with commas. */
   transitionDelay(value: Time | readonly Time[]) {
     return time('transitionDelay', value);
   }
 
+  /** A number is milliseconds; a list joins with commas. */
   animationDuration(value: Time | readonly Time[]) {
     return time('animationDuration', value);
   }
 
+  /** A number is milliseconds; a list joins with commas. */
   animationDelay(value: Time | readonly Time[]) {
     return time('animationDelay', value);
   }
 
+  /**
+   * Transitions keyed by property - `{ opacity: 200, transform: { duration: 300, easing, delay } }`.
+   *
+   * Times are milliseconds. A string passes through; `false` or `null` drops an entry.
+   */
   transition(value: string | Transitions) {
     if (typeof value == 'string') return { transition: value };
 
@@ -101,10 +111,12 @@ class Css extends Style {
     return { transition: list.map(([key, entry]) => `${kebab(key)} ${timing(entry as Timing)}`).join(', ') };
   }
 
+  /** A number is degrees. */
   rotate(value: number | string) {
     return { rotate: deg(value) };
   }
 
+  /** A number is degrees. */
   offsetRotate(value: number | string) {
     return { offsetRotate: deg(value) };
   }

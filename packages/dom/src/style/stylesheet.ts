@@ -76,11 +76,11 @@ declare namespace style {
     | readonly Value[];
 
   /**
-   * Body of a `style()` map. Bare keys are declarations or calls to a macro
-   * of `T`, `_name` opens a rule or descendant scope, `:state` and `@media …`
-   * apply their body conditionally, as does `$name` for a condition named on
-   * `T`; a `$name` variable of `T` takes a value. A rule or condition body may
-   * be an array of maps, merged in order.
+   * Body of a `style()` map - declarations, macro calls, rules and conditions.
+   *
+   * Bare keys are declarations or calls to a macro of `T`. `_name` opens a rule or descendant scope.
+   * `:state`, `@media …` and a `$name` condition of `T` apply their body conditionally; a `$name` variable of `T` takes a value.
+   * A rule or condition body may be an array of maps, merged in order.
    */
   type Map<T = {}> = {
     [K in Key<T>]?:
@@ -106,17 +106,18 @@ declare namespace style {
 }
 
 /**
- * Base class for a macro pack. Each method is a macro, layered over the class
- * it extends; `default` handles any key no macro owns. A `$name` field holds
- * a condition (`'@media …'` or `':state'`), or else a variable - its default,
- * or a `--name` to use as is.
+ * Base class for a new host's macro pack - apps extend `Css`.
+ *
+ * Each method is a macro, layered over the class it extends; `default` handles any key no macro owns.
+ * A `$name` field holds a condition (`'@media …'` or `':state'`), or else a variable - its default, or a `--name` to use as is.
+ * Any other field throws.
  */
 class Style {
   /**
-   * The `style()` for this pack. Without maps, one per class. Each call with
-   * maps is its own scope - their rules style only elements written by
-   * components it styles, below their own declarations. A map may be a
-   * function of the pack's `$` tokens, called once here.
+   * The `style()` for this pack, with optional pack rules.
+   *
+   * Without rules, one per class. Each call with rules is its own scope - they style only elements written by components it styles.
+   * A map may be a function of the pack's `$` tokens, called once here.
    */
   static use<T extends Style>(
     this: new () => T,
@@ -165,6 +166,12 @@ const bound = new WeakMap<Function, style.Apply<any>>();
 const packs = new WeakMap<Function, Fields>();
 let groups = 0;
 
+/**
+ * Register style maps on a component, returned as is - macros need a pack's `use()`.
+ *
+ * Calls layer in order; falsy maps are skipped.
+ * Throws once the component has rendered.
+ */
 function style<T extends object>(type: T, ...maps: (style.Map | false | null | undefined)[]): T {
   return register(type, maps);
 }
