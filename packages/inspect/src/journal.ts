@@ -66,6 +66,11 @@ let open: Frame | undefined;
 let cause: number | undefined;
 
 export const journal = {
+  /**
+   * Merge recording options; returns the effective settings.
+   *
+   * Filters OR together; none set records everything. `calls: true` alone lifts `level` from `off` to `keys`.
+   */
   record(options: Options = {}): Required<Options> {
     Object.assign(config, options);
     if (!options.level && options.calls && config.level === 'off') config.level = 'keys';

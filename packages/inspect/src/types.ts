@@ -38,6 +38,7 @@ export function labelOf(Type: typeof Model): string {
   return Type.name.length > 2 ? Type.name : row.typeId;
 }
 
+/** Name a class for addresses and the journal - wins over `displayName`, `resolve()` names and the class name. */
 export function label(Type: typeof Model, name: string): void {
   labels.set(Type, name);
 }

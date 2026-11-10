@@ -98,6 +98,11 @@ export class Router extends Component {
     return (base, to) => matchPattern(fullPattern(base, to), path);
   }
 
+  /**
+   * Navigate to an absolute url - path, query and hash.
+   *
+   * Throws on a relative path - resolve those through a Route. `replace` overwrites the current entry.
+   */
   goto(to: string, replace = false) {
     assertAbsolute(to);
     this.next(normalize(to), replace);

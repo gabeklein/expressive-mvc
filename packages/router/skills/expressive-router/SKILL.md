@@ -204,7 +204,7 @@ Param changes do not remount: like `query`, `match` updates reactively and the p
 | `query`              | `map.Insert<string,string>` | Canonical query state - a reactive map (see below).                      |
 | `hash`               | `string`                    | Opaque fragment: `''` or a leading-`#` string. Assigning navigates.      |
 | `url`                | `string`                    | Full path + query + fragment, canonically serialized. Assigning navigates. |
-| `goto(to, replace?)` | -                           | Navigate; `replace` overwrites the current entry instead of pushing.    |
+| `goto(to, replace?)` | -                           | Navigate to an absolute path - relative ones go through a Route; `replace` overwrites the current entry. |
 | `back()`               | -                           | Move back one history entry.                                             |
 | `go(delta)`            | -                           | Move by a relative history delta.                                        |
 
