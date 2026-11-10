@@ -1,6 +1,6 @@
 # Router production guide
 
-Companion to [router.md](SKILL.md). The router owns matching, location,
+Companion to [SKILL.md](SKILL.md). The router owns matching, location,
 history, guards, and presentation settlement. Domain `Model` owns data,
 mutations, caching, retry, and request cancellation.
 
@@ -153,7 +153,7 @@ Not supported by the public contract:
 Do not simulate these by relying on current normalization accidents - use the
 host/framework router until the feature lands.
 
-On React Native use Router directly. BrowserRouter requires browser globals;
+On React Native use Router directly. BrowserRouter binds to nothing without `window`;
 Link and NavLinks render DOM elements, so native buttons call `goto` instead.
 
 ## Accessibility ownership

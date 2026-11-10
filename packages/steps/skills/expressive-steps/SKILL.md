@@ -1,6 +1,6 @@
 ---
 name: expressive-steps
-description: Multi-step processes as Expressive Models (@expressive/steps) - class X extends Steps, every method a step, atomic steps that unwind on failure, waits, retries, gates. Use when writing, reviewing or testing a Steps class or modelling a workflow, wizard, saga or job with @expressive/steps.
+description: Multi-step processes as Expressive Models (@expressive/steps) - class X extends Steps, every method a step, atomic steps that unwind on failure, waits, retries, gates, durations, racers. Use when writing, reviewing or testing a Steps class or modelling a workflow, wizard, saga or job with @expressive/steps.
 ---
 
 # Steps
@@ -11,7 +11,7 @@ description: Multi-step processes as Expressive Models (@expressive/steps) - cla
 npm install @expressive/steps @expressive/mvc
 ```
 
-Per-member contract - signatures, defaults, edge cases, examples - is JSDoc on hover, or `node_modules/@expressive/steps/dist/index.d.ts`. This skill covers how the pieces compose.
+Per-member contract - signatures, defaults, edge cases, examples - is JSDoc on hover, or `node_modules/@expressive/steps/dist/index.d.ts`. This skill covers how the pieces compose. A Steps class is a `Model` - fields, `has`, `map`, `set`, `get` and `this.is` are [expressive-mvc](../expressive-mvc/SKILL.md)'s.
 
 ## Shape
 

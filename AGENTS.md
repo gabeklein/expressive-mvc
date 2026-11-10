@@ -17,6 +17,9 @@ packages/preact - Preact adapter (@expressive/preact)
 packages/router - Router built on Component (@expressive/router)
 packages/inspect - In-page inspector for agents and devtools (@expressive/inspect)
 packages/steps  - Runnable Models: every method a step (@expressive/steps)
+packages/dom    - Browser renderer without React (@expressive/dom)
+packages/rpc    - Typed server calls for a Vite client build (@expressive/rpc)
+packages/dev    - App host over Vite: dom, file routes, rpc (@expressive/dev)
 examples/       - Playground of crawlable example pages (see examples/AGENTS.md)
 website/        - Docs site
 ```
@@ -136,7 +139,7 @@ A green `tsc --noEmit` + `bun run build` says nothing about whether a browser-fa
 
 ### Releasing
 
-- `@expressive/mvc`, `@expressive/react`, `@expressive/router`, `@expressive/inspect`, `@expressive/dom`, and `@expressive/steps` are published; `preact` is private and ignored by changesets.
+- `@expressive/mvc`, `@expressive/react`, `@expressive/router`, `@expressive/inspect`, `@expressive/dom`, `@expressive/steps`, `@expressive/rpc`, and `@expressive/dev` are published; `preact` is private and ignored by changesets.
 - Merged changesets accumulate on `main`; CI maintains a "Version Packages" PR (`changeset version`). Merging that PR triggers `changeset publish` from CI. No local publishing.
 
 ## Guardrails

@@ -8,7 +8,6 @@ export interface Remote {
   get(address: string): unknown;
 }
 
-/** Resolve `address.key` to the instance `address` names - label, id, or owner path - so frames match it alone. */
 /** Resolve `address.key` to the instance `address` names - label, id, or owner path - as the `id.key` its frames carry. */
 async function locate(remote: Remote, target: string) {
   const dot = target.lastIndexOf('.');

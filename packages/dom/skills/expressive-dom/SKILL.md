@@ -9,7 +9,7 @@ description: Expressive MVC's DOM renderer (@expressive/dom) - renders Model/Com
 
 ## Status
 
-The initial `0.1` release is a usable, tested browser renderer for dogfooding, not an LTS contract. Use it for applications prepared to track pre-1.0 changes. The documented behavior is intentional; package shape and extension seams may change before stabilization. Renderer internals are private—import only the package root and its JSX runtime entries.
+A tested browser renderer, pre-1.0 - not an LTS contract. Use it for applications prepared to track minor releases. The documented behavior is intentional; package shape and extension seams may change before stabilization. Renderer internals are private—import only the package root and its JSX runtime entries.
 
 ```jsonc
 {
@@ -135,8 +135,6 @@ _bar: [tabs, { [wide]: { _button: { height: '30px' } } }]
 Within a scope, base declarations come first, then rules by base class, derived class, and registration order. A rule first named inside a descendant scope (`_list: { _item: … }`) sorts after every rule of the enclosing scope, wherever it is written; a top-level rule meant to override it belongs in the same scope. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered.
 
 Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins, independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix. Generated classes are not a selector contract - code and tests find elements by `data-*`, `id` or role.
-
-Build-time extraction is not part of the `0.1` experiment.
 
 ### Conditions
 

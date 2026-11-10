@@ -10,7 +10,7 @@ import { withWorkspaceLinks } from './workspace-links';
  * in SKILL.md after #289 deleted it), and a link to an anchor that was removed
  * with it.
  */
-const SCOPES = ['@expressive/mvc', '@expressive/react', '@expressive/router', '@expressive/steps'];
+const SCOPES = ['@expressive/mvc', '@expressive/react', '@expressive/router', '@expressive/steps', '@expressive/dom', '@expressive/inspect', '@expressive/rpc', '@expressive/dev'];
 
 /** Written at build time by the serve-llm plugin, so it has no source file. */
 const GENERATED_LLM = 'examples/index.md';
@@ -19,8 +19,15 @@ const release = withWorkspaceLinks();
 const exported = new Map<string, Set<string>>();
 
 try {
-  for (const scope of SCOPES)
-    exported.set(scope, new Set(Object.keys(await import(scope))));
+  // Each host adapter registers itself on import and refuses a second, so every scope loads alone.
+  for (const scope of SCOPES) {
+    const run = Bun.spawnSync(['bun', '-e', `console.log(JSON.stringify(Object.keys(await import('${scope}'))))`]);
+
+    if (!run.success)
+      throw new Error(`Could not import ${scope}:\n${run.stderr}`);
+
+    exported.set(scope, new Set(JSON.parse(run.stdout.toString())));
+  }
 } finally {
   release();
 }
