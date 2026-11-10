@@ -64,6 +64,20 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
   ].join("\n");
 }
 
+/** Paths of the pages no `:param` or `*` segment reaches - those a build can render ahead. */
+export async function staticPaths(appDir: string, scan: ExportScanner): Promise<string[]> {
+  const paths: string[] = [];
+
+  (function walk(node: RouteNode, path: string) {
+    if (node.exports.has("Page")) paths.push(path || "/");
+
+    for (const child of node.children)
+      if (!precedence(child.segment)) walk(child, `${path}/${child.segment}`);
+  })(await scanDir(appDir, "", "", scan), "");
+
+  return paths;
+}
+
 function newNode(fields: Partial<RouteNode>): RouteNode {
   return { segment: "", name: "", exports: new Set(), classDefault: false, children: [], isLeaf: false, alias: {}, ...fields };
 }
