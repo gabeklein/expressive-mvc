@@ -64,7 +64,27 @@ import App from ${JSON.stringify(appImport)};
 
 const el = document.getElementById("root");
 if (!el) throw new Error("Missing #root element");
-render(jsx(App, {}), el);
+
+if (!el.hasChildNodes()) render(jsx(App, {}), el);
+else {
+  const next = el.cloneNode();
+  const swap = () => {
+    observer.disconnect();
+    clearTimeout(limit);
+    el.replaceWith(next);
+    next.hidden = false;
+    document.querySelectorAll('style[data-expressive="prerender"]').forEach(style => style.remove());
+  };
+  const caught = () => next.textContent == el.textContent && swap();
+  const observer = new MutationObserver(caught);
+  const limit = setTimeout(swap, 1000);
+
+  next.hidden = true;
+  el.after(next);
+  observer.observe(next, { subtree: true, childList: true, characterData: true });
+  render(jsx(App, {}), next);
+  caught();
+}
 `;
 }
 

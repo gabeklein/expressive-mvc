@@ -1,9 +1,11 @@
+// @vitest-environment happy-dom
+
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { ensureBootstrap, resolveProject } from "./project";
+import { bootstrap, ensureBootstrap, resolveProject } from "./project";
 
 function project(files: Record<string, string>) {
   const root = mkdtempSync(join(tmpdir(), "project-"));
@@ -58,5 +60,82 @@ describe("ensureBootstrap", () => {
     const html = `<div id='root'></div><script type="module" src="/.expressive/main.tsx"></script>`;
 
     expect(ensureBootstrap(html)).toBe(html);
+  });
+});
+
+describe("bootstrap", () => {
+  const boot = (render: (node: unknown, el: HTMLElement) => void) => {
+    const body = bootstrap("./app").replace(/^import .*$/gm, "");
+    new Function("render", "jsx", "App", body)(render, () => "app", undefined);
+  };
+
+  const settle = () => new Promise(done => setTimeout(done, 10));
+
+  it("will render into an empty root", () => {
+    document.body.innerHTML = `<div id="root"></div>`;
+    const render = vi.fn();
+
+    boot(render);
+
+    expect(render).toHaveBeenCalledWith("app", document.getElementById("root"));
+  });
+
+  it("will throw without a root", () => {
+    document.body.innerHTML = "";
+
+    expect(() => boot(vi.fn())).toThrow("Missing #root element");
+  });
+
+  it("will keep a prerendered root until the app shows the same text", async () => {
+    document.head.innerHTML = `<style data-expressive="prerender"></style><style data-expressive="dom"></style>`;
+    document.body.innerHTML = `<div id="root" class="app"><p>Hi</p></div>`;
+    const prerendered = document.getElementById("root")!;
+    let target!: HTMLElement;
+
+    boot((_, el) => {
+      target = el;
+      el.textContent = "Loading";
+    });
+
+    await settle();
+    expect(document.getElementById("root")).toBe(prerendered);
+    expect(target.hidden).toBe(true);
+
+    target.innerHTML = "<p>Hi</p>";
+    await settle();
+
+    expect(document.querySelectorAll("#root")).toHaveLength(1);
+    expect(document.getElementById("root")).toBe(target);
+    expect(target.className).toBe("app");
+    expect(target.hidden).toBe(false);
+    expect([...document.querySelectorAll("style")].map(style => style.dataset.expressive)).toEqual(["dom"]);
+  });
+
+  it("will swap a prerendered root after a second regardless", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    document.body.innerHTML = `<div id="root"><p>Hi</p></div>`;
+    let target!: HTMLElement;
+
+    boot((_, el) => {
+      target = el;
+      el.textContent = "Other";
+    });
+
+    vi.advanceTimersByTime(1000);
+
+    expect(document.getElementById("root")).toBe(target);
+    vi.useRealTimers();
+  });
+
+  it("will swap at once when the app renders the same text in its first pass", () => {
+    document.body.innerHTML = `<div id="root"><p>Hi</p></div>`;
+    let target!: HTMLElement;
+
+    boot((_, el) => {
+      target = el;
+      el.innerHTML = "<p>Hi</p>";
+    });
+
+    expect(document.getElementById("root")).toBe(target);
   });
 });
