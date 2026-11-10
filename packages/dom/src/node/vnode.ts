@@ -62,6 +62,7 @@ function authorOf(value: unknown) {
   return isVNode(value) ? authors.get(value) : undefined;
 }
 
+/** Classic JSX factory - `key` comes off `props`, children land on `props.children`. */
 function createElement(type: VNode['type'], props?: Record<string, unknown> | null, ...children: unknown[]): VNode {
   const { key, ...rest } = props || {};
 
@@ -109,7 +110,13 @@ function childrenOf(value: unknown): Node[] {
   return output;
 }
 
+/** Groups children without a wrapping element. */
 const Fragment = FRAGMENT as unknown as (props: { children?: Node }) => Node;
+/**
+ * Render children into another element, keeping their context, ownership and boundaries.
+ *
+ * `into` is an `Element`, a `DocumentFragment`, or a selector matching exactly one element - resolved at mount and when the string changes.
+ */
 const Portal = PORTAL as unknown as (props: { into: Element | DocumentFragment | string; children?: Node }) => Node;
 
 export {

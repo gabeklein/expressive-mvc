@@ -273,21 +273,7 @@ function Total() {
 
 `Model.get()` works in an FC, `Component.render()`, or a PascalCase subcomponent; outside render it reads the root context, untracked. Only values read through the returned tracking proxy invalidate that scope; same-value writes and unrelated fields do not render it. The lookup follows context - a provider replaced, arriving after mount or leaving renders the scope. Once the provider leaves, `get(false)` returns `undefined` and a required `get()` throws.
 
-An FC owns nothing - same as React. Owned state is a class: a field on a Component, or `<Component for={Type}>` above an FC that reads it with `Model.get()`. Arguments a hook would take per render are attributes, which assign fields:
-
-```tsx
-class Row extends Component {
-  id = '';
-  selected = false;
-
-  render() {
-    const { id, selected } = this;
-    return <span className={selected ? 'on' : undefined}>{id}</span>;
-  }
-}
-
-<Row id={id} selected={id == current} />
-```
+An FC owns nothing - same as React. Owned state is a class field or `<Component for={Type}>` above the FC; per-render arguments are attributes assigning fields - [expressive-mvc/component.md](../expressive-mvc/component.md#props).
 
 Only a `Component` renders - as an element or placed inline (`{page}`). A plain `Model` is data: `<Session />` or `{session}` throws; extend `Component` to render, or provide it with `<Component for={Session} name="x">`. A view of a Model owns it as a field. A PascalCase method on any Model rendered as an element (`<this.Label />`, `<session.Badge />`, or passed on and rendered elsewhere) is a subcomponent tracking its owner; called directly it stays a plain method. A PascalCase function field is plain data and renders as an ordinary FC. Host-read members on a Component are `render`, `fallback`, `catch` and `key`; a field or method by one of these names opts into that behavior.
 

@@ -14,6 +14,12 @@ const focusing: Element[] = [];
 let passiveRender = false;
 let depth = 0;
 
+/**
+ * Mount a node into a container and return its unmount.
+ *
+ * Replaces the container's children and any root rendered there before. Unmount is idempotent.
+ * A throw during the first render unmounts what it built, then propagates.
+ */
 function render(node: RenderNode, container: Container): () => void {
   roots.get(container)?.();
   container.replaceChildren();
