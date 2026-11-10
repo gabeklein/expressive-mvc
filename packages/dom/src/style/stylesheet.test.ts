@@ -547,9 +547,7 @@ describe('variables', () => {
     // @ts-expect-error - a condition has no token
     const token = apply.$.wide;
 
-    const themed = () => apply.define({ inkLight: 'red', $dark: { line: 'blue' }, '@media print': { inkLight: 'black' } });
-
-    expect([map, scoped, bare, token, themed]).toHaveLength(5);
+    expect([map, scoped, bare, token]).toHaveLength(4);
   });
 
   it('will name a variable from its field and default it at the root', () => {
@@ -632,31 +630,6 @@ describe('variables', () => {
     expect([typo, early]).toHaveLength(2);
   });
 
-  it('will define variables at the root over their defaults', () => {
-    class Brand extends Style {
-      readonly $accent = 'blue';
-      readonly $print = '@media print';
-    }
-
-    const brand = Brand.use();
-    const Chip = () => createElement('i', {});
-
-    brand(Chip, { color: brand.$.accent });
-    brand.define({ accent: 'green', $print: { accent: 'black' }, ':hover': { accent: 'red' } });
-
-    const node = place(createElement(Chip, {})).querySelector('i')!;
-
-    expect(roots()).toContain(
-      ':root{--accent: green;} @media print{:root{--accent: black;}} :root:is(:hover){--accent: red;}'
-    );
-    expect(getComputedStyle(node).color).toBe('green');
-
-    brand.define({ accent: 'teal' });
-
-    expect(roots()).toContain(':root{--accent: teal;}');
-    expect(getComputedStyle(node).color).toBe('teal');
-  });
-
   it('will let a later default of a variable win, as a re-run module does', () => {
     function edition(color: string) {
       class Edition extends Style {
@@ -700,10 +673,26 @@ describe('variables', () => {
     expect(getComputedStyle(node).color).toBe('navy');
   });
 
-  it.each([
-    ['a condition as a define value', { wide: 'red' }, '"wide" is not a variable of Theme.'],
-    ['a variable as a define condition', { $inkLight: { line: 'red' } }, '"$inkLight" is not a condition of Theme.']
-  ] as [string, {}, string][])('will throw for %s', (_, values, message) => {
-    expect(() => Theme.use().define(values)).toThrow(message);
+  it('will keep roots in place when only the sheet is recreated', () => {
+    class Kept extends Style {
+      readonly $keptHue = 'teal';
+    }
+
+    const kept = Kept.use();
+    const Dot = () => createElement('i', {});
+
+    kept(Dot, { color: kept.$.keptHue });
+    place(createElement(Dot, {}));
+
+    document.head.querySelector('style[data-expressive=dom]')!.remove();
+
+    const Again = () => createElement('b', {});
+
+    kept(Again, { color: kept.$.keptHue });
+
+    const node = place(createElement(Again, {})).querySelector('b')!;
+
+    expect(roots().filter((text) => text.includes('--kept-hue'))).toEqual([':where(:root){--kept-hue: teal;}']);
+    expect(getComputedStyle(node).color).toBe('teal');
   });
 });

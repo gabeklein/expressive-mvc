@@ -4,7 +4,6 @@ import type { Block } from './protocol';
 import { serialize } from './declarations';
 import type { Declaration } from './declarations';
 import { attachRoots, setRoot } from './root';
-import type { Root } from './root';
 import type { Numeric, Single, Unitless } from './numeric';
 
 type Member = Extract<keyof CSSStyleDeclaration, string>;
@@ -33,10 +32,6 @@ type Bare<K> = K extends `$${infer N}` ? N : never;
 type Tokens<T> = { readonly [K in Variable<T> as Bare<K>]: string };
 
 type Rules<T> = style.Map<T> | ((tokens: Tokens<T>) => style.Map<T>) | false | null | undefined;
-
-type Define<T> =
-  & { [K in Variable<T> as Bare<K>]?: style.Value }
-  & { [K in Named<T> | style.Condition]?: Define<T> };
 
 type Argument<F> = F extends (...args: infer P) => any
   ? P extends [] ? true : P[0] | (undefined extends P[0] ? true : never)
@@ -112,15 +107,6 @@ declare namespace style {
      * Each is a plain string - use it in templates, arrays and macro arguments.
      */
     readonly $: Tokens<T>;
-
-    /**
-     * Set the pack's variables at `:root`, over defaults from `use()` rules.
-     *
-     * Keys are variable names without the `$`; a condition key holds values
-     * applied while it holds. A later call replaces the last. A key that is not
-     * a variable throws.
-     */
-    define(values: Define<T>): void;
   }
 }
 
@@ -159,10 +145,7 @@ class Style {
 
           return register(type, resolve(maps, tokens), pack);
         },
-        {
-          $: tokens,
-          define: (values: object) => define(this, values)
-        }
+        { $: tokens }
       ) as style.Apply<T>;
 
       if (shared) bound.set(this, apply);
@@ -241,41 +224,6 @@ function fields(type: Function) {
 
   packs.set(type, (known = { aliases, instance, tokens }));
   return known;
-}
-
-function define(type: Function, values: object) {
-  const own = fields(type).aliases;
-  const roots: Root[] = [];
-
-  function walk(map: Record<string, unknown>, when: string[]) {
-    const declarations: Declaration = {};
-
-    roots.push({ declarations, when });
-
-    for (const key of Object.keys(map)) {
-      const value = map[key];
-
-      if (value && typeof value == 'object' && !Array.isArray(value)) {
-        const condition = key[0] == '$' ? own[key] : key;
-
-        if (typeof condition != 'string' || condition[0] != '@' && condition[0] != ':')
-          throw new Error(`"${key}" is not a condition of ${type.name}.`);
-
-        walk(value as Record<string, unknown>, [...when, condition]);
-        continue;
-      }
-
-      const alias = own[`$${key}`];
-
-      if (typeof alias != 'string' || !alias.startsWith('--'))
-        throw new Error(`"${key}" is not a variable of ${type.name}.`);
-
-      declarations[alias] = value;
-    }
-  }
-
-  walk(values as Record<string, unknown>, []);
-  setRoot(type, roots, true);
 }
 
 function layers(type: Function) {

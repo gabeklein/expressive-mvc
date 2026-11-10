@@ -186,13 +186,7 @@ check('field default named from its key', getComputedStyle(swatch).outlineColor,
 check('variable overridden for a subtree', getComputedStyle(nested).color, 'rgb(32, 32, 32)');
 document.documentElement.dataset.mode = 'dark';
 check('variable default under a root state', getComputedStyle(swatch).color, 'rgb(31, 31, 31)');
-theme.define({ ink: 'rgb(33, 33, 33)' });
-check('define beats defaults', getComputedStyle(swatch).color, 'rgb(33, 33, 33)');
-check('subtree override beats define', getComputedStyle(nested).color, 'rgb(32, 32, 32)');
-theme.define({ ink: 'rgb(34, 34, 34)', $dark: { ink: 'rgb(35, 35, 35)' } });
-check('define replaced, with a condition', getComputedStyle(swatch).color, 'rgb(35, 35, 35)');
 delete document.documentElement.dataset.mode;
-check('define outside its condition', getComputedStyle(swatch).color, 'rgb(34, 34, 34)');
 
 document.querySelector('style[data-expressive=dom]')!.remove();
 

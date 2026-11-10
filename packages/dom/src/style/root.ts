@@ -6,18 +6,13 @@ interface Root {
   when: readonly string[];
 }
 
-interface Group {
-  roots: readonly Root[];
-  strong: boolean;
-}
-
-const groups = new Map<object, Group>();
+const groups = new Map<object, readonly Root[]>();
 const documents = new Set<Document>();
 const elements = new WeakMap<Document, Map<object, HTMLStyleElement>>();
 
-function rule(document: Document, strong: boolean, { declarations, when }: Root) {
+function rule(document: Document, { declarations, when }: Root) {
   const states = when.filter((condition) => condition[0] == ':').map((state) => `:is(${state})`).join('');
-  const selector = strong ? `:root${states}` : `:where(:root${states})`;
+  const selector = `:where(:root${states})`;
 
   return when
     .filter((condition) => condition[0] == '@')
@@ -37,16 +32,14 @@ function write(document: Document, key: object) {
     known.set(key, element);
   }
 
-  const { roots, strong } = groups.get(key)!;
-
-  element.textContent = roots
+  element.textContent = groups.get(key)!
     .filter((root) => Object.keys(root.declarations).length)
-    .map((root) => rule(document, strong, root))
+    .map((root) => rule(document, root))
     .join('\n');
 }
 
-function setRoot(key: object, roots: readonly Root[], strong = false) {
-  groups.set(key, { roots, strong });
+function setRoot(key: object, roots: readonly Root[]) {
+  groups.set(key, roots);
 
   for (const document of documents) write(document, key);
 }
