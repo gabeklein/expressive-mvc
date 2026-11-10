@@ -106,7 +106,7 @@ style(Card, {
 });
 ```
 - Component names never match; minifiers rename them. A caller styles a child through `_rule` on the component element, which travels by door. A class Component declaring a matching unmanaged `_` field also receives the value ([expressive-mvc/state/state.md](../expressive-mvc/state/state.md#unmanaged-instance-data)). The value is not reactive, and writing it does not restyle - style is resolved in the caller's render. A component styles its own output through `_rule` in its own render; anything driving behavior belongs in a managed prop.
-- `$name` is a condition or variable named on the pack ([Conditions](#conditions), [Variables](#variables)); an unknown one throws, as does one written as a value string (`color: '$brand'`) - values use `style.$`.
+- `$name` is a condition or variable named on the pack ([Conditions](#conditions), [Variables](#variables)); an unknown one throws, as does one written as a value string (`color: '$brand'`) - values use tokens ([Variables](#variables)).
 - `false`, `null`, and `undefined` omit an entry; `0` is a value. `_` attributes are style-only and never reach the DOM.
 - Under the dev JSX runtime, a `_name` attribute that no rule matches warns once with the nearest rule name. It counts the writing component's rules, the receiving component's own, and a class Component's `_` field; a `_name` a component received and spreads on is checked where it was written. A rule supplied conditionally (`App.use(wide && rules)`) warns while absent - declare it empty (`_cell: {}`) where it is always present.
 
@@ -200,8 +200,8 @@ style(Callout, { $ink: 'crimson' });
 
 - A default is emitted once at `:where(:root)`. Values are CSS text - write `'8px'`, not `8`.
 - As a key, a variable declares itself where it is written. In `use()` rules, at the top or under conditions only, it is a default at `:where(:root)`; in a component map or rule, it overrides for that element and its subtree, every consumer below included.
-- `style.$` holds `'var(--ink)'` per variable, keyed without `$` - a plain string, for templates, arrays, macro arguments and computed keys (`$['status' + kind]`). A condition has none.
-- A map given to `style()` or `use()` may be a function of `style.$`, called once at that call - not per render, and without props. In `use()` it is the only way to reach tokens, since `style` does not exist yet.
+- A map given to `style()` or `use()` may be a function of the pack's tokens, called once at that call - not per render, and without props. Each token is `'var(--ink)'`, keyed without `$` - a plain string, for templates, arrays and macro arguments. A condition has none.
+- Tokens exist only inside those maps. A value picked at render time is a plain string - `` style={{ color: `var(--status-${kind})` }} ``.
 - `:root` values under a `:` condition apply while `<html>` matches - a state meant for both, like `$dark` above, lists the element itself (`[data-mode="dark"], [data-mode="dark"] *`).
 - Names are global CSS. An app may use bare names; a library uses `--prefix-name` fields so apps and plain CSS can set them without collisions.
 - A theme may live in a CSS file instead: `--name` fields with no defaults give typed keys and tokens, and the stylesheet supplies values and modes.

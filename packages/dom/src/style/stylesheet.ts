@@ -97,16 +97,10 @@ declare namespace style {
     /**
      * Style a component with maps that may call the macros of `T`.
      *
-     * A map may be a function of the pack's `$` tokens, called once here.
+     * A map may be a function of the pack's tokens - `var()` references to
+     * its variables, keyed without the `$` - called once here.
      */
     <C extends object>(type: C, ...maps: Rules<T>[]): C;
-
-    /**
-     * `var()` references to the pack's variables, keyed without the `$`.
-     *
-     * Each is a plain string - use it in templates, arrays and macro arguments.
-     */
-    readonly $: Tokens<T>;
   }
 }
 
@@ -135,18 +129,15 @@ class Style {
     if (!apply) {
       let pack: appearance.Pack | undefined;
 
-      apply = Object.assign(
-        <C extends object>(type: C, ...maps: unknown[]) => {
-          pack ||= {
-            label: this.name,
-            layers: layers(this),
-            rules: given
-          };
+      apply = (<C extends object>(type: C, ...maps: unknown[]) => {
+        pack ||= {
+          label: this.name,
+          layers: layers(this),
+          rules: given
+        };
 
-          return register(type, resolve(maps, tokens), pack);
-        },
-        { $: tokens }
-      ) as style.Apply<T>;
+        return register(type, resolve(maps, tokens), pack);
+      }) as style.Apply<T>;
 
       if (shared) bound.set(this, apply);
     }

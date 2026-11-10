@@ -538,28 +538,27 @@ describe('variables', () => {
   }
 
   it('will type variables, conditions and tokens', () => {
-    const apply = Theme.use();
-    const map: style.Map<Theme> = { $inkLight: 'red', color: apply.$.line, $wide: { $line: '4px' } };
+    const Swatch = () => createElement('i', {});
+    const map: style.Map<Theme> = { $inkLight: 'red', color: 'var(--theme-line)', $wide: { $line: '4px' } };
     // @ts-expect-error - a variable holds a value
     const scoped: style.Map<Theme> = { $inkLight: { color: 'red' } };
     // @ts-expect-error - a condition holds a map
     const bare: style.Map<Theme> = { $wide: 'red' };
     // @ts-expect-error - a condition has no token
-    const token = apply.$.wide;
+    const token = () => Theme.use()(Swatch, ($) => ({ color: $.wide }));
 
     expect([map, scoped, bare, token]).toHaveLength(4);
   });
 
   it('will name a variable from its field and default it at the root', () => {
-    const { $ } = Theme.use();
     const Swatch = () => createElement('i', {});
+    const tokens = vi.fn(($: { inkLight: string; line: string }) => ({ color: $.inkLight, outline: `1px solid ${$.inkLight}` }));
 
-    Theme.use()(Swatch, { color: $.inkLight, outline: `1px solid ${$.inkLight}` });
+    Theme.use()(Swatch, tokens);
 
     const node = place(createElement(Swatch, {})).querySelector('i')!;
 
-    expect($.inkLight).toBe('var(--ink-light)');
-    expect($.line).toBe('var(--theme-line)');
+    expect(tokens).toHaveBeenCalledWith(expect.objectContaining({ inkLight: 'var(--ink-light)', line: 'var(--theme-line)' }));
     expect(roots()).toContain(':where(:root){--ink-light: #222;}');
     expect(getComputedStyle(node).color).toBe('#222');
   });
@@ -583,12 +582,12 @@ describe('variables', () => {
       readonly $dark = ':is([data-mode="dark"], [data-mode="dark"] *)';
     }
 
-    const deck = Deck.use({
+    const deck = Deck.use(($) => ({
       $edge: '#222',
-      _button: { color: Deck.use().$.edge },
+      _button: { color: $.edge },
       $wide: { $edge: '#444', _button: { opacity: 0.5 } },
       $dark: { $edge: '#eee' }
-    });
+    }));
 
     const Bar = () => createElement('button', {});
 
@@ -624,7 +623,7 @@ describe('variables', () => {
     const node = place(createElement(Badge, {})).querySelector('i')!;
 
     expect(rules).toHaveBeenCalledOnce();
-    expect(rules).toHaveBeenCalledWith(tone.$);
+    expect(rules).toHaveBeenCalledWith({ tint: 'var(--tint)' });
     expect(getComputedStyle(node).outlineColor).toBe('#123');
     expect(getComputedStyle(node.querySelector('b')!).color).toBe('#123');
     expect([typo, early]).toHaveLength(2);
@@ -639,7 +638,7 @@ describe('variables', () => {
       const apply = Edition.use();
       const Mark = () => createElement('i', {});
 
-      apply(Mark, { color: apply.$.hue });
+      apply(Mark, ($) => ({ color: $.hue }));
       return place(createElement(Mark, {})).querySelector('i')!;
     }
 
@@ -658,14 +657,14 @@ describe('variables', () => {
     const late = Late.use();
     const Dot = () => createElement('i', {});
 
-    late(Dot, { color: late.$.lateHue });
+    late(Dot, ($) => ({ color: $.lateHue }));
     place(createElement(Dot, {}));
 
     for (const element of document.head.querySelectorAll('style[data-expressive]')) element.remove();
 
     const Again = () => createElement('b', {});
 
-    late(Again, { color: late.$.lateHue });
+    late(Again, ($) => ({ color: $.lateHue }));
 
     const node = place(createElement(Again, {})).querySelector('b')!;
 
@@ -681,14 +680,14 @@ describe('variables', () => {
     const kept = Kept.use();
     const Dot = () => createElement('i', {});
 
-    kept(Dot, { color: kept.$.keptHue });
+    kept(Dot, ($) => ({ color: $.keptHue }));
     place(createElement(Dot, {}));
 
     document.head.querySelector('style[data-expressive=dom]')!.remove();
 
     const Again = () => createElement('b', {});
 
-    kept(Again, { color: kept.$.keptHue });
+    kept(Again, ($) => ({ color: $.keptHue }));
 
     const node = place(createElement(Again, {})).querySelector('b')!;
 

@@ -257,7 +257,7 @@ const tint = Tint.use({ $hue: 'rgb(255, 0, 0)' });
 
 export const Hued = () => <i id="hued">hued</i>;
 
-tint(Hued, { color: tint.$.hue });
+tint(Hued, ($) => ({ color: $.hue }));
 `,
   'badge.tsx': `import { Component } from '@expressive/mvc';
 import { style } from './pack';

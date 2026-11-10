@@ -118,8 +118,6 @@ const theme = Theme.use({
   $dark: { $ink: 'rgb(31, 31, 31)' }
 });
 
-const { $ } = theme;
-
 function Swatch() {
   return <s>swatch</s>;
 }
@@ -128,7 +126,7 @@ function Panel() {
   return <aside><Swatch /></aside>;
 }
 
-theme(Swatch, { color: $.ink, paddingTop: $.gap, border: ['1px', 'solid', $.ink], outlineColor: $.probeTone });
+theme(Swatch, ($) => ({ color: $.ink, paddingTop: $.gap, border: ['1px', 'solid', $.ink], outlineColor: $.probeTone }));
 theme(Panel, { $ink: 'rgb(32, 32, 32)' });
 
 const root = document.getElementById('app')!;
