@@ -79,7 +79,8 @@ declare namespace style {
    * Body of a `style()` map. Bare keys are declarations or calls to a macro
    * of `T`, `_name` opens a rule or descendant scope, `:state` and `@media …`
    * apply their body conditionally, as does `$name` for a condition named on
-   * `T`. A rule or condition body may be an array of maps, merged in order.
+   * `T`; a `$name` variable of `T` takes a value. A rule or condition body may
+   * be an array of maps, merged in order.
    */
   type Map<T = {}> = {
     [K in Key<T>]?:
