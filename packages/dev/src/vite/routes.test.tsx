@@ -219,6 +219,17 @@ describe("app/ routing (codegen)", () => {
     expect(out).toMatch(/<Route to="settings" as={SettingsScope}>\s*<Route as={Settings} \/>/);
   });
 
+  it("will read a class exported as the default by name as a scope, not an entry hook", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(settings).tsx": `${PAGE}\nexport class Panel extends Model {}\nexport default Panel;` });
+    expect(out).toMatch(/<Route to="settings" as={SettingsScope}>\s*<Route as={Settings} \/>/);
+    expect(out).not.toContain("SettingsEnter");
+  });
+
+  it("will read a function exported as the default by name as an entry hook", async () => {
+    const out = await generate({ "index.tsx": PAGE, "(admin).tsx": `${PAGE}\nconst gate = () => "/login";\nexport default gate` });
+    expect(out).toContain('<Route to="admin" as={Admin} enter={AdminEnter} />');
+  });
+
   it("[slug] is a dynamic segment → to=\":slug\"", async () => {
     const out = await generate({ "blog/index.tsx": PAGE, "blog/[slug].tsx": PAGE });
     expect(out).toContain('<Route to="blog">');
