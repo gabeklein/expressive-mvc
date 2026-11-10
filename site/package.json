@@ -1,0 +1,36 @@
+{
+  "name": "site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "expressive dev",
+    "build": "expressive build",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@expressive/dev": "workspace:*",
+    "@expressive/dom": "workspace:*",
+    "@expressive/mvc": "workspace:*",
+    "@expressive/router": "workspace:*",
+    "@mdx-js/rollup": "^3.1.1",
+    "estree-util-value-to-estree": "^3.0.0",
+    "github-slugger": "^2.0.0",
+    "mdast-util-to-string": "^4.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-mdx-frontmatter": "^5.2.0",
+    "unist-util-mdx-define": "^1.1.0",
+    "unist-util-visit": "^5.0.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/mdast": "^4.0.4",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^25.2.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}
