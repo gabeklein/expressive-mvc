@@ -36,7 +36,7 @@ composer.alive / since / until       // registry span (ms); an Instance outlives
 composer.parent / composer.children  // ownership, memoized until the registry changes
 app.find('Composer')                 // depth-first by label or predicate
 composer.get('draft')                // stored value, serialized
-composer.model()                     // { id, typeId, type, site?, parent?, keys, absent }
+composer.model()                     // { id, typeId, type, site, parent?, keys, absent }
 composer.watch((key) => ..., ['draft'])   // key per update, null on destroy; unsubscribe returned
 composer.frames({ since })           // this instance's journal
 await composer.act((s) => s.submit('x'))  // run, settle, return frames produced
@@ -69,7 +69,7 @@ Unclaimed instances are held weakly - the inspector never pins an abandoned rend
 Check before trusting what inspect shows:
 
 ```ts
-inspect.health() // { orphans, collected, copies, caught: { Destroyed, Inactive, Getter, Init, Effect } } - also on the bridge and relay
+inspect.health() // { orphans, collected, copies, caught: { dead, unused, getter, setup, effect } } - also on the bridge and relay
 ```
 
 - `copies > 1` - more than one `@expressive/mvc` is loaded; inspect sees only instances from the copy it imports, and warns once. Usual cause: a bundler resolving mvc twice - dedupe or alias it. Counted only where inspect is loaded; a bundle that never imports it goes unseen.

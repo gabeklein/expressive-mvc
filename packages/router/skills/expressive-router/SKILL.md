@@ -87,7 +87,7 @@ A `none` Route always needs an authored parent scope - a root-level one is the a
 | `''` / `undefined` | allow normal render |
 | `null` | **force-404**: cede the path so the scope falls through to its nearest `none` Route |
 
-The guard takes no arguments - read state from the declaring class. It may be **async**: while it pends, cold load shows `fallback`; in-app navigation holds the current screen ([Deferred presentation](#deferred-presentation)).
+The guard takes no arguments - read state from the declaring class. It may be **async**: while it pends, cold load shows `fallback`; in-app navigation holds the current screen ([Deferred presentation](#deferred-presentation)). A guard that throws or rejects is an error like a failed chunk - `catch` on a `Route` subclass, or the nearest ancestor boundary.
 
 The verdict is cached per concrete path of the route's own pattern: navigation below it reuses the verdict; re-entry or a change to its own params (`/document/1` -> `/document/2` on `document/:id`) re-runs the guard.
 
@@ -306,7 +306,7 @@ class SideNav extends NavLinks {
 
 ### `Redirect`
 
-Navigates to `to` on mount when `when` (default `true`). Pushes unless `replace`. Renders nothing. A string `redirect` prop on `Route` is the always-replace shorthand.
+Navigates to `to` on activation when `when` (default `true`). Pushes unless `replace`. Renders nothing. A string `redirect` prop on `Route` is the always-replace shorthand.
 
 ```tsx
 <Redirect to="/login" when={!user} />

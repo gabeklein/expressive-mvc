@@ -55,11 +55,11 @@ Folders are layers, static names only (`[param]` folders throw). A module posts 
 
 ## Values
 
-Arguments and results cross as JSON plus what JSON loses: `Date` (an invalid one too), `BigInt`, `NaN` and `±Infinity`, `Map`, `Set`, `Uint8Array` and `ArrayBuffer` (arriving as `Uint8Array`), and `undefined` in an array - so `f(a, undefined)` keeps its default. Each goes as a one-key tagged object (`{ "$date": "2026-11-08T12:00:00.000Z" }`), so the body stays readable JSON; a plain object whose only key is a tag is escaped, so data never reads as one. The rest is `JSON.stringify`'s: `toJSON` first, `undefined` and function properties dropped, class instances as their own enumerable fields, a circular structure refused. A thrown error's own fields and twins' values ride the same codec.
+Arguments and results cross as JSON plus what JSON loses: `Date` (an invalid one too), `BigInt`, `NaN` and `±Infinity`, `Map`, `Set`, `Uint8Array` and `ArrayBuffer` (arriving as `Uint8Array`), and `undefined` in an array - so `f(a, undefined)` keeps its default. Each goes as a one-key tagged object (`{ "$date": "2026-11-08T12:00:00.000Z" }`), so the body stays readable JSON; a plain object whose only key is a tag is escaped, so data never reads as one. The rest is `JSON.stringify`'s: `toJSON` first, `undefined` and function properties dropped, class instances as their own enumerable fields, a circular structure refused. A thrown error's own fields ride the same codec.
 
 ## Errors
 
-`HttpError` and its subclasses map to statuses: `BadRequest` 400, `Unauthorized` 401, `PaymentRequired` 402, `Forbidden` 403, `NotFound` 404, `MethodNotAllowed` 405, `Conflict` 409, `Gone` 410, `PayloadTooLarge` 413, `UnprocessableEntity` 422, `TooManyRequests` 429, `InternalError` 500, `NotImplemented` 501, `ServiceUnavailable` 503, `Redirect(location, status = 302)`. Extend one, or set `status` on your own, to add a kind. Any other thrown error replies 500 - its message in dev, a generic one in build.
+`HttpError` and its subclasses map to statuses: `BadRequest` 400, `Unauthorized` 401, `PaymentRequired` 402, `Forbidden` 403, `NotFound` 404, `MethodNotAllowed` 405, `Conflict` 409, `Gone` 410, `PayloadTooLarge` 413, `UnprocessableEntity` 422, `TooManyRequests` 429, `InternalError` 500, `NotImplemented` 501, `ServiceUnavailable` 503. A status outside 400-599 replies 500 with the error's fields intact - `Redirect(location, status = 302)` arrives as a `Redirect` carrying both, for the client to act on. Extend one, or set `status` on your own, to add a kind. Any other thrown error replies 500 - its message in dev, a generic one in build.
 
 ## Gates and Current
 

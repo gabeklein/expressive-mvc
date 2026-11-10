@@ -61,7 +61,7 @@ export default defineConfig({ plugins: [inspect()] });
 ```bash
 curl localhost:5173/__inspect                                   # connected pages, iframes included
 curl localhost:5173/__inspect/<id> -d '["get", "Composer.draft"]'
-curl localhost:5173/__inspect/<id> -d '["act", ["call", "Composer.submit", "hi"]]'   # { value, frames, settled, pending }
+curl localhost:5173/__inspect/<id> -d '["act", ["call", "Composer.submit", "hi"]]'   # { value, frames, settled, pending, missing }
 ```
 
 Local callers only; browser and proxied (tunnel) requests are refused.

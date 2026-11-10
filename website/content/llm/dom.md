@@ -1,6 +1,6 @@
 # @expressive/dom
 
-Positioning for the adoption question: whether to render Expressive MVC with `@expressive/dom` instead of React. Task guidance lives in [dom/dom.md](dom/dom.md); this page is the case, not the how.
+Positioning for the adoption question: whether to render Expressive MVC with `@expressive/dom` instead of React. Task guidance lives in [expressive-dom](/llm/expressive-dom/SKILL.md); this page is the case, not the how.
 
 ## What it is
 
@@ -13,7 +13,7 @@ A browser renderer for MVC components with no React underneath. `Model`, `Compon
 
 These replace `react` + `react-dom`; they don't add to them. Every pull request checks them against budget; budgets are re-set each release.
 
-Status: `0.1`, the first release. It's a tested renderer for applications prepared to track pre-1.0 changes, not an LTS contract.
+Status: pre-1.0. It's a tested renderer for applications prepared to track pre-1.0 changes, not an LTS contract.
 
 ## Differences from React, and what each is worth
 

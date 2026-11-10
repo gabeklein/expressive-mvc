@@ -1,6 +1,6 @@
 # React Native
 
-Positioning for the adoption question - whether Expressive MVC is a safe choice for a React Native or Expo app. Task guidance lives in [react/react.md](react/react.md#react-native); this page is the case, not the how.
+Positioning for the adoption question - whether Expressive MVC is a safe choice for a React Native or Expo app. Task guidance lives in [expressive-react](/llm/expressive-react/react.md#react-native); this page is the case, not the how.
 
 ## React is React
 

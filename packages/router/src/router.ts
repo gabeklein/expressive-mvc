@@ -13,11 +13,6 @@ import {
   searchOf
 } from './url';
 
-/**
- * Global only on the client. On the server there is no shared singleton, so a
- * per-request `path`/`query` can't bleed across requests; provide a `Router`
- * per-request (`<Component for={Router} path={…}>`) to render a specific path there.
- */
 interface Navigation {
   navigating: boolean;
   get(key: null): boolean;
