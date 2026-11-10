@@ -8,6 +8,8 @@ export interface BuildOptions {
   pretty?: boolean;
   /** Default true; false builds in memory. */
   write?: boolean;
+  /** Render each static page to `dist/client/<path>/index.html` after the build; the shell moves to `200.html`. */
+  prerender?: boolean;
 }
 
 export function clientBuild(root: string, { pretty = false, write = true }: BuildOptions = {}): InlineConfig {
@@ -45,4 +47,6 @@ export function serverBuild(root: string, { write = true }: BuildOptions = {}): 
 export async function runBuild(root = process.cwd(), options: BuildOptions = {}): Promise<void> {
   await build(clientBuild(root, options));
   await build(serverBuild(root, options));
+
+  if (options.prerender) await (await import("./prerender")).prerender(root);
 }

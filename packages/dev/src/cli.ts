@@ -7,6 +7,7 @@ Usage:
   expressive dev             Run Vite dev server with HMR and the inspector
   expressive build           dist/client (static app) + dist/server/index.js (node service)
   expressive build --pretty  Readable client output (unminified, stable filenames)
+  expressive build --prerender  Static HTML per static page (shell kept as 200.html)
   expressive --help
 
 Project layout:
@@ -35,7 +36,7 @@ async function main() {
       }
       case "build": {
         const { runBuild } = await import("./vite/build");
-        await runBuild(process.cwd(), { pretty: rest.includes("--pretty") });
+        await runBuild(process.cwd(), { pretty: rest.includes("--pretty"), prerender: rest.includes("--prerender") });
         return;
       }
       default:

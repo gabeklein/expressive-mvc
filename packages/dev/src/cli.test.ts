@@ -44,7 +44,12 @@ it("will run dev", async () => {
 
 it("will run build", async () => {
   await run("build", "--pretty");
-  expect(runBuild).toHaveBeenCalledWith(process.cwd(), { pretty: true });
+  expect(runBuild).toHaveBeenCalledWith(process.cwd(), { pretty: true, prerender: false });
+});
+
+it("will run build with prerender", async () => {
+  await run("build", "--prerender");
+  expect(runBuild).toHaveBeenCalledWith(process.cwd(), { pretty: false, prerender: true });
 });
 
 it("will print help", async () => {
