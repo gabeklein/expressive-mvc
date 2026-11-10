@@ -53,7 +53,7 @@ const schema = {
       description:
         'Class-based reactive state management for React. Define state and logic as plain classes; components update when the values they read change.',
       sameAs: [
-        'https://github.com/gabeklein/expressive-mvc',
+        'https://github.com/gabeklein/expressive',
         'https://www.npmjs.com/package/@expressive/react',
       ],
     },

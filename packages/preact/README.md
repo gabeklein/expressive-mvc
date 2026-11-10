@@ -6,9 +6,9 @@
 
 ---
 
-The Preact adapter for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Its API mirrors [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) - `Component`, `<Component for>`, `Model.get()` - against a Preact host. See the [`@expressive/react` README](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md) for usage.
+The Preact adapter for [Expressive MVC](https://github.com/gabeklein/expressive). Its API mirrors [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) - `Component`, `<Component for>`, `Model.get()` - against a Preact host. See the [`@expressive/react` README](https://github.com/gabeklein/expressive/blob/main/packages/react/README.md) for usage.
 
-> **Note:** This package is currently internal and not published to npm. Track [the repo](https://github.com/gabeklein/expressive-mvc) for availability.
+> **Note:** This package is currently internal and not published to npm. Track [the repo](https://github.com/gabeklein/expressive) for availability.
 
 ## License
 

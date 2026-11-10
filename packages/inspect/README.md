@@ -10,7 +10,7 @@
 
 ---
 
-Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive-mvc) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay or server handler - a base layer for agents, devtools, and test helpers.
+Query the live instance graph of an [Expressive MVC](https://github.com/gabeklein/expressive) app from a test, a browser driver (Playwright, puppeteer, CDP), or the browser console. No UI, and no network beyond an opt-in dev-server relay or server handler - a base layer for agents, devtools, and test helpers.
 
 ```bash
 npm install --save-dev @expressive/inspect
@@ -110,4 +110,4 @@ Instances a host never committed - a render thrown away, a StrictMode twin - sta
 
 Property names survive minification; class names do not. Each class gets a stable `typeId` and a construction `site`. Name them with `label(Type, 'Composer')`, `static displayName`, or `resolve({ T3: 'Composer' })`, or keep names at build time (`keepNames`, `keep_classnames`).
 
-Full reference: [skills/expressive-inspect](https://github.com/gabeklein/expressive-mvc/blob/main/packages/inspect/skills/expressive-inspect/SKILL.md), shipped in the package.
+Full reference: [skills/expressive-inspect](https://github.com/gabeklein/expressive/blob/main/packages/inspect/skills/expressive-inspect/SKILL.md), shipped in the package.

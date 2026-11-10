@@ -10,7 +10,7 @@
 
 ---
 
-A host-agnostic router for [Expressive MVC](https://github.com/gabeklein/expressive-mvc). Routes are declared as nested JSX, matching is computed lexically from that tree (not a separate config), and navigation state lives on a reactive `Router` any component can read or drive.
+A host-agnostic router for [Expressive MVC](https://github.com/gabeklein/expressive). Routes are declared as nested JSX, matching is computed lexically from that tree (not a separate config), and navigation state lives on a reactive `Router` any component can read or drive.
 
 ```bash
 npm install @expressive/router @expressive/react react
@@ -202,7 +202,7 @@ class SideNav extends NavLinks {
 }
 ```
 
-These members are overridable reactive subcomponents bound to the live instance - the same mechanism `Component` provides, via [subcomponents](https://github.com/gabeklein/expressive-mvc/blob/main/packages/react/README.md#subcomponents).
+These members are overridable reactive subcomponents bound to the live instance - the same mechanism `Component` provides, via [subcomponents](https://github.com/gabeklein/expressive/blob/main/packages/react/README.md#subcomponents).
 
 ## Runtime boundaries
 

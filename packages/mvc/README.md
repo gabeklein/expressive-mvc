@@ -6,12 +6,12 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@expressive/mvc"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Fmvc.svg"></a>
-  <a href="https://github.com/gabeklein/expressive-mvc/actions/workflows/coverage.yml"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgabeklein%2Fexpressive-mvc%2Fbadges%2Fcoverage.json"></a>
+  <a href="https://github.com/gabeklein/expressive/actions/workflows/coverage.yml"><img alt="Coverage" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgabeklein%2Fexpressive%2Fbadges%2Fcoverage.json"></a>
 </p>
 
 ---
 
-The core of [Expressive MVC](https://github.com/gabeklein/expressive-mvc): reactive primitives built around plain classes, with no framework dependency. Provides the `Model` class, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
+The core of [Expressive MVC](https://github.com/gabeklein/expressive): reactive primitives built around plain classes, with no framework dependency. Provides the `Model` class, instructions, context, and the renderer-agnostic `Component` that adapters like [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) build on.
 
 > **Building a React app?** Install [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) alongside this package - the adapter declares `@expressive/mvc` as a peer dependency, so both belong in your `package.json`. Import `Model`, `Component`, and every instruction from this package, and import the adapter once from your entry so the host registers. The same holds for [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom), the renderer without React.
 
@@ -140,7 +140,7 @@ off();                                                // stop listening
 
 To render state in a UI, add a host: [`@expressive/react`](https://www.npmjs.com/package/@expressive/react) or [`@expressive/dom`](https://www.npmjs.com/package/@expressive/dom).
 
-Full guide and API reference → **[github.com/gabeklein/expressive-mvc](https://github.com/gabeklein/expressive-mvc)**
+Full guide and API reference → **[github.com/gabeklein/expressive](https://github.com/gabeklein/expressive)**
 
 ## License
 

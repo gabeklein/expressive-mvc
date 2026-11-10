@@ -1,5 +1,5 @@
 {
-    "name": "expressive-mvc",
+    "name": "expressive",
     "build": {
         "dockerfile": "Dockerfile.dev",
         "context": ".."
@@ -12,7 +12,7 @@
         "./features/claude-rc": {}
     },
     "mounts": [
-        "source=expressive-mvc-bun-cache,target=/home/bun/.bun/install/cache,type=volume"
+        "source=expressive-bun-cache,target=/home/bun/.bun/install/cache,type=volume"
     ],
     "forwardPorts": [5173],
     "portsAttributes": {

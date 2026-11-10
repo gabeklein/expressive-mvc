@@ -1,6 +1,6 @@
 ---
 name: expressive-dom
-description: Expressive MVC's DOM renderer (@expressive/dom) - renders Model/Component classes straight to browser DOM without React. Use when building or debugging an @expressive/dom app: render/unmount, style() and Style, FC render scopes, native events, code splitting and boundaries, transitions, portals, Vite hot reload. Core Model API lives in the expressive-mvc skill.
+description: Expressive MVC's DOM renderer (@expressive/dom) - renders Model/Component classes straight to browser DOM without React. Use when building or debugging an @expressive/dom app - render/unmount, style() and Style, FC render scopes, native events, code splitting and boundaries, transitions, portals, Vite hot reload. Core Model API lives in the expressive-mvc skill.
 ---
 
 # DOM renderer

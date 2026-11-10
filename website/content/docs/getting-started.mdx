@@ -24,7 +24,28 @@ import '@expressive/react';
 
 It exports nothing for app code - everything comes from `@expressive/mvc` by name. Routing is a separate package, `@expressive/router`.
 
-> Working with an agent? `npx skills add gabeklein/expressive-mvc` teaches it the whole API in one shot.
+### Agent skills
+
+Each package ships a skill for coding agents, versioned with the package. Link the installed packages' skills into your project with the [`skills`](https://github.com/vercel-labs/skills) CLI:
+
+```bash
+npm install -D skills
+npx skills experimental_sync -y
+```
+
+Run it from `prepare` so the skills follow every install and upgrade, and ignore the links it creates:
+
+```json
+// package.json
+"scripts": { "prepare": "skills experimental_sync -y" }
+```
+
+```text
+.agents/skills/expressive-*
+.claude/skills/expressive-*
+```
+
+Trying the library before installing it? `npx skills add gabeklein/expressive` copies the skills from GitHub instead - choose which ones, or pass `--skill expressive-mvc`.
 
 ### Requirements
 

@@ -55,7 +55,7 @@ export function Hero() {
           </div>
           <div className="mx-auto flex max-w-md flex-col gap-2 lg:mx-0">
             <CopyPill label="Add to your app" command="npm install @expressive/mvc @expressive/react" />
-            <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive-mvc" />
+            <CopyPill label="Ask your agent" command="npx skills add gabeklein/expressive" />
           </div>
           <p className="mx-auto mt-4 max-w-md text-center text-sm text-fd-muted-foreground lg:mx-0">
             Drops into React you already have - not a framework, no rewrite.

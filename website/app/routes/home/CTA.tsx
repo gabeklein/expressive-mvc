@@ -30,7 +30,7 @@ export function CTA() {
 
         <div className="flex flex-col gap-2 max-w-md mx-auto text-left">
           <CopyPill label="Add to your app" command="npm install @expressive/mvc @expressive/react" />
-          <CopyPill label="Ask your agent if MVC is right for you." command="npx skills add gabeklein/expressive-mvc" />
+          <CopyPill label="Ask your agent if MVC is right for you." command="npx skills add gabeklein/expressive" />
         </div>
         <p className="text-sm text-fd-muted-foreground mt-4">
           The agent skill gives your coding agent the full API and best practices.
