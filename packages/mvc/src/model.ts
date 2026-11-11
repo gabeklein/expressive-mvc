@@ -721,7 +721,30 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
-    activate(state, args, before, after);
+    const o = observer(state, true);
+    const mark = () => void PENDING.delete(mark);
+
+    PENDING.add(mark);
+
+    try {
+      activate(state, args, before, after);
+    } catch (error) {
+      const built = rest.filter((item) => PENDING.has(item)).concat(trailing(mark));
+
+      ACTIVE.delete(state);
+      CAUSE.set(state, error);
+      o.pending.clear();
+      (state as { [Observer]?: Observer | null })[Observer] = o;
+
+      try {
+        built.forEach((item) => event(item, null));
+        event(state, null);
+      } finally {
+        throw error;
+      }
+    } finally {
+      mark();
+    }
 
     let end = rest.length;
 
@@ -806,36 +829,26 @@ function activate(
   active.held = !!up?.held;
   ACTIVE.set(state, active);
 
-  const o = observer(state, true);
+  capture((release) => {
+    const queue = [...before, observe, ...args];
 
-  try {
-    capture((release) => {
-      const queue = [...before, observe, ...args];
+    listener(state, () => release(null), null);
 
-      listener(state, () => release(null), null);
+    for (let i = 0; i < queue.length; i++) {
+      const arg = queue[i];
+      const called = typeof arg == 'function';
+      const out = called ? arg.call(state, state) : arg;
 
-      for (let i = 0; i < queue.length; i++) {
-        const arg = queue[i];
-        const called = typeof arg == 'function';
-        const out = called ? arg.call(state, state) : arg;
+      if (out instanceof Context) continue;
 
-        if (out instanceof Context) continue;
-
-        if (out instanceof Promise) {
-          waits.push(out);
-          out.catch((err) => report('setup', state, err));
-        } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
-        else if (typeof out == 'function') listener(state, out, null);
-        else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
-      }
-    });
-  } catch (error) {
-    ACTIVE.delete(state);
-    o.pending.clear();
-    (state as { [Observer]?: Observer | null })[Observer] = o;
-    event(state, null);
-    throw error;
-  }
+      if (out instanceof Promise) {
+        waits.push(out);
+        out.catch((err) => report('setup', state, err));
+      } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+      else if (typeof out == 'function') listener(state, out, null);
+      else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
+    }
+  });
 
   const settled = waits.length ? Promise.all(waits) : undefined;
   const hold = active.held || !!settled;
@@ -1014,7 +1027,7 @@ function provides(ctx: Context, value: Model) {
  * Pending Models constructed after this one - in a parent, the products of
  * its own initializers, until the last one it kept.
  */
-function trailing(state: Model) {
+function trailing(state: object) {
   const rest: Model[] = [];
   let seen = false;
 

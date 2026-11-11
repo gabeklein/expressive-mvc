@@ -4245,6 +4245,7 @@ describe('on setup / ready stages (static)', () => {
 
   it('will rethrow if an init callback destroys the instance then throws', () => {
     const destroyed = vi.fn();
+    let self!: Test;
 
     class Child extends Model {
       protected new() {
@@ -4258,19 +4259,26 @@ describe('on setup / ready stages (static)', () => {
 
     const create = () =>
       Test.new(function () {
+        self = this;
         this.set(null);
         throw new Error('abort');
       });
 
     expect(create).toThrow('abort');
     expect(destroyed).toBeCalledTimes(1);
+    expect(self.get(null)).toBe(true);
   });
 
-  it('will destroy the instance if a setup handler throws', () => {
+  it('will destroy the instance if a setup handler throws', async () => {
+    const warn = mockWarn();
     const destroyed = vi.fn();
     let self!: Test;
 
-    class Test extends Model {}
+    class Child extends Model {}
+
+    class Test extends Model {
+      child = new Child();
+    }
 
     Test.on({
       setup() {
@@ -4287,6 +4295,143 @@ describe('on setup / ready stages (static)', () => {
 
     expect(() => Test.new()).toThrow('abort');
     expect(destroyed).toBeCalledTimes(1);
+    expect(self.get(null)).toBe(true);
+    expect(self.child.get(null)).toBe(true);
+
+    await flushMicrotasks();
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will destroy the instance if a ready handler throws', () => {
+    const destroyed = vi.fn();
+    let self!: Test;
+
+    class Child extends Model {
+      protected new() {
+        return destroyed;
+      }
+    }
+
+    class Test extends Model {
+      child = new Child();
+    }
+
+    Test.on({
+      ready() {
+        throw new Error('abort');
+      }
+    });
+
+    expect(() => Test.new((x) => void (self = x))).toThrow('abort');
+    expect(destroyed).toBeCalledTimes(1);
+    expect(self.get(null)).toBe(true);
+  });
+
+  it('will destroy children not yet activated if a sibling throws', async () => {
+    const warn = mockWarn();
+    const destroyed = vi.fn();
+
+    class A extends Model {
+      protected new() {
+        return destroyed;
+      }
+    }
+
+    class B extends Model {
+      protected new() {
+        throw new Error('abort');
+      }
+    }
+
+    class C extends Model {}
+
+    let c!: C;
+
+    class Test extends Model {
+      a = new A();
+      b = new B();
+      c = (c = new C());
+    }
+
+    expect(() => Test.new()).toThrow('abort');
+    expect(destroyed).toBeCalledTimes(1);
+    expect(c.get(null)).toBe(true);
+
+    await flushMicrotasks();
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will destroy a Model an init callback constructs before it throws', async () => {
+    const warn = mockWarn();
+    let child!: Model;
+
+    class Child extends Model {}
+    class Test extends Model {}
+
+    const create = () =>
+      Test.new(() => {
+        child = new Child();
+        throw new Error('abort');
+      });
+
+    expect(create).toThrow('abort');
+    expect(child.get(null)).toBe(true);
+
+    await flushMicrotasks();
+    expect(warn).not.toBeCalled();
+  });
+
+  it('will reject an effect with the error an init callback throws', async () => {
+    class Test extends Model {
+      value = 1;
+    }
+
+    let effect: PromiseLike<unknown> | undefined;
+
+    const create = () =>
+      Test.new(function () {
+        effect = this.get(() => {});
+        throw new Error('abort');
+      });
+
+    expect(create).toThrow('abort');
+    await expect(Promise.resolve(effect)).rejects.toThrow('abort');
+  });
+
+  it('will rethrow the original error if a cleanup throws during teardown', () => {
+    class Test extends Model {}
+
+    const create = () =>
+      Test.new(
+        () => () => {
+          throw new Error('cleanup');
+        },
+        () => {
+          throw new Error('abort');
+        }
+      );
+
+    expect(create).toThrow('abort');
+  });
+
+  it('will destroy a held instance if a later init callback throws', () => {
+    const pending = mockPromise();
+    let self!: Test;
+
+    class Test extends Model {}
+
+    const create = () =>
+      Test.new(
+        function () {
+          self = this;
+          return pending;
+        },
+        () => {
+          throw new Error('abort');
+        }
+      );
+
+    expect(create).toThrow('abort');
     expect(self.get(null)).toBe(true);
   });
 
@@ -4308,25 +4453,24 @@ describe('on setup / ready stages (static)', () => {
 
     class Root extends Model {
       child?: Child = undefined;
-
-      protected new() {
-        return () => log.push('root');
-      }
     }
 
     const create = () =>
-      Root.new(function () {
-        built.push(this);
-        return {
+      Root.new(
+        function () {
+          built.push(this);
+          return () => log.push('root');
+        },
+        () => ({
           child: new Child(function () {
             built.push(this);
             throw new Error('abort');
           })
-        };
-      });
+        })
+      );
 
     expect(create).toThrow('abort');
-    expect(log).toEqual(['leaf']);
+    expect(log).toEqual(['leaf', 'root']);
     expect(built.map((x) => x.get(null))).toEqual([true, true, true]);
 
     await flushMicrotasks();
