@@ -1,0 +1,64 @@
+{
+  "name": "@expressive/cli",
+  "version": "0.0.0",
+  "description": "Commands from Models: argv onto fields, one dispatcher for every expressive command.",
+  "keywords": [
+    "expressive",
+    "mvc",
+    "cli",
+    "command",
+    "argv"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@expressive.dev",
+    "url": "https://github.com/gabeklein"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabeklein/expressive.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bin": {
+      "types": "./dist/bin.d.ts",
+      "default": "./dist/bin.js"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit --incremental",
+    "coverage": "vitest run --coverage",
+    "test": "bun run typecheck && bun run coverage"
+  },
+  "devDependencies": {
+    "@expressive/mvc": "workspace:*",
+    "@expressive/steps": "workspace:*",
+    "tsdown": "^0.20.1"
+  },
+  "peerDependencies": {
+    "@expressive/mvc": "^0.94.3"
+  },
+  "peerDependenciesMeta": {
+    "@expressive/mvc": {
+      "optional": true
+    }
+  }
+}

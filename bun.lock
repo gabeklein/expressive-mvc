@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive",
@@ -43,6 +44,21 @@
         "typescript": "^5.9.3",
         "vite": "^8.0.0",
       },
+    },
+    "packages/cli": {
+      "name": "@expressive/cli",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@expressive/mvc": "workspace:*",
+        "@expressive/steps": "workspace:*",
+        "tsdown": "^0.20.1",
+      },
+      "peerDependencies": {
+        "@expressive/mvc": "^0.94.3",
+      },
+      "optionalPeers": [
+        "@expressive/mvc",
+      ],
     },
     "packages/dev": {
       "name": "@expressive/dev",
@@ -455,6 +471,8 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.28.1", "", { "os": "win32", "cpu": "ia32" }, "sha512-zvb/mB2bSCoJOpoCBgYKKpX6YM6mJBlBUVUtVj41DlZJVEB6/0CKlRYxP5wWl1C1ILiCoAU5wZZ4q1P3qeS6Eg=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
+
+    "@expressive/cli": ["@expressive/cli@workspace:packages/cli"],
 
     "@expressive/dev": ["@expressive/dev@workspace:packages/dev"],
 
