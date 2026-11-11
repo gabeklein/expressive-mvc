@@ -1,6 +1,6 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { childrenOf, isVNode } from '../node/vnode';
+import { isVNode } from '../node/vnode';
 import type { Key, Node as RenderNode, VNode } from '../node/vnode';
 import type { Appearance } from '../style/claim';
 import { isCollection, patchCollection } from './collection';
@@ -23,24 +23,25 @@ function reconcile(fiber: Fiber, value: RenderNode, context: Context, boundary?:
 }
 
 function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: globalThis.Node | null, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
-  const values = childrenOf(value);
+  const values = slotsOf(value);
   const old = owner.children;
   const keyed = new Map<Key, Fiber>();
+  const slotted = new Map<string, Fiber>();
   const used = new Set<Fiber>();
   const next: Fiber[] = [];
+  let current = '';
 
   for (const child of old)
     if (child.key !== null && child.key !== undefined) keyed.set(child.key, child);
+    else if (!slotted.has(child.slot!)) slotted.set(child.slot!, child);
 
   try {
-    for (let index = 0; index < values.length; index++) {
-      const value = source(values[index]);
+    for (const [each, slot] of values) {
+      const value = source(each);
+
+      current = slot;
       const key = keyOf(value);
-      let child = key !== null && key !== undefined
-        ? keyed.get(key)
-        : old[index]?.key == null
-          ? old[index]
-          : undefined;
+      let child = key !== null && key !== undefined ? keyed.get(key) : slotted.get(slot);
 
       if (child && used.has(child)) child = undefined;
       if (child) used.add(child);
@@ -48,10 +49,15 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       const fiber = patch(child, value, parent, before, context, boundary, authored(value, appearance));
 
       if (fiber !== child) used.delete(child!);
+      fiber.slot = slot;
       next.push(fiber);
     }
   } catch (error) {
+    const done = next.length;
+
     gather(error, next, old);
+
+    for (const fiber of next.slice(done)) fiber.slot = current;
     owner.children = [...next, ...old.filter((child) => !child.dead && !next.includes(child))];
     throw error;
   }
@@ -107,6 +113,18 @@ function source(value: RenderNode): RenderNode {
     value = Object.getPrototypeOf(value);
 
   return value;
+}
+
+function slotsOf(value: unknown) {
+  const output: [RenderNode, string][] = [];
+
+  function add(child: unknown, slot: string) {
+    if (Array.isArray(child)) child.forEach((each, index) => add(each, `${slot}/${index}`));
+    else if (child !== null && child !== undefined && typeof child != 'boolean') output.push([child as RenderNode, slot]);
+  }
+
+  add(value, '');
+  return output;
 }
 
 function keyOf(value: RenderNode): Key {

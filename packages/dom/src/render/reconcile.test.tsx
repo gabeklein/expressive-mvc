@@ -134,4 +134,66 @@ describe('reconcile', () => {
     await flushMicrotasks();
     expect(root.textContent).toBe('plain');
   });
+
+  it('will keep later siblings when a conditional child appears before them', async () => {
+    const mounted = vi.fn();
+
+    class Field extends Component {
+      protected new() {
+        mounted();
+      }
+
+      render() {
+        return <textarea />;
+      }
+    }
+
+    class Form extends Component {
+      confirm = false;
+
+      render() {
+        return <section>{this.confirm && <b>sure?</b>}<input /><Field /></section>;
+      }
+    }
+
+    const [form, root] = mount(Form);
+    const input = root.querySelector('input');
+    const textarea = root.querySelector('textarea');
+
+    form.confirm = true;
+    await flushMicrotasks();
+
+    expect(root.querySelector('b')).not.toBeNull();
+    expect(root.querySelector('input')).toBe(input);
+    expect(root.querySelector('textarea')).toBe(textarea);
+    expect(mounted).toHaveBeenCalledTimes(1);
+
+    form.confirm = false;
+    await flushMicrotasks();
+
+    expect(root.querySelector('b')).toBeNull();
+    expect(root.querySelector('input')).toBe(input);
+  });
+
+  it('will match unkeyed children within their own nested list', async () => {
+    class List extends Component {
+      items = ['a'];
+
+      render() {
+        return <section>{this.items.map((item) => <i>{item}</i>)}<input /></section>;
+      }
+    }
+
+    const [list, root] = mount(List);
+    const first = root.querySelector('i');
+    const input = root.querySelector('input');
+
+    list.items = ['a', 'b'];
+    await flushMicrotasks();
+
+    expect(root.querySelector('section')!.textContent).toBe('ab');
+    expect(root.querySelector('i')).toBe(first);
+    expect(root.querySelector('input')).toBe(input);
+  });
 });
+
