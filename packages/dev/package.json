@@ -1,6 +1,6 @@
 {
   "name": "@expressive/dev",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "App host for Expressive: expressive dev/build over Vite, file-based routes on @expressive/dom, server calls and server Models.",
   "license": "MIT",
   "author": {
@@ -65,15 +65,15 @@
     "example:e2e": "cd example && playwright test"
   },
   "dependencies": {
-    "@expressive/dom": "^0.11.0",
-    "@expressive/inspect": "^0.6.3",
-    "@expressive/router": "^0.10.3",
-    "@expressive/rpc": "^0.1.1",
+    "@expressive/dom": "^0.12.0",
+    "@expressive/inspect": "^0.6.4",
+    "@expressive/router": "^0.10.4",
+    "@expressive/rpc": "^0.2.0",
     "es-module-lexer": "^1.6.0",
     "vite": "^8.0.0"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.94.2"
+    "@expressive/mvc": "^0.94.3"
   },
   "devDependencies": {
     "@expressive/mvc": "workspace:^",

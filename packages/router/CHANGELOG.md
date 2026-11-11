@@ -1,5 +1,13 @@
 # @expressive/router
 
+## 0.10.4
+
+### Patch Changes
+
+- [#680](https://github.com/gabeklein/expressive/pull/680) [`9923150`](https://github.com/gabeklein/expressive/commit/9923150a93702b7e6bfb326af29889670b3f5f59) A Route subclass given as a catch-all Route's `as` now matches the paths below it and reads the rest as `match['*']`. It used to match only the catch-all's own path.
+- Updated dependencies [[`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0)]:
+  - @expressive/mvc@0.94.3
+
 ## 0.10.3
 
 ### Patch Changes

@@ -1,5 +1,19 @@
 # @expressive/dev
 
+## 0.1.3
+
+### Patch Changes
+
+- [#678](https://github.com/gabeklein/expressive/pull/678) [`f59d49b`](https://github.com/gabeklein/expressive/commit/f59d49be2daeb6328b31196153290ec333ec7033) A route module's `export default Name` naming a class is read as its scope class, not as an entry hook.
+
+- [#679](https://github.com/gabeklein/expressive/pull/679) [`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0) Agents read each package's skill straight from `node_modules/@expressive/<pkg>/skills/`, so linking skills in with `skills experimental_sync` is no longer needed. Point an agent at them with a line in `AGENTS.md`, or `npx skills add gabeklein/expressive` for a small skill that says where they are. Skills now name each other in plain text (`expressive-mvc/component.md#props`) instead of linking a side-by-side install, and `@expressive/dev` drops its `skills` field.
+- Updated dependencies [[`2e3f7c7`](https://github.com/gabeklein/expressive/commit/2e3f7c7c283b75ba2e64ffd2a58df9ab68cb4d58), [`782f0fc`](https://github.com/gabeklein/expressive/commit/782f0fc52c2b401b032d3dc3482f9e00c688f95a), [`bd24d3a`](https://github.com/gabeklein/expressive/commit/bd24d3adc98733f2f474bd959f8bde44e76cf3a3), [`9923150`](https://github.com/gabeklein/expressive/commit/9923150a93702b7e6bfb326af29889670b3f5f59), [`40a1ef0`](https://github.com/gabeklein/expressive/commit/40a1ef0ba97257ce936ff318b6768f600c2910e7), [`3042161`](https://github.com/gabeklein/expressive/commit/3042161db2e9c77999826f84cb9fc60a9736a3b2), [`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0)]:
+  - @expressive/dom@0.12.0
+  - @expressive/router@0.10.4
+  - @expressive/rpc@0.2.0
+  - @expressive/mvc@0.94.3
+  - @expressive/inspect@0.6.4
+
 ## 0.1.2
 
 ### Patch Changes

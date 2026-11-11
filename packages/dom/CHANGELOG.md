@@ -1,5 +1,23 @@
 # @expressive/dom
 
+## 0.12.0
+
+### Minor Changes
+
+- [#682](https://github.com/gabeklein/expressive/pull/682) [`bd24d3a`](https://github.com/gabeklein/expressive/commit/bd24d3adc98733f2f474bd959f8bde44e76cf3a3) Subcomponent styles are scoped to the class that defines the method. A `_Title` body in `style(Card, …)` applies only to the `Title()` that `Card` itself defines: a subclass inheriting `Title` keeps `Card`'s body, and a subclass overriding it starts with only its own - a parent's piece styles no longer land on a replacement.
+
+  **Breaking:** restyling an inherited piece through a subclass no longer applies, and `style(Fancy, { _Title: … })` now throws unless `Fancy` defines `Title()`. Override the method, or have the owner put a rule on the element (`<this.Title _title />`) and style `_title`. A PascalCase field holding a function is not a subcomponent - style it with `style(fn, …)` and read its owner with `Parent.get()`.
+
+### Patch Changes
+
+- [#685](https://github.com/gabeklein/expressive/pull/685) [`2e3f7c7`](https://github.com/gabeklein/expressive/commit/2e3f7c7c283b75ba2e64ffd2a58df9ab68cb4d58) An unkeyed child keeps its element, component instance and state when a conditional sibling before it appears or disappears. Children now match by their position in the written JSX, holes included, instead of by index among the rendered ones - `{open && <Confirm />}<Editor />` no longer remounts `Editor`.
+
+- [#686](https://github.com/gabeklein/expressive/pull/686) [`782f0fc`](https://github.com/gabeklein/expressive/commit/782f0fc52c2b401b032d3dc3482f9e00c688f95a) The `@expressive/dom/vite` hot plugin registers function components only in modules importing `@expressive/dom`, its JSX runtime included. Components on another runtime, such as React email templates compiled for a server environment, no longer get dom's refresh import, which failed to resolve where `@expressive/dom` isn't installed.
+
+- [#679](https://github.com/gabeklein/expressive/pull/679) [`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0) Agents read each package's skill straight from `node_modules/@expressive/<pkg>/skills/`, so linking skills in with `skills experimental_sync` is no longer needed. Point an agent at them with a line in `AGENTS.md`, or `npx skills add gabeklein/expressive` for a small skill that says where they are. Skills now name each other in plain text (`expressive-mvc/component.md#props`) instead of linking a side-by-side install, and `@expressive/dev` drops its `skills` field.
+- Updated dependencies [[`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0)]:
+  - @expressive/mvc@0.94.3
+
 ## 0.11.0
 
 ### Minor Changes
