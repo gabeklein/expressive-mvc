@@ -815,6 +815,82 @@ describe('subcomponents', () => {
     expect(error).not.toBeCalled();
   });
 
+  describe('held class', () => {
+    class Row extends Component {
+      label = 'row';
+
+      render() {
+        return <span>{this.label}</span>;
+      }
+    }
+
+    class Item extends Model {
+      label = 'item';
+    }
+
+    class Legacy {
+      label = 'legacy';
+    }
+
+    it.each([
+      ['a Component class', Row],
+      ['a Model class', Item],
+      ['a plain class', Legacy]
+    ])('will keep %s in a PascalCase field as itself', (_, Type) => {
+      class Table extends Component {
+        Row = Type;
+      }
+
+      const table = Table.new();
+
+      expect(table.Row).toBe(Type);
+      expect(() => new (table.Row as any)({})).not.toThrow();
+    });
+
+    it('will render a Component class held in a PascalCase field', () => {
+      class Table extends Component {
+        Row = Row;
+
+        render() {
+          return <this.Row label="first" />;
+        }
+      }
+
+      render(<Table />);
+
+      expect(screen).toHaveText('first');
+      expect(error).not.toBeCalled();
+    });
+
+    it('will render a Component class assigned after render', async () => {
+      class Table extends Component {
+        label = 'first';
+
+        Row(props: { label: string }): React.ReactNode {
+          return <b>{props.label}</b>;
+        }
+
+        render() {
+          return <this.Row label={this.label} />;
+        }
+      }
+
+      let table!: Table;
+      render(<Table is={(x) => void (table = x)} />);
+
+      expect(screen).toHaveText('first');
+
+      await act(async () => {
+        table.Row = Row as any;
+        table.label = 'second';
+      });
+
+      expect(table.Row).toBe(Row);
+      expect(screen).toHaveText('second');
+      expect(error).not.toBeCalled();
+    });
+  });
+
   it('will render from owner not yet activated', () => {
     class Control extends Component {
       value = 'foo';
