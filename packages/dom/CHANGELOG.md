@@ -1,5 +1,11 @@
 # @expressive/dom
 
+## 0.12.1
+
+### Patch Changes
+
+- [#687](https://github.com/gabeklein/expressive/pull/687) [`889d85a`](https://github.com/gabeklein/expressive/commit/889d85a0c6047ec8dd0dfec112d2ebd2a4eaad83) A child appearing before existing siblings mounts in its place instead of at the end, so the siblings no longer move and a focused one keeps focus - `{placed && <Arrow />}{children}` no longer blurs an input in `children`.
+
 ## 0.12.0
 
 ### Minor Changes
