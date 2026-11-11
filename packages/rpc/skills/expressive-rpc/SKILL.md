@@ -49,6 +49,8 @@ Anything else fails the build: a sync function, a value, a re-export, a non-Erro
 
 Only calls the client build imports are served. Helpers belong outside `dir` (`server/`, `shared/`) and are imported from it; a type a call's signature names must be importable by the client.
 
+`dir` is relative to Vite's root and may sit outside it: `rpc({ dir: "../api/src" })` serves calls from a sibling workspace package, imported from the client by relative path. Path aliases in that package's own tsconfig resolve with Vite's `resolve: { tsconfigPaths: true }`.
+
 ## Addressing
 
 Folders are layers, static names only (`[param]` folders throw). A module posts to its folder's path - `api/todos.ts` → `POST /`, `api/admin/users.ts` → `POST /admin` - with `x-expressive-call: <module>:<export>` (an index's export alone). Ids are readable in dev and salted hashes in build, so a client from an older deploy fails instead of calling changed code. `opaque: false` keeps readable ids for clients that outlive a deploy (installed PWAs, native shells).

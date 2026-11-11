@@ -435,6 +435,76 @@ describe("build", () => {
   });
 });
 
+describe("a folder beside the root", () => {
+  // LFCP's shape: the Vite app in app/, its calls in a sibling workspace package.
+  const beside = () => {
+    const files = Object.fromEntries(
+      Object.entries(APP).map(([path, src]) => [["package.json", "index.html", "src/main.ts"].includes(path) ? `app/${path}` : path, src]),
+    );
+
+    files["app/src/main.ts"] = files["app/src/main.ts"].replaceAll('"../api/', '"../../api/');
+
+    const root = project(files);
+
+    return { root, app: join(root, "app") };
+  };
+
+  it("will answer calls from a folder outside the Vite root in dev", async () => {
+    const { root, app } = beside();
+    const { server, post } = await listen(app, { plugins: [rpc({ dir: "../api" })] });
+
+    await server.transformRequest("/src/main.ts");
+
+    const stub = (await server.transformRequest(`/@fs${root}/api/todos.ts`))!.code;
+
+    expect(stub).toContain('call(at, "todos:list", args)');
+    expect(stub).not.toContain("Too long");
+    expect(await post("/", "todos:list")).toMatchObject({ status: 401 });
+    expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["one"] } });
+  });
+
+  it("will build calls from a folder outside the Vite root", async () => {
+    const { app } = beside();
+    const builder = await createBuilder({ root: app, configFile: false, logLevel: "silent", plugins: [rpc({ dir: "../api", opaque: false })], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const server = (await import(pathToFileURL(join(app, "dist/server/index.js")).href)).default;
+    const call = async (path: string, name: string, token: string) => {
+      const response: Response = await server.fetch(
+        new Request(new URL(path, "http://localhost"), {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-expressive-call": name, authorization: `Bearer ${token}` },
+          body: "[]",
+        }),
+      );
+
+      return { status: response.status, body: await response.json() };
+    };
+
+    expect(await call("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await call("/admin", "stats:stats", "a")).toMatchObject({ status: 403 });
+    expect(await call("/admin", "stats:stats", "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+  });
+
+  it("will resolve the folder's own tsconfig paths with resolve.tsconfigPaths", async () => {
+    const { root, app } = beside();
+
+    writeFileSync(join(root, "api/tsconfig.json"), JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "data/*": ["./data/*"] } } }));
+    mkdirSync(join(root, "api/data"));
+    writeFileSync(join(root, "api/data/todos.ts"), `export const seed = ["seeded"];`);
+    writeFileSync(join(root, "api/todos.ts"), `import { seed } from "data/todos"; export async function list() { return seed; }`);
+    writeFileSync(join(root, "app/src/main.ts"), `import { list } from "../../api/todos"; console.log(list);`);
+
+    const { server, post } = await listen(app, { plugins: [rpc({ dir: "../api" })], resolve: { ...SOURCES, tsconfigPaths: true } });
+
+    await server.transformRequest("/src/main.ts");
+    await server.transformRequest(`/@fs${root}/api/todos.ts`);
+
+    expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["seeded"] } });
+  });
+});
+
 describe("entry", () => {
   const get = (server: ViteDevServer, path: string) => fetch(new URL(path, server.resolvedUrls!.local[0]));
 

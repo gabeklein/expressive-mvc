@@ -14,6 +14,8 @@ import rpc from "@expressive/rpc/vite";
 export default defineConfig({ plugins: [rpc()] });
 ```
 
+`dir` (default `"api"`) is relative to Vite's root and may sit outside it - `rpc({ dir: "../api/src" })` for calls in a sibling workspace package; its tsconfig path aliases resolve with `resolve: { tsconfigPaths: true }`.
+
 ```ts
 // api/todos.ts
 import { NotFound } from "@expressive/rpc";
