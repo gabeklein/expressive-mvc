@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { createServer as listen } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
@@ -566,6 +567,17 @@ function write(dir: string, files: Record<string, string>) {
   }
 }
 
+function freePort() {
+  return new Promise<number>((done, fail) => {
+    const probe = listen().once('error', fail);
+
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address() as { port: number };
+      probe.close(() => done(port));
+    });
+  });
+}
+
 async function serve(mode: Mode, dir: string) {
   const plugins: Plugin[] = host(mode) == 'react' ? [react(), inspect(), reactHot()] : [inspect(), domHot()];
   const server = await createServer({
@@ -585,13 +597,13 @@ async function serve(mode: Mode, dir: string) {
         '@expressive/mvc': src('mvc')
       }
     },
-    server: { port: 0, strictPort: false }
+    server: { host: '127.0.0.1', port: await freePort(), strictPort: true }
   });
 
   await server.listen();
 
   const address = server.httpServer!.address() as { port: number };
-  return { server, base: `http://localhost:${address.port}` };
+  return { server, base: `http://127.0.0.1:${address.port}` };
 }
 
 const sleep = (ms: number) => Bun.sleep(ms);
@@ -672,8 +684,12 @@ async function run(mode: Mode) {
   try {
     await browser.open(base + '/', join(ROOT, `.chrome-${mode}`));
     await until(async () => (await (await fetch(`${base}/__inspect`)).json()).length > 0, 15000);
-    await until(() => browser.text('#timer'));
-    await browser.eval(`window.__probe = 'alive'`);
+    await until(async () => {
+      await until(() => browser.text('#timer'));
+      await browser.eval(`window.__probe = 'alive'`);
+      await sleep(1500);
+      return (await browser.eval('window.__probe')) === 'alive';
+    }, 20000);
 
     const orphans = async () => (await relay('health')).orphans as number;
     const { baseline } = await until(async () => {
