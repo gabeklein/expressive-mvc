@@ -225,3 +225,60 @@ describe("values", () => {
     expect(error).toMatchObject({ message: "Overdue.", due: new Date("2026-11-08T12:00:00.000Z"), left: 3n });
   });
 });
+
+describe("withOptions", () => {
+  // A fetch that answers only when its signal aborts, with the signal's reason.
+  const hang = () => {
+    const fetch = vi.fn((_path: unknown, init?: RequestInit) => new Promise<Response>((_, reject) => init!.signal!.addEventListener("abort", () => reject(init!.signal!.reason))));
+
+    vi.stubGlobal("fetch", fetch);
+    return fetch;
+  };
+
+  it("will abort the calls it starts when the signal does", async () => {
+    hang();
+    const rpc = client();
+    const control = new AbortController();
+    const pending = rpc.withOptions({ signal: control.signal }, () => rpc.call("/", "slow", []));
+
+    control.abort(new Error("Stopped."));
+
+    await expect(pending).rejects.toThrow("Stopped.");
+  });
+
+  it("will fail the calls it starts after the timeout", async () => {
+    hang();
+    const rpc = client();
+
+    await expect(rpc.withOptions({ timeout: 5 }, () => rpc.call("/", "slow", []))).rejects.toMatchObject({ name: "TimeoutError" });
+  });
+
+  it("will combine an outer signal with an inner timeout, and apply neither after it returns", async () => {
+    const fetch = hang();
+    const rpc = client();
+    const control = new AbortController();
+    const outer = rpc.withOptions({ signal: control.signal }, () => rpc.withOptions({ timeout: 60_000 }, () => rpc.call("/", "slow", [])));
+
+    control.abort(new Error("Outer."));
+    await expect(outer).rejects.toThrow("Outer.");
+
+    serve({ body: { value: 1 } });
+    expect(await rpc.call("/", "fast", [])).toBe(1);
+    expect(fetch.mock.calls[0][1]!.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("will pass the signal through a transport's request", async () => {
+    const seen: (AbortSignal | undefined)[] = [];
+    const rpc = client({ base: "http://localhost", transport: async request => (seen.push(request.signal), new Response(JSON.stringify({ value: 2 }))) });
+    const control = new AbortController();
+
+    expect(await rpc.withOptions({ signal: control.signal }, () => rpc.call("/", "x", []))).toBe(2);
+    control.abort();
+    expect(seen[0]!.aborted).toBe(true);
+  });
+
+  it("will be the shared client's too", () => {
+    expect(shared.withOptions({}, () => "ran")).toBe("ran");
+  });
+});
+
