@@ -1389,3 +1389,21 @@ describe('observable', () => {
     });
   });
 });
+
+describe('emit', () => {
+  it.fails('will dispatch later events after a listener throws', () => {
+    const test = {};
+    const destroyed = vi.fn();
+
+    event(test);
+    listener(test, () => {
+      throw new Error('boom');
+    }, 'value');
+    listener(test, destroyed, null);
+
+    expect(() => event(test, 'value')).toThrow('boom');
+
+    event(test, null);
+    expect(destroyed).toBeCalled();
+  });
+});
