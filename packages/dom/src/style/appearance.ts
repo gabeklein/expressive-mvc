@@ -264,11 +264,11 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
     const name = label(type);
 
     Object.defineProperty(type, STYLES, { configurable: true, value: { own: [], subs: {} } });
-    registerAppearance(type, (parent, key) => {
+    registerAppearance(type, (parent, key, defines) => {
       const { own, pack, subs } = (type as any)[STYLES] as Styles;
       entered.add(type);
 
-      const maps = key ? subs[key] : own;
+      const maps = key ? defines && subs[key] : own;
 
       if (pack && (parent?.scope as StyleScope | undefined)?.pack !== pack)
         parent = extendContext(
@@ -295,10 +295,18 @@ function style<T extends object>(type: T, rules: StyleMap, pack?: Pack): T {
     if (SUBCOMPONENT.test(key)) {
       const body = flatten(rules[key], key);
 
+      const name = key.slice(1);
+
       if (!isObject(body))
         throw new Error(`Subcomponent "${key}" must be an object.`);
 
-      (styles.subs[key.slice(1)] ||= []).push(body);
+      if (!Object.hasOwn(Object((type as Function).prototype), name))
+        throw new Error(
+          `Subcomponent "${key}" styles only a ${name}() method defined on ${label(type)}. ` +
+          `Override ${name}() there, or have the owner put a rule on the element - <this.${name} _rule /> - and style that rule.`
+        );
+
+      (styles.subs[name] ||= []).push(body);
     } else rest[key] = rules[key];
 
   styles.own.push(rest);
