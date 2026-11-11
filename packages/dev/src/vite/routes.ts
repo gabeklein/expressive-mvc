@@ -38,6 +38,7 @@ interface RouteNode {
   alias: Partial<Record<Role, string>>;
   remote?: string;
   twin?: string;
+  server?: boolean;
 }
 
 export async function generateRoutes(appDir: string, outDir: string, scan: ExportScanner): Promise<string> {
@@ -64,11 +65,12 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
   ].join("\n");
 }
 
-/** Paths of the pages no `:param` or `*` segment reaches - those a build can render ahead. */
+/** Paths of the pages no `:param`, `*` or remote module reaches - those a build can render ahead. */
 export async function staticPaths(appDir: string, scan: ExportScanner): Promise<string[]> {
   const paths: string[] = [];
 
   (function walk(node: RouteNode, path: string) {
+    if (node.server) return;
     if (node.exports.has("Page")) paths.push(path || "/");
 
     for (const child of node.children)
@@ -90,6 +92,7 @@ async function scanDir(dir: string, segment: string, name: string, scan: ExportS
     throw new Error(`${dir} has both a remote module and a remote/ folder - pick one.`);
 
   node.remote = await twinIn(dir, entries, scan);
+  node.server = entries.includes(REMOTE) || entries.some(entry => REMOTE_FILE.test(entry));
 
   for (const entry of entries) {
     const full = join(dir, entry);

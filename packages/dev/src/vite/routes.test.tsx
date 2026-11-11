@@ -54,6 +54,12 @@ describe("app/ routing (codegen)", () => {
       "blog/[slug].tsx": PAGE,
       "blog/[slug]/(edit).tsx": PAGE,
       "files/[...].tsx": PAGE,
+      "tally/index.tsx": PAGE,
+      "tally/(sub).tsx": PAGE,
+      "tally/remote.ts": "export async function add() {}",
+      "shop/index.tsx": PAGE,
+      "shop/cart/index.tsx": PAGE,
+      "shop/remote/index.ts": SCOPE,
     };
 
     for (const [path, src] of Object.entries(files)) {
