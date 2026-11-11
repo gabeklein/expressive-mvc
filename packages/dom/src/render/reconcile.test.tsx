@@ -195,5 +195,29 @@ describe('reconcile', () => {
     expect(root.querySelector('i')).toBe(first);
     expect(root.querySelector('input')).toBe(input);
   });
+
+  it('will mount a child appearing before a sibling without moving the sibling', async () => {
+    class Panel extends Component {
+      placed = false;
+
+      render() {
+        return <section>{this.placed && <i>arrow</i>}<input /></section>;
+      }
+    }
+
+    const [panel, root] = mount(Panel);
+    const moved = vi.fn();
+
+    new MutationObserver((records) => {
+      for (const record of records) record.removedNodes.forEach((node) => moved(node.nodeName));
+    }).observe(root, { childList: true, subtree: true });
+
+    panel.placed = true;
+    await flushMicrotasks();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(root.querySelector('section')!.innerHTML).toBe('<i>arrow</i><input>');
+    expect(moved).not.toHaveBeenCalled();
+  });
 });
 

@@ -30,6 +30,7 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
   const used = new Set<Fiber>();
   const next: Fiber[] = [];
   let current = '';
+  let cursor = old.find((child) => child.start.parentNode === parent)?.start ?? before;
 
   for (const child of old)
     if (child.key !== null && child.key !== undefined) keyed.set(child.key, child);
@@ -46,9 +47,10 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
       if (child && used.has(child)) child = undefined;
       if (child) used.add(child);
 
-      const fiber = patch(child, value, parent, before, context, boundary, authored(value, appearance));
+      const fiber = patch(child, value, parent, cursor, context, boundary, authored(value, appearance));
 
       if (fiber !== child) used.delete(child!);
+      if (fiber.end.parentNode === parent) cursor = fiber.end.nextSibling;
       fiber.slot = slot;
       next.push(fiber);
     }
