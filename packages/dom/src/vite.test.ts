@@ -5,6 +5,8 @@ import { Model } from '@expressive/mvc';
 
 import expressive from './vite';
 
+const DOM = "import { jsxDEV } from '@expressive/dom/jsx-dev-runtime';\n";
+
 type Result = Promise<{ code: string; map: null } | undefined>;
 
 function transform(code: string, id = '/src/app.js', runtime: string | null = '/mvc/src/hot.js', ssr?: boolean): Result {
@@ -123,7 +125,7 @@ describe('classes', () => {
 describe('components', () => {
   it('will register top-level function components', async () => {
     const code = await inject(
-      'function App() {}\nconst Card = () => null;\nlet Row = function () {};\nexport default function Page() {}'
+      DOM + 'function App() {}\nconst Card = () => null;\nlet Row = function () {};\nexport default function Page() {}'
     );
 
     expect(code).toContain(`import { hot as __refresh } from '@expressive/dom/jsx-dev-runtime';`);
@@ -132,14 +134,14 @@ describe('components', () => {
 
   it('will not register other functions', async () => {
     const code = await inject(
-      'function App() {}\nfunction helper() {}\nconst format = () => 1;\nconst [Pair] = [() => 1];\nconst Value = 1;\nexport default function () {}'
+      DOM + 'function App() {}\nfunction helper() {}\nconst format = () => 1;\nconst [Pair] = [() => 1];\nconst Value = 1;\nexport default function () {}'
     );
 
     expect(code).toContain('{ App }');
   });
 
   it('will bind a module of only components', async () => {
-    const code = await inject('export const App = () => null;');
+    const code = await inject(DOM + 'export const App = () => null;');
 
     expect(code).not.toContain('__accept');
     expect(code).toContain('__refresh(');
@@ -150,6 +152,24 @@ describe('components', () => {
 
     expect(code).toContain('__accept(');
     expect(code).not.toContain('__refresh');
+  });
+
+  it('will register components of a module importing any dom entry', async () => {
+    const code = await inject("import { render } from '@expressive/dom';\nexport const App = () => null;");
+
+    expect(code).toContain('__refresh("/src/app.js", { App });');
+  });
+
+  it.each([
+    ['a client module', undefined],
+    ['a server module', true]
+  ])('will not register components in %s rendered by another runtime', async (_, ssr) => {
+    const react = "import { jsxDEV } from 'react/jsx-dev-runtime';\nimport { Html } from '@react-email/components';\n";
+    const component = 'export default function Welcome() { return jsxDEV(Html, {}); }';
+
+    expect(await transform(react + component, '/api/src/email.tsx', undefined, ssr)).toBeUndefined();
+    expect(await transform(react + 'export class Mailer {}\n' + component, '/api/src/email.tsx', undefined, ssr))
+      .toMatchObject({ code: expect.not.stringContaining('@expressive/dom') });
   });
 });
 
@@ -174,7 +194,7 @@ describe('update', () => {
   class Store extends Model {}
   class Plain {}
   const App = () => null;
-  const source = 'export class Store {}\nclass Local {}\nclass Plain {}\nexport const App = () => null;\nexport let value = 1;';
+  const source = DOM + 'export class Store {}\nclass Local {}\nclass Plain {}\nexport const App = () => null;\nexport let value = 1;';
   const locals = { Store, Local: Store, Plain, App, value: 1 };
   const update = (options: Partial<Run>) => run(source, { locals, ...options });
 
