@@ -89,7 +89,11 @@ async function install(root: string) {
   };
 
   await lib("mvc", { index: "src/index.ts", "jsx-runtime": "src/jsx-runtime.ts" }, { ".": "./index.js", "./jsx-runtime": "./jsx-runtime.js" });
-  await lib("rpc", { index: "src/server.ts", client: "src/client.ts", http: "src/http.ts", protocol: "src/protocol.ts" }, { ".": { browser: "./client.js", default: "./index.js" }, "./http": "./http.js", "./protocol": "./protocol.js" });
+  await lib(
+    "rpc",
+    { index: "src/server.ts", client: "src/client.ts", http: "src/http.ts", protocol: "src/protocol.ts", calls: "src/calls.ts" },
+    { ".": { browser: "./client.js", default: "./index.js" }, "./http": "./http.js", "./protocol": "./protocol.js", "./calls": "./calls.js" },
+  );
 }
 
 async function serve(root: string, config: InlineConfig = {}) {
@@ -423,6 +427,52 @@ describe("build", () => {
     const { client } = await build(root);
 
     expect(client).toContain("import { Current } from");
+  });
+
+  describe("dependencies", () => {
+    const LOUD = {
+      "node_modules/shout/package.json": `{ "name": "shout", "type": "module", "exports": "./index.js" }`,
+      "node_modules/shout/index.js": `export const shout = text => text.toUpperCase();`,
+      "api/loud.ts": `import { shout } from "shout"; export async function loud() { return shout("hi"); }`,
+      "src/main.ts": `import { loud } from "../api/loud"; console.log(loud);`,
+    };
+
+    it("will bundle every dependency into the server by default", async () => {
+      const root = project(LOUD);
+      const { post } = await build(root, { opaque: false });
+      const code = readFileSync(join(root, "dist/server/index.js"), "utf8");
+
+      expect(await post("/", "loud:loud", "a")).toEqual({ status: 200, body: { value: "HI" } });
+      expect(code).not.toMatch(/from\s*"shout"/);
+    });
+
+    it("will leave dependencies installed when the app sets the server's externals, bundling only the calls", async () => {
+      const root = project(LOUD);
+
+      await install(root);
+
+      const { post } = await build(root, { opaque: false }, { resolve: {}, environments: { rpc: { resolve: { noExternal: [] } } } });
+      const code = readFileSync(join(root, "dist/server/index.js"), "utf8");
+
+      expect(await post("/", "loud:loud", "a")).toEqual({ status: 200, body: { value: "HI" } });
+      expect(await post("/", "loud:loud")).toMatchObject({ status: 401 });
+      expect(code).toMatch(/from\s*"shout"/);
+      expect(code).toMatch(/from\s*"@expressive\/rpc\/http"/);
+      expect(code).not.toMatch(/from\s*"@expressive\/rpc\/calls"/);
+    }, 30_000);
+
+    it("will bundle what the app's noExternal names, leaving the rest installed", async () => {
+      const root = project(LOUD);
+
+      await install(root);
+
+      const { post } = await build(root, { opaque: false }, { resolve: {}, environments: { rpc: { resolve: { noExternal: ["@expressive/rpc"] } } } });
+      const code = readFileSync(join(root, "dist/server/index.js"), "utf8");
+
+      expect(await post("/", "loud:loud", "a")).toEqual({ status: 200, body: { value: "HI" } });
+      expect(code).toMatch(/from\s*"shout"/);
+      expect(code).not.toMatch(/from\s*"@expressive\/rpc[/"]/);
+    }, 30_000);
   });
 
   it("will build calls with no gate in their folders", async () => {

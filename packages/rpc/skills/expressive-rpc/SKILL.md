@@ -183,6 +183,15 @@ export { Room } from "./room";   // a Durable Object, say
 
 - **Cloudflare Workers:** `main: "dist/server/index.js"`, `compatibility_flags: ["nodejs_compat"]` (required), `no_bundle: true`, `assets: { directory: "dist/client", binding: "ASSETS", run_worker_first: true }`.
 - **Node:** `toNode(server.fetch)` from `@expressive/rpc/http` is a `(req, res, next?)` handler - `next` gets what the server answers `undefined`; serve static files yourself.
+  - It mounts in Express (or Firebase Functions' `onRequest`) like any middleware: `app.use(toNode(server.fetch))`.
+  - To keep `node_modules` installed rather than bundled - native or heavy packages like `pg` and `firebase-admin` - set the server environment's own externals; rpc then bundles only the calls and what you name:
+
+    ```ts
+    export default defineConfig({
+      plugins: [rpc()],
+      environments: { rpc: { resolve: { noExternal: [] } } },   // or ["@expressive/rpc"] to bundle rpc too
+    });
+    ```
 
 Use `vite build` or `createBuilder().buildApp()` - the legacy `build()` API builds the client only.
 
