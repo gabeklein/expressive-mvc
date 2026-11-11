@@ -1,5 +1,15 @@
 # @expressive/react
 
+## 0.94.3
+
+### Patch Changes
+
+- [#684](https://github.com/gabeklein/expressive/pull/684) [`7eeac1d`](https://github.com/gabeklein/expressive/commit/7eeac1d502d932d045a73fc2473bd464f28e12c6) A PascalCase field holding a class keeps it as-is - a `Component` class renders as itself instead of being called without `new`, including one assigned after first render.
+
+- [#679](https://github.com/gabeklein/expressive/pull/679) [`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0) Agents read each package's skill straight from `node_modules/@expressive/<pkg>/skills/`, so linking skills in with `skills experimental_sync` is no longer needed. Point an agent at them with a line in `AGENTS.md`, or `npx skills add gabeklein/expressive` for a small skill that says where they are. Skills now name each other in plain text (`expressive-mvc/component.md#props`) instead of linking a side-by-side install, and `@expressive/dev` drops its `skills` field.
+- Updated dependencies [[`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0)]:
+  - @expressive/mvc@0.94.3
+
 ## 0.94.2
 
 ### Patch Changes

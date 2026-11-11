@@ -1,5 +1,18 @@
 # @expressive/rpc
 
+## 0.2.0
+
+### Minor Changes
+
+- [#662](https://github.com/gabeklein/expressive/pull/662) [`40a1ef0`](https://github.com/gabeklein/expressive/commit/40a1ef0ba97257ce936ff318b6768f600c2910e7) The server entry's `fetch` runs in the request's scope: `Current` and `Cookies` work in its routes as in a call, and the headers and cookies they set join the route's response. `scoped(app)` from `@expressive/rpc/http` does the same for a host wrapping an entry itself.
+
+- [#663](https://github.com/gabeklein/expressive/pull/663) [`3042161`](https://github.com/gabeklein/expressive/commit/3042161db2e9c77999826f84cb9fc60a9736a3b2) The server bundle honors the app's own `environments.rpc.resolve` externals: set `noExternal` (or `external`) and dependencies stay installed instead of bundled - for a Node server with `pg` or `firebase-admin`. Without either, it still bundles everything for a Worker. The calls module is bundled either way.
+
+### Patch Changes
+
+- Updated dependencies [[`ea0f0c6`](https://github.com/gabeklein/expressive/commit/ea0f0c63ea5d1a689084a6bc170f47087b0c05f0)]:
+  - @expressive/mvc@0.94.3
+
 ## 0.1.1
 
 ### Patch Changes
