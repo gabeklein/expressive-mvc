@@ -10,10 +10,10 @@ it("will throw outside a server the rpc() plugin builds or runs", async () => {
   await expect(handle(new Request("http://localhost/"))).rejects.toThrow("@expressive/rpc/calls answers only in a server the rpc() Vite plugin builds or runs");
 });
 
-it("will hand a request to the dev server's handler", async () => {
+it("will hand a request to the dev server's tree", async () => {
   const response = new Response("dev");
 
-  Object.assign(globalThis, { [DEV]: async () => response });
+  Object.assign(globalThis, { [DEV]: { handle: async () => response } });
 
   expect(await handle(new Request("http://localhost/"))).toBe(response);
 });

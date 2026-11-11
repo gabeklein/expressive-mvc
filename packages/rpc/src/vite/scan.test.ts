@@ -34,7 +34,7 @@ describe("calls", () => {
       export { e as f };
     `);
 
-    expect(found).toEqual({ calls: ["list", "add", "complete", "all", "b", "c", "f"], errors: [], gate: false, problems: [] });
+    expect(found).toEqual({ methods: [], calls: ["list", "add", "complete", "all", "b", "c", "f"], errors: [], gate: false, problems: [] });
   });
 
   it("will refuse a sync function, a value, and anything but functions and classes", async () => {
@@ -65,6 +65,31 @@ describe("calls", () => {
 
   it("will report a syntax error", async () => {
     expect((await scan("export async function (")).problems[0]).toBe("Expected function name");
+  });
+});
+
+describe("methods", () => {
+  it("will take a method written as a function, or made by a call, as a route's", async () => {
+    const found = await scan(`
+      import { fromNode } from "@expressive/rpc/node";
+      import { app } from "./app";
+      export function GET() {}
+      export const POST = fromNode(app);
+      export const PUT = app.fetch;
+    `);
+
+    expect(found).toMatchObject({ methods: ["GET", "POST", "PUT"], problems: [] });
+  });
+
+  it("will refuse a method that could never be called", async () => {
+    const found = await scan(`export const GET = "page"; export const POST = {}; export class PUT {}`);
+
+    expect(found.methods).toEqual([]);
+    expect(found.problems).toEqual([
+      "GET is not a function - a route answers GET requests with one.",
+      "POST is not a function - a route answers POST requests with one.",
+      "PUT is not a function - a route answers PUT requests with one.",
+    ]);
   });
 });
 
@@ -226,12 +251,12 @@ describe("error classes", () => {
 describe("gates", () => {
   it("will take an index's default Model as its folder's gate", async () => {
     expect(await scan(`${MVC} export default class Gate extends Model {} export async function ping() {}`, "/app/api/index.ts"))
-      .toEqual({ calls: ["ping"], errors: [], gate: true, problems: [] });
+      .toEqual({ methods: [], calls: ["ping"], errors: [], gate: true, problems: [] });
   });
 
   it("will take a gate extending a root class that is not an http error, as Current", async () => {
     expect(await scan(`import { Current } from "@expressive/rpc"; export default class Gate extends Current {}`, "/app/api/index.ts"))
-      .toEqual({ calls: [], errors: [], gate: true, problems: [] });
+      .toEqual({ methods: [], calls: [], errors: [], gate: true, problems: [] });
   });
 
   it("will follow a gate's default through a local name and an imported base", async () => {
@@ -269,6 +294,7 @@ describe("extension", () => {
     expect(offered).toEqual(["Cart", "Odd", "Over", "Plain"]);
     expect(found).toEqual({
       calls: ["add"],
+      methods: [],
       errors: [{ name: "Over", parent: { id: "http:HttpError" } }],
       gate: false,
       problems: ["Odd is odd", "Plain is a class but not an Error - only error classes reach the client."],
@@ -279,7 +305,7 @@ describe("extension", () => {
     const seen: boolean[] = [];
     const extension: Extension = { default: async value => (seen.push(isClass(value)), isClass(value) ? [] : ["not a class"]) };
 
-    expect(await scan(`${MVC} export default class Seat extends Model {}`, undefined, undefined, extension)).toEqual({ calls: [], errors: [], gate: false, problems: [] });
+    expect(await scan(`${MVC} export default class Seat extends Model {}`, undefined, undefined, extension)).toEqual({ methods: [], calls: [], errors: [], gate: false, problems: [] });
     expect((await scan(`export default 1`, "/app/api/index.ts", undefined, extension)).problems).toEqual(["not a class"]);
     expect(seen).toEqual([true, false]);
   });

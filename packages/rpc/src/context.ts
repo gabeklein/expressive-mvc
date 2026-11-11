@@ -28,7 +28,11 @@ interface Frame {
   request: Request;
   layer: Layer;
   held: Set<Entry>;
+  params: Params;
 }
+
+/** A route's `[param]` values by name, and what a `[...]` matched as `"*"`. */
+export type Params = Readonly<Record<string, string>>;
 
 type Owned = Model.Type & { ttl?: number };
 
@@ -147,8 +151,8 @@ function release(entry: Entry) {
   entry.timer.unref();
 }
 
-export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | undefined)[] = []): Promise<Awaited<T>> {
-  const frame: Frame = { request, layer: root(), held: new Set() };
+export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | undefined)[] = [], params: Params = {}): Promise<Awaited<T>> {
+  const frame: Frame = { request, layer: root(), held: new Set(), params };
 
   return await store.run(frame, async (): Promise<Awaited<T>> => {
     try {
@@ -310,6 +314,14 @@ export class Current extends Model {
     return new URL(this.request.url);
   }
   set url(_: URL) {
+    readOnly();
+  }
+
+  /** The `[param]` values of the route in progress - `{}` for a call, whose folders are static. */
+  get params(): Params {
+    return frame().params;
+  }
+  set params(_: Params) {
     readOnly();
   }
 

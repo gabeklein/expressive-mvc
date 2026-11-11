@@ -1,6 +1,7 @@
 import { attempt, fault, inFolder, locate, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
 import { parse, stringify } from "../codec";
 import { headersOf, within } from "../context";
+import { unbased } from "../segments";
 import { ERRORS } from "../errors";
 
 export function isCall(request: Request): boolean {
@@ -38,9 +39,9 @@ export function handler(endpoints: Endpoint[] | (() => Endpoint[]), { dev = fals
 
 const unseated: Seats = async () => undefined;
 
-export async function dispatch<E extends Exports>(request: Request, endpoints: () => Endpoint<E>[], dev: boolean, seats = unseated, tier?: Tier<E>): Promise<Response> {
+export async function dispatch<E extends Exports>(request: Request, endpoints: () => Endpoint<E>[], dev: boolean, seats = unseated, tier?: Tier<E>, base = ""): Promise<Response> {
   const list = endpoints();
-  const { pathname } = new URL(request.url);
+  const pathname = unbased(new URL(request.url).pathname, base)!;
   const at = pathname.split("/").filter(Boolean);
   const name = request.headers.has("x-expressive-get") ? undefined : request.headers.get("x-expressive-call") ?? undefined;
   const { found, exports, fn } = await locate(list, at, name);
@@ -76,7 +77,7 @@ export function scoped<A extends { fetch?: Fetch }>(app: A): A {
 }
 
 /** Add what the call set to its reply - the reply's own headers win, and a cookie it already sets is not repeated. */
-function withHeaders(response: Response, extra?: Headers): Response {
+export function withHeaders(response: Response, extra?: Headers): Response {
   if (!extra) return response;
 
   const headers = new Headers(response.headers);

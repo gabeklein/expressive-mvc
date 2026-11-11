@@ -2,6 +2,7 @@ import { basename } from "node:path";
 import { parseSync, type ESTree } from "vite";
 
 import { ERRORS } from "../errors";
+import { METHODS } from "../segments";
 
 export interface Sources {
   resolve(spec: string, importer: string): Promise<string | undefined>;
@@ -17,6 +18,8 @@ export interface ErrorClass {
 
 export interface Scan {
   calls: string[];
+  /** Exports named for a request method - `GET`, `POST`... - which make the module a route, answered on the server only. */
+  methods: string[];
   errors: ErrorClass[];
   gate: boolean;
   problems: string[];
@@ -59,6 +62,11 @@ const INDEX = /^index\.[cm]?[jt]sx?$/;
 const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
   value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
 
+const PLAIN = new Set(["Literal", "TemplateLiteral", "ObjectExpression", "ArrayExpression", "ClassDeclaration", "ClassExpression"]);
+
+/** A value no call could be: a literal, an object or array, or a class. */
+const isPlain = (value: Value) => !!value && PLAIN.has(value.type);
+
 export const isClass = (value: Value): value is ESTree.Class =>
   value?.type === "ClassDeclaration" || value?.type === "ClassExpression";
 
@@ -66,7 +74,7 @@ const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? 
 
 export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}): Promise<Scan> {
   const module = moduleOf(file, source);
-  const scan: Scan = { calls: [], errors: [], gate: false, problems: [...module.errors] };
+  const scan: Scan = { calls: [], methods: [], errors: [], gate: false, problems: [...module.errors] };
   const found: [ErrorClass, number][] = [];
 
   for (const node of module.body) {
@@ -78,6 +86,13 @@ export async function scanModule(file: string, source: string, sources: Sources,
     if (name === "default") {
       if (extension.default) scan.problems.push(...(await extension.default(value)));
       else await gate(scan, value, module, sources, owned);
+      continue;
+    }
+
+    if (METHODS.includes(name)) {
+      // `fromNode(router)` or `app.fetch` is checked when it runs; only what can never be called is refused here.
+      if (isFunction(value) || !isPlain(value)) scan.methods.push(name);
+      else scan.problems.push(`${name} is not a function - a route answers ${name} requests with one.`);
       continue;
     }
 
