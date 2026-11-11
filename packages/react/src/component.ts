@@ -134,12 +134,25 @@ function render(from: Component, context: Context) {
   return () => createElement(Component);
 }
 
-/** Rewrite each own capitalized function on `target` into a subcomponent; a Component class renders as itself. */
+function wrappable(value: unknown): value is Function {
+  return typeof value == 'function' && Object.getOwnPropertyDescriptor(value, 'prototype')?.writable !== false;
+}
+
+function assign(target: object, key: string, value: unknown) {
+  Object.defineProperty(target, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true
+  });
+}
+
+/** Rewrite each own capitalized function on `target` into a subcomponent; a class renders as itself. */
 function subcomponents(target: object) {
   for (const key of Object.getOwnPropertyNames(target)) {
     if (!/^[A-Z]/.test(key)) continue;
     const { value } = Object.getOwnPropertyDescriptor(target, key)!;
-    if (typeof value != 'function' || value.prototype instanceof Component) continue;
+    if (!wrappable(value)) continue;
     Object.defineProperty(target, key, {
       configurable: true,
       get(this: Component) {
@@ -151,21 +164,16 @@ function subcomponents(target: object) {
         Object.defineProperty(owner, key, {
           configurable: true,
           get: () => Component,
-          set(fn: Function) {
-            render = fn;
+          set(fn: unknown) {
+            if (wrappable(fn)) render = fn;
+            else assign(owner, key, fn);
           }
         });
 
         return Component;
       },
       set(this: Component, value: unknown) {
-        Object.defineProperty(this, key, {
-          value,
-          writable: true,
-          enumerable: true,
-          configurable: true
-        });
-
+        assign(this, key, value);
         subcomponents(this);
       }
     });

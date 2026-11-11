@@ -2,4 +2,4 @@
 "@expressive/react": patch
 ---
 
-A PascalCase field holding a `Component` class renders that class instead of being wrapped as a subcomponent and called without `new`.
+A PascalCase field holding a class keeps it as-is - a `Component` class renders as itself instead of being called without `new`, including one assigned after first render.

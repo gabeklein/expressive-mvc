@@ -450,6 +450,28 @@ describe('class element', () => {
     expect(root.querySelector('i')?.textContent).toBe('x');
   });
 
+  it('will render a Component class held in a PascalCase field', async () => {
+    class Badge extends Component {
+      text = '';
+
+      render() {
+        return <b>{this.text}</b>;
+      }
+    }
+
+    class Panel extends Component {
+      Badge = Badge;
+
+      render() {
+        return <this.Badge text="x" />;
+      }
+    }
+
+    const [panel, root] = mount(Panel);
+    expect(panel.Badge).toBe(Badge);
+    expect(root.querySelector('b')?.textContent).toBe('x');
+  });
+
   it('will reconcile keyed Components', async () => {
     class Item extends Component {
       value = '';
