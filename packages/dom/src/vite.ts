@@ -6,17 +6,19 @@ type Node = { type: string; [key: string]: any };
 const SOURCE = /\.[cm]?[jt]sx?$/;
 
 const COMPONENT = /^[A-Z]/;
+const RENDERER = /^@expressive\/dom(\/|$)/;
 const FUNCTION = ['ArrowFunctionExpression', 'FunctionExpression'];
 
 /**
  * Top-level classes a module can reassign, those declaring private members,
- * function components by name, and its exports by local binding.
+ * function components by name if it imports dom, and its exports by local binding.
  */
 function scan(body: Node[]) {
   const classes: string[] = [];
   const hidden: string[] = [];
   const components: string[] = [];
   const exports: Record<string, string> = {};
+  const rendered = body.some((node) => node.type == 'ImportDeclaration' && RENDERER.test(node.source.value));
 
   function add(name: string, node: Node) {
     classes.push(name);
@@ -26,12 +28,12 @@ function scan(body: Node[]) {
 
   function collect(node: Node) {
     if (node.type == 'ClassDeclaration' && node.id) add(node.id.name, node);
-    else if (node.type == 'FunctionDeclaration' && COMPONENT.test(node.id?.name)) components.push(node.id.name);
+    else if (node.type == 'FunctionDeclaration' && rendered && COMPONENT.test(node.id?.name)) components.push(node.id.name);
     else if (node.type == 'VariableDeclaration')
       for (const { id, init } of node.declarations) {
         if (id.type != 'Identifier') continue;
         if (init?.type == 'ClassExpression' && node.kind != 'const') add(id.name, init);
-        else if (FUNCTION.includes(init?.type) && COMPONENT.test(id.name)) components.push(id.name);
+        else if (rendered && FUNCTION.includes(init?.type) && COMPONENT.test(id.name)) components.push(id.name);
       }
   }
 

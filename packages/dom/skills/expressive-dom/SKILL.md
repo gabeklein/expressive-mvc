@@ -334,7 +334,7 @@ export default defineConfig({ plugins: [expressive()] });
 
 Editing a `Model` or `Component` class patches it in place - instances keep their values and re-render with the new methods, getters, `render`, subcomponents and `style()` maps (`expressive-mvc/state/lifecycle.md#hot-patching`). A field, constructor or `new()` change reloads the page, as does any edit to a module declaring a class with `#` private members. Dev server only. A class must be top-level `class X` or `let X = class`; `export default X;` exports a snapshot, so prefer `export default class X` or `export { X as default }`.
 
-A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place. An anonymous `export default` is not refreshed - the module reloads.
+A top-level function component (`function View()`, `const View = () => …`, PascalCase) re-renders in place, in a module importing `@expressive/dom` - any `.tsx` on its JSX runtime. Components on another runtime, such as React email templates in server code, are left alone. An anonymous `export default` is not refreshed - the module reloads.
 
 ## Boundaries
 
