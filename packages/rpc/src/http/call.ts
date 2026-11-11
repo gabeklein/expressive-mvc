@@ -1,6 +1,6 @@
 import { attempt, fault, inFolder, locate, type Call, type Endpoint, type Exports, type Match, type Outcome, type Seats } from "../call";
 import { parse, stringify } from "../codec";
-import { headersOf } from "../context";
+import { headersOf, within } from "../context";
 import { ERRORS } from "../errors";
 
 export function isCall(request: Request): boolean {
@@ -56,15 +56,35 @@ export async function dispatch<E extends Exports>(request: Request, endpoints: (
   return withHeaders(await handle(args), headersOf(request));
 }
 
-/** Add what the call set to its reply - the reply's own headers win. */
+type Fetch = (request: Request, ...rest: any[]) => Response | undefined | Promise<Response | undefined>;
+
+/**
+ * An app's server entry with its `fetch` run in the request's scope: `Current` and `Cookies` work in
+ * its routes as in a call, and the headers and cookies they set join the route's response.
+ */
+export function scoped<A extends { fetch?: Fetch }>(app: A): A {
+  const fetch = app?.fetch;
+
+  if (typeof fetch != "function") return app;
+
+  const run: Fetch = async (request, ...rest) => {
+    const response = await within(request, [], () => fetch.call(app, request, ...rest));
+    return response && withHeaders(response, headersOf(request));
+  };
+
+  return Object.assign(Object.create(Object.getPrototypeOf(app)), app, { fetch: run });
+}
+
+/** Add what the call set to its reply - the reply's own headers win, and a cookie it already sets is not repeated. */
 function withHeaders(response: Response, extra?: Headers): Response {
   if (!extra) return response;
 
   const headers = new Headers(response.headers);
+  const sent = new Set(response.headers.getSetCookie());
 
   extra.forEach((value, name) => name === "set-cookie" || response.headers.has(name) || headers.set(name, value));
 
-  for (const cookie of extra.getSetCookie()) headers.append("set-cookie", cookie);
+  for (const cookie of extra.getSetCookie()) if (!sent.has(cookie)) headers.append("set-cookie", cookie);
 
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
