@@ -1,27 +1,315 @@
-# feat/cli-commands - `@expressive/cli`
+# @expressive/dev
 
-Commands from Models: argv onto fields, one dispatcher for every `expressive` command. Feature PRs target this trunk; it lands on `main` when release-ready. This file does not land on `main`.
+Next-like host for Expressive: Vite, `@expressive/dom` rendering, file-based routes, a server lane. Scope and agreed shape - update as decisions land.
 
-`feat/cli` (the Ink-like JSX renderer) is separate and stays as is; it becomes `@expressive/tui` later.
+## Workflow
 
-## Shape (agreed 2026-11-11)
+- `feat/dev-server` is the trunk. Each feature lands as its own PR into it, small enough to hand-review; the trunk merges to `main` when release-ready.
+- Merge `main` into the trunk as it moves. Upstream fixes (mvc, dom, router) land on `main` as their own PRs, never only here.
+- `backup/dev-server-full` holds the pre-trunk prototype - source for the queued features below. Its POST dispatch and client stubs seed the MVP; its `app/api` lane becomes the rpc folder (RPC). Delete once nothing is left to carve.
+- Stack PRs: each targets the previous one's branch, the bottom one the trunk; merge a lower branch up into the ones above it as it moves.
+- Verify in a browser, not only unit tests: `bun run example:e2e` in `packages/dev` (set `CHROME`). After rebuilding a package, a dev server can serve a stale `@expressive/*` pre-bundle from `packages/dev/node_modules/.vite` - delete it (the E2E dev project always does).
+- Specs live in `example/e2e/` for now; colocating them beside routes is allowed later - the dependency scan already skips `*.spec.*`/`*.test.*` under `app/`.
+- Trunk commits carry no trailers.
 
-- **A command is any Model with `run()`** - no base class, so `Steps` classes work unchanged. `run()` takes no arguments; every input is a field.
-- **Inputs:** `arg` (positional), `args` (the rest), `flag` (boolean), `opt` (one value), `list` (several). Each takes config objects only, merged left to right - a recipe is a plain object. Plurality is the instruction, never config.
-- **Config:** `help`; `type` (`string`, `number`, `file`, `dir`, `path` - paths resolve against cwd); `parse(value)`, `valid(value) => boolean` per value; `ext`, `exists`; `default`. Singles: `required`. Plurals: `min`, `max`. Named: `short`. `list`: `split`.
-- **argv:** commander parity - `--x v`, `--x=v`, `-x v`, `-xv`, flags group (`-rf`), a valued short may close a group, `--no-x` for flags, `--` ends options, a lone `-` is an operand. Options interleave with operands; order is not enforced. A repeated `opt` keeps the last.
-- **`command(Root)`** returns the `Run` contract. Fields fill before `new()`; usage error → stderr + usage line, exit 2; `--help`/`-h` → help, exit 0; `run` result → exit code (`undefined`/`true` 0, `false` 1, number itself, other printed, 0); throw → message, 1; instance destroyed after. Name in help: class name in kebab case.
-- **`/bin`:** `dispatch(args, cwd, out)` plus `Output`/`Run` types - the existing `expressive.bin` contract, unchanged and mvc-free. Command modules `export default command(Root)`.
+## Agreed shape
 
-## Milestones
+- **Two entries.** The root export holds what client and server share. Server-only API (`config`, `serve`, `Current`) is `@expressive/dev/server`, so a client import fails at build rather than at call.
+- **Turnkey.** dom, router, inspect are dependencies; `@expressive/mvc` is the only peer.
+- **JSX.** `jsxImportSource: "@expressive/dev"` - dev's runtime re-exports dom's.
+- **Router.** dev exports its own `Router` (extends `BrowserRouter`) and `Route`, plus `Link`, `NavLinks`, `Redirect`. No `BrowserRouter` export.
+- **Config.** `index.ts` default-exports `config({...})` from `@expressive/dev/server`, read on the server.
+- **Server modules, one model.** Sidecars (`app/**/remote.ts`) and the rpc folder (RPC) share one invocation path from the bundled client and one context model (below). The rpc folder has its own root; a sidecar call never passes through its `index.ts`. Process globals are the only layer both lanes share.
+- **Session is the app's concern.** dev does not detect or mint sessions or tabs; an app expresses identity through keys (Context model). Recipes may come later.
+- **dom on the server.** Needed for JSX rendered to HTML (responses, emails), not SSR.
+- **Monkey-patch first.** Where mvc or an adapter lacks a seam, dev patches it in one file, replaced when upstream catches up. Stress-tests the concept before committing upstream.
+- **Server `get`/`use` are dev's, permanently.** Request-scoped resolution is a host concern - no core or dom change. mvc core has no static `get`/`use` - adapters install them; the server installs its own over dom's (after dom evaluates) in the dev host and the built service; the client keeps dom's.
+- **Process globals stay core's.** A module-scope `X.new(Context.root)` registers in the real root, untouched by requests (`static global` was removed from mvc and now throws). Opt-in sugar for this (#473) is the maintainer's call and blocks nothing here.
 
-1. **Base** - one command, no subcommands. (this branch)
-2. **`sub`** - `sub(Class)`, `sub(() => import(...))`, `sub({ run })`; every class on the path instantiated; options float rightward over the path and a name shared across levels is one option. Acceptance: `expressive sql check|sync [--force] <entry>`.
-3. **Renderer slots** - `status`, `progress`, `message`, `children`; TTY frame vs piped; Steps defaults.
-4. Skill docs + changeset; downstream sql/dev adopt `/bin`.
+## Landed
+
+- Basics - `app/` route tree (`Page`, `Layout`, `Loading`, `Catch`, `NotFound`), single-file `app.tsx` mode, virtual shell/entry/router module, dev server with inspect, client + node service build, static `serve` with `index.html` fallback, example workspace.
+- Route chunks - a route module (not the root) loads on first entry, `default` included - an entry hook loads its module, then runs; a class resolves from it. `Loading` and `Catch` keep a module static: they must be on hand before anything below them waits or fails.
+- Route defaults - a page module's `default` function is its entry hook (runs with the Route before it renders, may be async; a returned string redirects, `null` forfeits to the 404). A `default` class - Model or Component alike - renders around the route's content (`<X>{children}</X>`, or `<X><Layout /></X>` with a `Layout`) and is provided to everything below it.
+- Loading - a module's `Loading` fills its `Layout`'s content slot: every route rendered there gets it as its `fallback`, at any depth until a nested `Layout` starts a fresh slot; a page's own `Loading` covers that page first. It shows when a page cannot show anything yet - chunk, entry hook or data - which in practice means a cold arrival, since in-app navigation holds the current page. dev's `Route` owns no boundary by default (`fallback = false`, `catch` only with a `Catch`), so a page class's waits reach the slot; generated routes always declare theirs, `null` where no `Loading` applies.
+- E2E harness - `example/e2e/` Playwright specs run against the dev server and the built service (`bun run example:e2e` in `packages/dev`). Each feature adds its page and spec. CI's `dev` job runs them on every PR (#518).
+- Sidecar calls - each `async` export of a route folder's `remote.ts` is a browser stub POSTing to the folder's path (Wire below); dispatched on Vite's module runner in dev and baked into `dist/server` at build. The build refuses any other export; only the folder and below may import it. A thrown error's message reaches the client in dev only.
+- Errors - an exported class with `extends` is an error class: the client stub is a class of the same name, and a thrown instance (or subclass) is rebuilt as it - `instanceof`, message and own fields - with a `status` field in 400-599 as the reply status. Verified as an `Error` at the first dev call and at service boot.
+- Call context - each call walks its sidecar's concrete path, each segment a cached layer `Context` keyed `hash(parent prefix + segment)`, and runs in `AsyncLocalStorage`. Server Model is the layer's seat and the children it owns - there is no server `X.use()`. `X.get()` finds the nearest seat or owned child at the call's layer or above, and a deeper seat shadows. A seat lives while a call holds it, then `static ttl` seconds (default 300); its destroy (`set(null)`) evicts its layer. A layer lives while a call, an instance or a child layer does. `Current` (root layer) reads the call's request live.
+- Remote folders and the allowlist (#501) - `remote.ts`, or a `remote/` folder (any depth, `index` optional), belongs to its parent folder's context; `remote/` is never routed, and both in one folder fail the build. A call names its module (`feed/latest:add`; plain `add` for the entry). Only what the client imports is callable - the stubs the browser loaded in dev, those the client build generated in production; the server build reuses that list. Production ids are hashes salted per build, `remote: { opaque: false }` in `index.ts` to opt out.
+- RPC twin (#502) - a remote entry's `default` Model class is its folder's seat: each call's walk seats it in the folder's layer, `key()` (no prefix; `undefined` passes through; throwing denies) narrows that layer and everything below, and its end evicts them. Its public `async` methods are `default.<method>` calls on the seated instance; the client stub's default is a twin class of them, and the route tree provides it around the folder's routes. A default in a nested `remote/` module, or a public sync method, fails the build.
+- Twin members through `extends` (#504) - the scan follows a seat's bases by import, reading source or a package's `.d.ts`, up to `@expressive`'s classes; the nearest declaration's modifiers win. Inherited public `async` methods are calls; public fields and getters are recorded for twin values. A base it cannot follow (an expression, an unresolved import, a non-class export) fails the build.
+- Twin values, by pull (#505) - a seat's public fields are its twin's values. The seat has a version (`generation:counter`, stepped per flush) and a last-changed version per key (`server/version.ts`). A pull - `POST <folder>` with `x-expressive-get: default`, `If-None-Match: <version>` - returns `{ values, version }` for the keys changed since, or 304. A method call sends its twin's version the same way, and its reply patches every public field changed since - the call's effects and anything the tab missed - before the call resolves (as a frame since #506). A reply older than the twin's version is dropped; a new generation rewrites every field. Twin fields are an internal instruction on mvc's `def`: the twin attaches on construction, a read suspends until the first snapshot, a field the server holds `undefined` then reads `undefined`, and only replies write them - assigning one throws. Getters are primed by a read on each request so their changes stamp.
+- Connection (#506) - the client runtime makes a `crypto.randomUUID()` per page load and sends it as `x-expressive-connection` on every request; a request without one is 400. The server opens a connection on an id's first request, gives it an epoch (`x-expressive-epoch` on every reply) and expires it after 300 s idle (`server/connection.ts`). Each twin has an id the runtime mints at construction (class name and a uid, mvc's generator copied - mvc's own ids differ per side and cannot be set), sent as `x-expressive-twin` on its pulls and method calls; the server holds the tab's twins by it, with the seen version of each. A pull keeps its reply, `{ values, version }` or 304. A method call holds its twin too, so its reply covers it on a connection that has forgotten it. Any call re-points the twins at its folder to the instance seated now, which a new generation then sends whole. Every call, a seat method or a plain function, replies `{ value, frame }`: `{ patch, version }` per twin id past its seen version, so an effect on another twin settles in the same reply. A method waits for its twin's attach; a frame that reaches a twin before its snapshot is held until the snapshot lands. A destroyed twin's id rides the next request as `x-expressive-release`, again if its attach lands after. A new epoch means the connection expired: the client re-pulls every twin by its version before the call resolves.
+- Stream (#507) - one `EventSource` per tab, opened with its first twin at `GET /.expressive/stream?connection=<id>` and served by the dev middleware and the built server alike (`server/stream.ts`). It says `hello` with the connection's epoch - a new one means the server forgot the tab, and the client re-attaches every twin. Each flush of an instance a held twin mirrors announces `stale` - `{ <twin>: <keys> }`, the keys past that twin's seen version - and the client pulls those twins by version, coalescing notices that land mid-pull. A tab's own calls hold announcements until their reply is framed, so its own changes never cost a pull. `beat` every 15 s carries the XOR of FNV-1a `<twin>@<seen version>` hashes; a client whose own sum differs pulls every twin. An open stream keeps the connection from expiring; the 300 s idle clock starts when it closes. Keys go as names - the bitmask stays parked.
+- Client constructions (#508) - a remote module's exported Model class (its `extends` chain reaches `@expressive/*`; one ending at a global stays an error class) is a twin built per construction: a field a Component owns (`cart = new Cart()`), `<Component for={Cart}>`, or `Cart.new()` anywhere gets a server instance of its own in the tab's pool. A microtask after construction the twin reads its nearest `Route` through its context (`base` and `to` give the pattern, the location the params) and attaches there; with no route it attaches at `/.expressive/detached`, built under a context with no layer and no seat above it. The server never takes a pattern from the client: it walks the concrete path and takes each segment's pattern from the remote folder claiming it (`walkOf`), so every seat's `key()` above runs on each pull and call. The instance is built in the walked layer's context, so `get()` reaches the seats above, and holds that layer alive. A pull with the class id (`x-expressive-get`) builds on the first request for a twin id and catches up after; methods are `<class id>.<method>`, global so two folders' classes never collide. Releasing the twin, or the connection expiring, destroys its instance. A request whose walk lands on a different layer from its instance's - a seat above now keys differently, say after a login - or whose instance is gone because its seat ended, is refused with 409 and the instance destroyed, so no request acts on another context's instance; the next pull builds afresh. Until the client remounts a route whose context was replaced (a follow-up), apps reload on identity change: values already shown, client state under the route and frames for twins still pointing at the old context - seat twins included, since #506 - can carry the previous identity's data until then. The client holds twins through `WeakRef`; a `FinalizationRegistry` releases one collected without being destroyed. Build as an owned field, by placement or through `.new()`; a standalone `new` is documented against, not refused. A client subclass adds client-side members over the scanned class, whose server half is unchanged.
+- Owned children (#519) - a seat's or pooled class's field holding a Model it owns (initialized `new C()` or `C.new()`, or declared `C` or `C | undefined` with no initializer, where `C` reaches `@expressive/*`) is a child, scanned as its owner is, at any depth; a class that holds itself fails the build. Each child's entry rides its root twin's frame under its path, each path with its own seen version; the owner's patch marks the field `{ $child: <generation> }`, or `null` when unset, and the client builds a read-only child twin of the scanned class, replaced when the generation changes. Its public `async` methods are `default.<path>.<method>` or `<class id>.<path>.<method>`, called with the root twin's id; one whose child is unset fails. A pull now replies a frame too (`{ frame }` or 304); a pull or call without a version catches every path up whole. A child's seen version is the server's own - only the root's rides `If-None-Match` - so the heartbeat checksum covers every path, and a client whose sum differs re-pulls each twin whole; a child reply lost or reordered heals at the next beat. A public `get()` field fails the build until references are decided (Open).
+- Pending values (#540) - a field the server cannot read yet (a `set()` field unassigned, a getter waiting on one) goes as `{ $pending: true }`, never failing the reply. The twin skips it, so a read keeps suspending until a value arrives, and a value it already holds stays - unless the server rebuilt the instance (a new generation), whose pending field suspends reads again. The promise the read throws is handled, so destroying the instance while it is pending rejects nothing unseen. The read primes a getter, so the flush that settles it stamps its key and the stream announces it.
+- Entry (steps 1-3) - the generated tree hands a folder's seat twin to its `Route` as `remote`; the Route builds it on entry, owns it and provides it below, so `get(Seat)` works whether or not the page references it. A `Route` below reads it as `route.remote` (`declare remote: Seat` types it), inherited from the nearest Route above with one. Admission is the router's async `redirect` guard: build the twin, wait for its first pull (a seat twin's readiness waits for its attach - `await twin.get(() => {})`), then run the entry hook with `route.remote` fetched. The pull walks every `key()` from the root and, server side, waits for each newly built seat's async `new()` (#538) before the next layer; a rejected `new()` denies every walk through it and the layer rebuilds on the next. A refused admission rejects into the nearest `Catch`; an error carrying a 3xx `status` and a `location` field - an exported error class, thrown by a `key()`, a `new()` or the hook - redirects there (the reply stays 500). The twin ends when the route is left; re-entry or a change of the folder's own params builds a fresh one. Twins attach a microtask after construction at their route's place in the router's path, not `location`, which lags during a held navigation. A route without a seat keeps its synchronous hook; a 3xx error it throws or rejects with redirects the same way.
+
+## MVP
+
+Enough to write E2E tests and examples and feel the ergonomics. Complete with the twin (Landed) except references (Open); everything under Later waits until the MVP has been used.
+
+MVP limits, on purpose: calls made while disconnected fail; one process.
+
+## Planned after the MVP
+
+Not built yet, but the MVP must not cut against them.
+
+- **Values invariant.** What TypeScript shows as public is readable on the twin with no separate mechanism, and stays fresh. The scan's fields are the allowlist - TS `private` is erased at runtime, so a snapshot of the live instance would leak it. Holds for plain values and owned children; whether references cross is open (Open).
+- **Remount on a replaced context.** Each server layer gets a random token at creation; replies carry the walk's token per depth; a client `Route` whose depth's token changes remounts its subtree, dropping its twins and client state, and seat twins move from re-pointing in place to that remount. Ends the identity-change exposure #508 documents (apps reload on identity change until then). Deferred, not scheduled.
+- **OAuth** - not built, anticipated: an `api/` slice (GET, `Set-Cookie`, redirect) for the callback, forwarding to a process-global client.
+
+## RPC (`@expressive/rpc`)
+
+Agreed direction, staged below. The stateless call lane carved out of dev as a Vite plugin any client build can use - a web app, dev itself, a native shell. `app/` routes, `remote` sidecars and twins stay dev's.
+
+- **Entries.** Four, since 3d (#634):
+  - `@expressive/rpc` - the app's API, two builds by export condition: `workerd`, `worker` and `node` get `index.server.js`, `browser` gets `index.client.js` (`workerd` first - wrangler resolves `browser` too); one `.d.ts` types both. Both carry the error family - `HttpError`, its 4xx and 5xx subclasses and `Redirect`, under fixed `http:<Name>` ids the client knows without an export. Both carry the client - `client({ base, transport, headers, reply })` and a shared client's `call(path, name, args)`, `define(id, name, parent?)`, `configure` - which the plugin's stubs call through, `fetch` unless `configure({ transport })` replaces it; so library-mode packages and Node/Worker consumers load stubs too. Only `Current` is server-only - the server build is the browser build plus `Current`, and the browser build reaches no `node:` module. Without a `location`, a relative `base` or a `pathOf` with no path to fill from throws, naming the fix.
+  - `@expressive/rpc/http` - the host adapter, server-only, one build: `handler(endpoints)` (`Request` → `Response`, `undefined` for a non-call), `isCall`, `reply`, the Node adapter (`toRequest`, `send`, `toNode`, typed structurally - the `.d.ts` needs no `@types/node`). Generated server entries and dev's `serve`/middleware call it explicitly; app code never imports it.
+  - `@expressive/rpc/vite` - the plugin as its default, `rpc({ dir = "api", opaque = true })`, Node-only. Calls only; twin-shaped exports are refused.
+    - *Addressing.* Folders under `dir` are layers, static segments only (`[param]` folders throw). A module posts to its folder's path - `api/todos.ts` → `POST /`, `api/admin/users.ts` → `POST /admin` - with `x-expressive-call: <module>:<export>`, an index's `<export>` alone. Ids as dev's: readable in dev, salted hashes in build unless `opaque: false`. An index's default Model is its folder's gate; its `key()` runs for every call below.
+    - *Client.* A client load of a module under `dir` is a stub: calls through the shared client, error classes `define`d under their parent - the nearest exported ancestor in `dir` or the `@expressive/rpc` error - so `instanceof HttpError` holds. A sync function, a value, a re-export, a non-Error class, or a default outside an index (or not a Model) fails the build. The dependency scan treats the folder as external.
+    - *Dev.* Calls run on an `rpc` server environment's module runner (`@expressive/mvc` and `@expressive/rpc` external), through rpc's `handler` and `toNode`; exports are re-read per call, so an edit lands on the next one. The plugin reaches `handler`, `install` and `verify` through a virtual module on that runner, so every `@expressive/*` import is a bare one Vite hands to Node - one copy for the plugin and the api modules, kept across the runner's full reloads. `install()` runs once per loaded `@expressive/rpc`.
+    - *Build.* The plugin sets `builder`, so `vite build` builds the client (`dist/client`, unless `build.outDir` is set), then the `rpc` environment (`dist/server/index.js` - `.mjs` without `"type": "module"`). The server bundle is self-contained (`noExternal: true`), its rolldown options its own - none of the top-level `build.rollupOptions` - and `export default { fetch(request, env) }`: only the calls the client build imported, gates along their folders, the rest `env.ASSETS.fetch` when bound, else 404. `ASSETS` is a fixed binding name, not an option (#630). It runs unchanged under `wrangler dev` - `nodejs_compat`, `no_bundle`, and `assets: { binding: "ASSETS", run_worker_first: true }` - with assets served first, `POST /` meets `index.html` and gets a 405 - and under Node through `toNode(server.fetch)`.
+    - *Server entry.* `rpc({ entry })` names the app's own Worker-shaped module; the server environment's input re-exports it (default and named exports alike), so `scheduled` and Durable Object classes survive the build. It gets the calls from `@expressive/rpc/calls` - `handle(request)`, `undefined` for a non-call. Built, that module's code is replaced by the generated calls (found by its `@expressive/rpc/calls#dev` key, since an alias or a real install both reach it as a file); in dev the package module itself reads the plugin's handler off `globalThis[Symbol.for(key)]` - dev resolves `@expressive/rpc` and its subpaths as externals, so a virtual module there never loads. One rpc dev server per process serves it; a closing server leaves a newer one's handler. The dev middleware runs the entry per request on the runner (edits land on the next one) with `env` from `rpc({ env })` plus an `ASSETS` whose `fetch` returns a marker the middleware turns into `next()`, and a `ctx` whose `waitUntil` logs a rejection. `cloudflare:` imports stay external in the build. Without `entry`, the default entry is `export default { fetch }` over the same `handle`.
+    - *Host hooks.* Named exports for a host's own plugin (dev's), not app API:
+      - `scanModule(file, source, sources, owned, { claim?, default? })` - `claim(name)` sees each exported class before the error rules and takes it with its problems, or returns `undefined`; `default(value)` replaces the gate rules. `moduleOf`, `isClass` for a host's own reading.
+      - `Manifest<E extends Exposed>` - ids, `byPattern`, `stub(exposed, locate, { from, at, imports, lines })`, `table(group, alias)` for a generated entry, `exports(group, load, check)` at runtime. `locate`, `pathOf`, `SCRIPT`.
+      - `guardScript(code, file)`.
+  - `@expressive/rpc/protocol` - the runtime plumbing for hosts and flavors, not app API: endpoint resolution (`resolve`, `walkOf`, `seatsAlong`, `locate`), the folder walk and its `key()` gates (`within`, `install`, `inFolder`), error ids (`classId`, `verify`, `registry`), `invoke({ request, at, name, args }, endpoints, { seats, dev, errors })` - `{ value }`, `{ error, status? }`, or `undefined` for no such call - and dev's seam: the tier-aware `dispatch`, `failure`, `attempt`, `fault`, `construct`, `seated`, `onBuild` (dev's version tracking). Free of Vite, oxc and es-module-lexer - dev's production server imports it; only `./vite` loads them.
+  - A client import of a server-only name from `@expressive/rpc` (`Current`), or any value import of `@expressive/rpc/http` or `@expressive/rpc/protocol` (dynamic `import()` included), fails the build (`guardScript`, run by both plugins on script modules). Every file in `dist` is an export's target or reached from one.
+- **Folder.** One configurable folder (`api/` by default), anywhere. An import from it in client code is a stub that fetches per call; types come from the source. A call's id is its module path and export name, posted to one endpoint. No dynamic segments.
+- **Gate.** A folder's `index.ts` default class gates everything below through `key()` - the sidecar walk, minus URL params and the route table. Statelessness rule: a seat's state derives from the request (`key()` reads a bearer or cookie and loads); cached contexts are a per-isolate optimization, never relied on across calls.
+- **Outputs.** *Embedded* - the client build carries the stubs and emits a sibling server bundle (a second Vite environment), deployed to a Cloudflare Worker or run with `serve`; in dev it runs through the module runner as sidecars do. *Library* - the server bundle plus an installable client package: stubs, client runtime, `.d.ts` from the folder, `@expressive/mvc` as peer.
+- **Tiers.** Calls are stateless and run anywhere. Twins, versions, the stream and the pool need a long-lived host (`serve`, Node; Durable Objects later, one per pooled twin) - dev's extension over rpc. The plugin refuses twin-shaped exports for a stateless target.
+- **Cross-origin.** Native and packaged clients are not same-origin: stubs take a `base` and a headers hook for bearer identity, and the server takes a CORS allowlist - same-origin plus preflight stops being the CSRF answer for them.
+- **Ids.** Library output needs ids stable across deploys (readable, or hashed per major) and a version header the server refuses cleanly on mismatch; embedded keeps per-build salted hashes.
+- **dev on rpc.** dev depends on rpc: sidecars run through rpc's scanner, ids, manifest and stubs, with `app/**/remote.ts` and `remote/` folders supplying modules and route patterns; twins (seats, pools, children), the stream and route admission stay in dev.
+- **Stages.**
+  1. A fetch-native handler (`(Request) => Promise<Response>`) behind dev's lane, with a Node adapter - no behavior change (#622).
+  2. Split the server and client `call.ts` into plain-call and twin halves (#625).
+  3. The package, in two steps.
+     - *3a.* Extract `@expressive/rpc` - the plain-call core and its http flavor, with dev on it; dev's wire unchanged (#628).
+     - *3b.* `rpc()` as `@expressive/rpc/vite` - embedded, calls only - proven by `packages/rpc/example`, a plain Vite app whose specs pass on `vite dev`, the bundle under Node and under `wrangler dev` (#630). A focused scanner of its own, not yet moved out of dev's.
+     - *3c.* dev's plugin consumes rpc's machinery - the scanner, ids and stubs - for sidecars, keeping its twin extensions (#632). Sidecar errors carry parents, so `instanceof HttpError` holds in dev. Remaining duplication:
+       - dev's twin scan walks a class's bases itself (`baseOf`) beside rpc's `endOf` - it collects members on the way, reads `.d.ts` beside compiled bases and follows package bases;
+       - two server entries - rpc's Worker `fetch`, dev's `serve(...)` - sharing only `table`;
+       - the dependency-scan external in each plugin's `resolveId` (dev's also enforces the folder import rule);
+       - folder defaults: rpc re-scans an index per call for its gate, dev reads `hasSeat` per entry;
+       - the `Sources`/`Resolve` construction over `this.resolve` and `readFileSync`, in both plugins (`packages/rpc/src/vite/plugin.ts`, `packages/dev/src/vite/plugin.ts`);
+       - the `buildStart` salt - `randomBytes(16)` unless opaque is off;
+       - the `transform` guard wrapper and its `${relative(root, file)} ${problem}` formatting;
+       - the endpoint mapping `byPattern().map(group => ({ pattern: group[0].pattern, exports }))`.
+     - *3d.* One app-facing entry (#634): the app's API moves to `@expressive/rpc` with server and browser builds, `./http` keeps only the host adapter, `./internal` becomes `./protocol` and its build-time half joins `./vite` as named host hooks.
+  4. Workers. The core reaches Node only through `within` (`AsyncLocalStorage`, `createHash`) - `nodejs_compat` covers both, or they get replaced.
+- **Limits (3b).**
+  - `vite build` alone emits both outputs through the app builder; the legacy `build()` API builds the client only - use `createBuilder().buildApp()`. Another environment (a user's `ssr`) is not built by the plugin's `buildApp`.
+  - A Worker isolate holds module state per isolate; the example's in-memory store relies on `wrangler dev` keeping one.
+  - An error class extending a package's export (`extends ZodError`) is not followed - the server checks it is an `Error` on boot (dev: per call).
+  - Dev re-scans a folder's index for its gate on every call.
+  5. Codec - before any published artifact, since a package pins the wire. First step done: `src/codec.ts` - JSON plus EJSON-style one-key tags (`$date`, `$bigint`, `$number`, `$map`, `$set`, `$binary`, `$undefined` in arrays, `$escape` for a plain object that would read as a tag), applied where the client sends and settles and where the server reads arguments and replies, so twins' frames ride it too. Objects keep JSON's rules (`toJSON`, `undefined` dropped) so twin patches keep their meaning. A thrown error's own fields ride it too - the failure reply goes through the same `stringify`, and the client rebuilds the class after `parse`; only the class id stays the registry's. Left on this stage: explicit extensions, and multipart for `Blob`/`File` and raw binary.
+  6. Library mode.
+
+## Transport
+
+- **Calls are HTTP POST in both lanes** - one invocation path, so where an app puts its server logic is a matter of style. Request/response gives timeouts, retries, logs and proxies for free.
+- **The stream is SSE** - a one-way server stream over plain HTTP, carrying staleness only: no dependency, native reconnect, the same code in Vite's middleware and the built server. Values never ride it - a request (call or pull) is the only channel for data, and every request re-runs the gates; a revoked session learns nothing from the stream and is refused on its next pull. Limits: `EventSource` sends no custom headers (the connection id goes in the query); HTTP/1.1 caps ~6 connections per origin across tabs - HTTP/2 lifts it.
+- **WebSocket later, if wanted** - versioned patches and call ids keep the protocol transport-agnostic, so a socket (one ordered duplex channel) can replace both without a change in meaning.
+
+## Wire
+
+```
+POST /blog/a                      the sidecar folder's path, current params filled in
+x-expressive-call: default.flip   an export's name - module:name inside remote/, default.<method> - or its build hash
+content-type: application/json
+
+["arg1", 2]                       the argument array
+```
+
+- **Path.** `app/blog/[slug]/remote.ts` → `/blog/a`; the root sidecar is `POST /`. The stub knows its folder's pattern from the generator and fills it from the current route match - the import rule guarantees the params exist. The folder, not the caller's deeper location: the walk runs `key()` down to the module's own layer, so calls from any page below land in the same context. The query string is ignored.
+- **Ids.** Readable in dev (`add`, `feed/latest:add`; error classes `/<folder>#<module:Class>`). Production hashes each with a per-build salt: no names on the wire or in the bundle's call sites, and a tab from an older build gets 404 rather than calling changed code. `remote: { opaque: false }` keeps readable ids, so a v1.0.0 client still works against v1.0.1 while names hold.
+- **Not a public API.** Remote calls exist for the bundled client; the rpc folder (RPC) is the lane meant for other clients. The allowlist - not the URL or header, which any sender controls - is the boundary.
+- **A call is a POST with `x-expressive-call` and `content-type: application/json`.** Anything else falls through (GET still serves the app). Same-origin calls cost no preflight; a cross-site form cannot send either, and a cross-site script sending them triggers a preflight the server does not approve - so a forged call never arrives, whatever cookies the app uses.
+- **Reply.**
+
+  | Outcome | Status | Body |
+  |---|---|---|
+  | value | 200 | `{ value, frame }` - `value` left out for `undefined` |
+  | name not in the allowlist, or no such module | 404 | the same for both |
+  | malformed body, or no connection id | 400 | `{ message }` |
+  | an instance of an exported `Error` subclass, or of rpc's `HttpError` family | its `status` field in 400-599, else 500 (a `Redirect` is 500) | `{ error: "/<folder>#<Class>" or "http:<Name>", message, ...own fields }` |
+  | anything else | 500 | production: a generic `message` only; development: `message` and the stack |
+
+- **Twin wire.** Every request carries `x-expressive-connection`: a `crypto.randomUUID()` the tab's runtime makes once per page load and holds in memory (the stream sends it in the query). HTTP has no tab identity - cookies and sockets are shared across tabs, and `sessionStorage` is copied when a tab is duplicated - and a server-minted id races the parallel attaches at boot. The server opens a connection on an id's first request; the id addresses the tab's twins and grants nothing, as every request re-runs the gates. Each twin has an id of its own, minted by the runtime at construction (class name and a uid - mvc's own ids differ per side and cannot be set) and sent as `x-expressive-twin`; naming it registers the twin under the tab. Never a server-assigned number: a client-minted id is known before the first reply and cannot alias another twin after the connection expires. A reload is a new connection, which costs nothing since twins rebuild on load.
+  - *Call reply* is `{ value, frame }`: the return value, and for every twin the tab holds that went past its seen version, `{ <twin>: { patch, version } }` - for the calling twin, every public field changed since the version the call sent (`If-None-Match`, as a pull), so the call's own effects and anything the tab missed; for the rest, what changed since the server last sent them. An effect on another twin (a parent seat through `get()`, a pooled instance) settles in the same reply instead of a stream round trip. A seat's methods are `default.<method>`, a pooled class's `<class id>.<method>`; every method call names its twin id.
+  - *Pull* - the one request shape for attach and refresh: `x-expressive-get: default` (the seat) or `<class id>` (a client construction, built on the first pull for its twin id; posted to the concrete path of the twin's route, which the server walks with its own patterns, or to `/.expressive/detached` off any route). `If-None-Match: <version>` returns only the keys changed since, or 304. The reply is a frame, as a call's. A destroyed twin's id rides the next request as `x-expressive-release`.
+  - *Versions* are a server counter per instance, stepped per flush, as `generation:counter`: a version from before a rebuild never matches one after. Each key records the version it last changed at, which is what trims a pull. Never clocks - browser and server clocks drift, and a millisecond holds several flushes. The server's version is the only truth: the client holds the server's number per key, newer is a higher counter in the same generation, a different generation means a rebuild and the reply is taken whole; a lower counter in the same generation is an older reply and is dropped. The client never compares values. Under `set` (Later) a write carries `If-Match: <version>`; a stale one gets 409 with current values and the local write rolls back.
+  - *Children:* an owned child has no id of its own - its entry rides the same frame under its path (`<twin>.cart`, `<twin>.cart.line`), with its own seen version. Its owner's patch marks the field `{ $child: <generation> }`, or `null` when unset; a new generation means a new instance, sent whole. Its public `async` methods go through its owner's twin by path (`default.cart.add`, `<class id>.cart.add`). A reference (`get(Session)`, a `parent` field) is not a copy; whether a public one crosses at all is open (Open).
+  - Not yet: call ids (Reliability), `set` (Later).
+
+## Context model
+
+Cached contexts, keyed. Each route layer resolves a cached `Context`; per-request data never enters one. Direction agreed; details marked where still open.
+
+- **One cached `Context` per layer, keyed by that layer's key.** It holds what is built once: the layer's `default` instance (its only top-level occupant) and the members it owns. The seat is built in a child context, so its `get()` fields resolve upward and its owned members register there; the layer's lookups and the layers below start from that context, so `get()` finds them. A lazy member (`set(() => new X())`) registers on its owner's first read - reach it through the owner. A later request is a map lookup per layer - nothing re-registers.
+- **`static key()`** belongs to a layer's seat and runs on every walk through it. It returns a string, a number or `undefined`; `undefined`, or no `key`, passes the location through. It takes no prefix - dev composes. A key is never sent by the client: it reads verified data only - the request through `Current` (a signed cookie, a session lookup) or Model seated above through `get()`. A key built from raw client data lets the client pick its context. Declare it `protected` so a twin's type does not show it; it never crosses at runtime.
+- **Prefix accumulates down the route walk.** Each layer's prefix is `hash(parent prefix + concrete segment)`, then `hash(prefix + key)` if its seat keys. Two behaviours:
+  - *inherit* - no key: one context per concrete route location (params differ, the query string does not);
+  - *narrow* - a key (an identity, a grant): everything below differs by it.
+- **Ownership is parentage.** Every context sits under its walk parent and sees upstream Model through `get()`.
+- **Reachable only by walking.** A layer's prefix exists only after the layer above ran its `key()` in this request, so no code can address a subtree it is not standing in. Hashing adds fixed length, no separator ambiguity and opacity in logs - not secrecy; keys never leave the server.
+- **The un-nudged default is shared.** With no identity layer, a location's context is common to every visitor. An app's root key decides identity once for everything below; the starter should carry one.
+- **Eviction is the root instance's end.** When dev seats a layer's instance it subscribes to its destroy (`set(null)`) and caches the context under the key. Destroying that instance - from a method, a poll, a disconnect - pops the context at once: owned Model goes with it (`pop()` destroys Model the context constructed from a class), the next request misses and rebuilds, and attached twins get a terminal event. dev seats defaults as classes so `pop()` destroys them.
+- **Lifetime.** A context lives while anything in it does - in-flight calls, instances within their TTL (default 300 seconds, `0` to opt out), attached twins, child contexts. Its seat's end pops it and everything below, owned members included.
+- **Model a folder's functions share is its seat's.** A free function reaches it with `X.get()` - the seat, or a member it owns. A folder whose functions need Model declares a `default` class.
+- **`static use`** - the full-control override when reuse needs spelling out.
+- **Process globals** are not keys: `X.new(Context.root)` at module scope (e.g. an OAuth client). Reached from either lane.
+- **Owned members** (`cart = new Cart()`) never run `key()` - their lifetime is their owner's. Most server Model should be owned members rather than free instances.
+- **The tab's pool.** Client constructions live in the connection's context, not a route layer: their lifetime is the client reference's, which navigation does not decide, and sharing by location is the seat's job. Each pooled instance keeps the layer it was built under (its fiber's route), so its `get()` fields resolve and every gate above runs on each call. A pooled instance holds its layers alive.
+
+## Current
+
+Per-request data sits behind one process-global `Current`, in context everywhere, whose accessors read `AsyncLocalStorage` (`{ request, connection, context }`, set by dev's walk) at call time: headers, cookies, request and response tooling. Name open. No connection id - it follows from the context a call runs in, and the only use for it, a per-client registry, is better served by classes registering under an id of their own choosing (a session), which also outlives a reload.
+
+- **No per-request Model.** `current = get(Current)` on any instance - reused or not - holds the one singleton, and every read reflects the request in progress. No `per()`, no reuse detection.
+- **Live, not computed.** mvc caches a prototype getter as a computed value unless it has a setter, is non-configurable or is `_`-prefixed (`classify()` in `state.ts`); `Current`'s accessors use one of those (as `Component`'s `key` does) or are methods.
+- **Rules that remain:**
+  - do not copy a request value into a field of a reused instance;
+  - an app getter reading `Current` is an mvc computed and caches - read it in methods, `key()` and the instance `use()` gate;
+  - outside a call (a stream flush, a TTL sweep) `Current` throws; timers started inside a call keep that call's store.
+
+## Boundaries
+
+- **Where:** a server module is `remote.ts` or anything under a `remote/` folder (or under `api/`); everything else is client. An import from one is a stub or a twin - visible at the import site.
+- **What crosses, decided at build:** the scanner reads the source, TS modifiers included, and emits the allowlist both sides use. Callable: public `async` methods and exported `async` functions. Server-only: TS `protected`/`private`, `_`-prefixed and `#private` members, statics (`key`, `ttl`), lifecycle and Model's own names. The call dispatcher accepts nothing outside the allowlist, so the boundary never rests on runtime visibility.
+- **Refuse to build what the client cannot have.** A public sync method (every call is async over the wire) and a public `_`-prefixed member (unmanaged, so never replicated) are build errors. `protected`, `private` and `#private` members are free - they never cross. Linters can warn earlier, later.
+- **No ceremony.** No wrapper, no client-view types. Read-only values are a runtime rule, not an editor one: assigning a twin field throws. Otherwise a twin class is an ordinary client class - each owned field, placement and `.new()` builds its own server instance, and a client subclass adds client-side members over the scanned class, whose server half is unchanged. A raw `new` works but is documented against, not refused. Writes go through server methods.
+- **Guidance - server for truth, client for touch.** Server Model: what is authoritative, shared, secret, or near the data (domain entities, permissions, live and collaborative data, views over large data) - it replaces client fetch-and-cache. Client Model: what is ephemeral interaction (open menus, focus, drag, unsaved drafts, animation). Never hold one value in both - derive on the client from the twin. Lean server-heavy for internal tools and collaborative apps; lean client-heavy for latency-critical or offline-tolerant editors and for anonymous high-traffic pages, where per-visitor server memory costs most.
+
+## Twins
+
+- **A twin's context is its fiber's route.** The generated tree gives each client `Route` its `pattern` from the root. A remote class constructed in a fiber reads the nearest `Route` through `get()` and sends that pattern with the current params; the server walks it. A seat's twin is provided at its folder's route; a twin a Component owns or a `<Component for>` places is provided at that fiber's context, visible to the subtree and nothing outside it - as any client Model. Client `get()` searches up the fibers as the server searches up the layers, so a page under `/shop/cart` reaches `/shop`'s seat on both sides. The lookup is the fiber's own chain, never the location: a dynamic component inside a layout finds the layout's `Route` while the URL is deeper, since the leaf's `Route` is not its ancestor - its twin is built under the layout's pattern, owns nothing of the leaf, sees no `:slug`. A layout that survives navigation keeps its twins and their route.
+- **Off any fiber, the connection's root.** `new()` reads no route and walks none: its `get()` reaches process globals and `Current` only, as a client `Model.new()` has no provider context. The twin attaches from its constructor, so every construction path builds one with no adapter seam; a `new()` before the connection exists rides the first request, which opens the connection.
+- **Release, in order.** Explicit first - a route unmount releases its seats' twins, a fiber unmount the twins it constructed. `FinalizationRegistry` is the backup: a twin held only by a closure lives as long as it. The pool's TTL is the floor, for a tab that closes without a beacon; closing the connection clears the pool.
+- **Demand - opt-in only.** Not the default: a plain read has no observer, so refreshing only observed keys would serve it stale values. A class may exclude a heavy field explicitly; demand is never inferred. mvc's observer already holds each listener's key set (`@expressive/mvc/observable`), should an opt-in want it; an mvc seam noticing a key's first or last observer would serve it and gives core lazy getters - optional, upstream.
+- **Visibility.** A hidden tab (`visibilitychange`) may pause its stream; showing it pulls what the heartbeat checksum says it missed.
+
+## Server lifecycle
+
+| Hook | Runs | Throwing |
+|---|---|---|
+| `static key()` | every walk through its seat's layer | denies the request; nothing is created |
+| `new()` | once, on creation (a key miss); an async one holds every walk through its layer until it settles | creation fails; every call walking through it gets the reply |
+| `use()` (instance) | every pass of a server-resolved instance: attach and each call - per request, as the client's runs per render; cascades to owned members that define one, parent first (leaning), unless it returns `false` | denies that request |
+| `mount()` | each time a twin attaches, then on every instance it owns, parent first; returns a cleanup, run in reverse when that twin detaches | the attach is refused; the client Route can catch or redirect |
+
+- The instance `use()` gate is server-only: `remote.ts` bodies never ship to the client, and dom has no per-render `use()` to collide with.
+- `use()` returns nothing; the instance learns it was reached.
+- No middleware hook - gating is `key()`, `new()` and `use()` throwing. An integration (OAuth) is a service the route forwards to, not a hook that inspects every request.
+- References are not owned: `route = get(Route)` gets no `mount()` of its own.
+- **Never callable:** lifecycle names (`new`, `use`, `mount`), Model's own (`get`, `set`), `_`-prefixed and `#private` members.
+
+## Reliability
+
+Principles the MVP must not contradict; most land after it.
+
+- **Server twins are a cache over durable data.** Deploys, crashes and restarts drop in-memory Model; anything that must survive lives in the app's store, and `new()` can rebuild from it.
+- **Versioned replies, call ids.** Each reply names the version it produced; each pull the version it holds; each call an id the server dedupes. Ordering then holds across retries.
+- **Stale, not frozen.** A client `Connection` Model reports `connecting`/`open`/`reconnecting`/`offline`/`closed` (with reason). Disconnected twins keep last-known values and flag themselves stale; they suspend only before their first snapshot.
+- **Calls fail loudly.** Offline calls queue up to a timeout, then reject with a typed `ConnectionError`; per method or per call, an app chooses fail-fast or wait. Strict routes may opt in to a disconnect reaching their `Catch`.
+- **Resumed or reset.** A reconnect within the pool's TTL on the same process gets a fresh stale mask and pulls; otherwise the server sends `reset`, twins are rebuilt through `new()` and `Connection` reports it so the app can reconcile local edits.
+- **Server-initiated close.** Logout, expiry or revocation closes with a reason (`closed: unauthorized`); long-lived streams re-check their session periodically.
+- **Network.** Heartbeats inside load-balancer idle timeouts; reconnect with exponential backoff and jitter; reconnect on visibility change.
+- **Scale.** One process first. More need sticky routing by connection or key; cross-instance state is the app's store.
+
+## Later
+
+- **Collections of children** - arrays of States and `map()` fields, by keyed path. Its own phase after children.
+
+- **TTL sweeper.** One per process; best effort. Evicting an entry evicts the keys it owns.
+- **Warm rehydration.** A Model that packs its managed values into a token (JWT) or store and restores from it on a key miss - the same serialise/restore twins need for snapshots. Hot = in memory; warm = rebuilt without the source of truth; cold = the source of truth or the user. Stateless tokens cannot be revoked before expiry.
+- **rpc folder, beyond calls** (RPC). For external clients: per-request identity (bearer), a `Call` Model for HTTP concerns (headers, status, cookies; `Fetch` considered - its instance name shadows global `fetch()`), the reply pipeline (string → `text/plain`, `undefined` → 204, other values → JSON, status helpers, data primitives; uncaught → 500, message in dev only), REST as `protected` uppercase verbs on dev's `Route` (params from `this.match`, body as the one parameter), HTML replies via a server DOM shim, OpenAPI.
+- The Reliability items above beyond the MVP.
+- **`set` - its own PR, after values.** A write to a twin field: immediate silent local write, confirmed by the returned frame as calls are. Which fields the client may write, and the gates covering writes, decided then; until then assigning a twin field throws. Tabled to keep the shape from churning.
+- **Build-time slot bitmasks.** Every seat and scanned field has a position known at build; a watchlist of arbitrary twins packs into bytes. Per-tab twin ids cover today's case; revisit if the pool grows large.
+- **Per-connection call ids.** Derive ids from the connection id issued by the connection's opening request, so a call is valid only on the connection that learned it. Also shared secrets between server and bundle.
+- **Build notice.** `expressive build` prints one line per non-root route module kept in the main bundle and why - e.g. it exports `Catch`; a `Catch` on its section's `index` covers it.
+- **Repo placement.** dev incubates here as a trunk while it drives changes into mvc and dom; it is the likeliest package to move to `gabeklein/expressive-dev` at its first release, once its PRs stop touching core.
+
+## Rejected
+
+- **Scoped `X.use()` in a `Layout`**, with `undefined` rendering `children`. A route's Model belongs in its `default` class - the one place a route declares what it provides.
+- **Push carrying values** (one frame per flush of every attached instance): a connection checked once at attach keeps receiving data; values on the stream bypass the gates. Values ride replies only, and the stream only announces.
+- **A stream per page path** (reopened on navigation, the path as the watchlist): client constructions grow the watchlist without any navigation, and a layout's twins outlive the leaf.
+- **Replay buffers and `Last-Event-ID`**: versioned pulls plus the heartbeat checksum recover a missed frame without server-side history.
+- **Reset keys** (a `key()` dropping the prefix to share a subtree across visitors): no protection a module-level global lacks, at the cost of a second placement rule (contexts hanging under an ancestor) and shared subtrees cut off from identity. Shared Model is a process global.
+
+## Explored on the way
+
+Ideas the context model replaced, kept so they are not re-proposed blind.
+
+- **The TypeScript checker (or ts-morph) for twin members**: it resolves inherited members and modifiers directly, but adds `typescript` as a runtime dependency, type-checks the project per scan, and TypeScript 7.0 ships without a programmatic API (planned for 7.1). The scan follows `extends` through imports itself instead.
+- **Lazy push driven by demand**: a plain synchronous read has no observer to announce it, so values must be eager; demand narrowing survives only as an explicit opt-in.
+- **Sums or prime products of twin ids as a connection version**, Bloom filters, HMAC'd instance handles: nothing reads them that per-tab twin ids and the heartbeat checksum do not already cover; the sets are tiny and a tab's ids mean nothing to another.
+- **Scoping client constructions to a route layer** (the importing module as a guess at location): their lifetime is the reference's, not the route's; the pool owns them, the fiber's route is only their walk.
+
+- **A fixed context tree** (session → tab → location contexts built in by dev): replaced by contexts keyed by the app's own keys. Dropped once as high upkeep while request objects had to live in the chain; `Current` removed that obstacle and cached contexts came back keyed.
+- **A key register without cached contexts** (instances found by key, contexts rebuilt per request): every request would re-register each layer's instance and owned members into a fresh chain for `get()` to work.
+- **Identity provider as dev's seam** (a `Session` class, or an `App.use()` returning a session key, as middleware): session is the app's concern.
+- **`use()` returning an instance handed down to the next layer** (memo-like): superseded by `static key`.
+- **Key as a tuple scoped by an instance**: keys stay plain and unique per class; `key()` salts them itself.
+- **Scope as an object** (`{ session, tab, path }`): dev asserting a shape; the prefix is one opaque string with one purpose.
+- **`key = false` for process globals**: globals are created in `Context.root` at module scope instead (Agreed shape).
+- **TTL defaulting to Infinity or 0**: Infinity never frees; 0 rebuilds Model between calls, so a twin looks broken until its class sets a TTL. Five minutes instead.
+- **Keyed `X.use()` off the route chain** (`Account.use()` resolving through the class's own key): `key` is for seats.
+- **`{fn}.{idx}` slots** for `use()` in free functions, hook-style: peer calls and branches shift slots silently.
+- **Server `X.use()`** (get-or-create one `X` per layer): ownership was implicit and order-dependent - a function's `X.get()` worked only if another call's `use()` had made `X` within its TTL. Model a folder's functions share is its seat's, as owned members; dom drops `Model.use()` for the same reason (#544).
+- **`static provider = github({...})`** on an account class: an OAuth client is its own process global.
+- **An integration self-handling its callback** by inspecting every request: the route forwards to it.
+- **`.expressive` endpoint prefix**: not needed for calls.
+- **Lazy key pulling** (a twin starts empty; a first read suspends and fetches the key): public values must be readable without a separate mechanism.
+- **`super.use()` to cascade**: mvc has no `use` on `Model.prototype` (adapters check `typeof x.use == 'function'`), so it would need a default injected; automatic cascade instead.
+- **`per(Type)`, a class-level `get` override, or a `Context` seam for request-scoped fields**: `Current` makes them unnecessary. A `Model.on()` hook intercepting `get` for request classes may still be explored.
+- **Requiring `default` classes to extend `Route`**: what is special is position (constructed per layer, keyed, `use()` per pass), not class; `key` applies to any Model. Revisit if a feature needs Route's members.
 
 ## Open
 
-- Root description in help (dev supplies JSDoc later).
-- Whether `@expressive/cli` declares the `expressive` bin itself - `@expressive/dev` already does, with its own non-dispatching CLI.
-- `valid`'s parameter is untyped (`any`) - typing it from `type`/`parse` across merged configs.
+- Status helpers - an exported error class's `status` field covers it for now. If wanted: naming (`NotFound` and `Redirect` collide with existing exports; leaning `Status.NotFound(...)`; `expressive-rpc` had `Forbidden`, `NotFound`, `Internal`, `BadInput`).
+- Public references (`session = get(Session)`): left server-only (the build refuses a public one until decided), or projected from the server as an address the client resolves to the twin it holds for that instance.
+- What counts as serializable on the wire - the codec (RPC stage 5) tags `Date`, `Map`, `Set`, `BigInt`, non-finite numbers, binary and `undefined` in arrays; still open: an `Error` returned as a value (not thrown) crosses as its enumerable fields only, and room for explicitly supported extensions. Later on the same pipeline: functions sent as an id in a callback registry, called back through the same dispatch as methods and plain calls. The connection id is transport only, never part of a key.
+- How params reach server code - the walk already matches the path against dev's route table (not the router, which stays client-side); `Route.get().match` or something plainer, decided when step 2 needs it.
+- Optimistic writes - with `set` (Later): a local write sent with `If-Match`, rolled back on 409.
+- Demand as an mvc primitive - see Twins.
+- Reliability defaults: timeouts, the per-call wait-or-fail option, the strict-route flag, the pool's TTL after disconnect.
+- Hot reload retiring cached contexts.
+- Client parity for the `mount()` cascade: the server needs it (owned helpers have no other attach signal), so the maintainer cascades on the client too, upstream.
+- REST over the rpc folder (a `Route` default with uppercase verbs) - assessed after RPC stage 3. Twins of rpc classes are dev's, on stateful hosts only.
+- On the client only the layout chain stays mounted - sibling pages remount (per the generated route tree). Twins inherit that lifetime.
+- Entry follow-ups:
+  - `Catch`'s `retry` re-throws the cached refusal - the router keeps a rejected guard's promise for the space until the route is left. Retry from `Catch` should re-run admission - recorded for later.
+  - A plain sidecar function called during a held navigation (from an entry hook, say) still fills its path from `location`, which lags the router's path until the page commits.
+  - Nested seats attach one depth at a time - a child Route renders only once its parent is admitted.
+  - A cold load shows nothing above the root's `Loading` slot until the root seat (if any) attaches - the root Route's own fallback is `null`.
+  - The generated tree passes the seat class as the `remote` prop, which the field turns into the instance; hand-written `<Route remote={Seat}>` is untyped.
+- Dogfood asks (2026-11-05), undecided:
+  - Host routes: dev's `serve()` serves only calls, the stream and static files. rpc's side - routes beside the calls, sharing their modules in dev and build - is its server entry (`rpc({ entry })`, RPC above). Response headers and cookies from a call landed: cookies as fields of a `Cookies` subclass (`AppCookies.get()` is the request's instance, overriding `static get`; `AppCookies.set({...})` is sugar; changed fields go out as `Set-Cookie`, diffed when the reply is built), and `Current.get().setHeader` as the lower level. Gathered per request and added by `dispatch`, so dev's twin calls and pulls carry them too. `Cookies` stays out of context - `get(AppCookies)` in a reused Model would hold one request's cookies.
+  - rpc's server bundle is self-contained (`noExternal: true`), so a host process wrapping it from outside holds a second copy of mvc and the app's modules - a server entry avoids that by being the bundle; dev's SSR bundle externalizes `node_modules`. Pick one.
+  - Binary arguments: `Uint8Array` crosses base64 in the codec (stage 5); streams and `Blob` go through a server entry. A per-call `AbortSignal` or timeout on stubs.
+  - An rpc gate's async `new()` is cached for the TTL, so a logout lands only when it expires (`ttl = 0` is the workaround) - an argument for a per-pass `use()` gate in rpc.
+  - Layout: `app/` sits at the project root, every directory is a route, and a sidecar is importable only from its folder down. Asked: non-route folders (`_x/`, `(group)/`), or root sidecars importable from anywhere.
+  - dev does not host an rpc `api/` folder yet, though Agreed shape gives sidecars and the rpc folder one invocation path; an app adding `rpc()` beside dev gets plain `{ value }` replies in dev and a server with no api/ endpoints in build. dev also does not re-export the `HttpError` family.
+  - Server code runs on Vite's module runner: a Bun app launches Vite under Bun (`bun --bun vite`), and the runner gives Node's `import.meta` (`import.meta.dir` is undefined). Needs a doc line.
+
+## Upstream (bullpen)
+
+- mvc #473: `Model.new(true)` as explicit opt-in to process globals - not a prerequisite.
+- mvc: demand notification - a key gaining its first or losing its last observer. Serves the demand opt-in and lazy getters.
+- dom: optional `rendering?()` on `HostRuntime` - approved in shape, unused until dom renders in a server process.
+- dom: string renderer + style collector. Replaces the item-9 shim.
+- dom: #454 parent-first ordering (0.21 kB). React: keep uncommitted Model across retries.
+
+## Release gates
+
+Met on the trunk (`chore/dev-release-prep`): dev's `coverage` gates 100% like every package; `skills/rpc.md` and `skills/dev.md`; changesets publishing dev and rpc as 0.1.0 with `private` dropped; the router stopgap left with 2856a307f. Left: the trunk's `main` merge, and the first npm publish of each new package by hand with its trusted publisher set.
