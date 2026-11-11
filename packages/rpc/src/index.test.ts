@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
@@ -26,7 +26,8 @@ describe("conditions", () => {
   beforeAll(async () => {
     const manifest = readFileSync(MANIFEST, "utf8");
 
-    root = mkdtempSync(join(tmpdir(), "rpc-exports-"));
+    // Real path: macOS hands out /var/... and resolvers report /private/var/....
+    root = realpathSync(mkdtempSync(join(tmpdir(), "rpc-exports-")));
     pkg = join(root, "node_modules/@expressive/rpc");
 
     mkdirSync(pkg, { recursive: true });
