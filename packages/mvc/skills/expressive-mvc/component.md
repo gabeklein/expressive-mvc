@@ -389,6 +389,7 @@ class Dashboard extends Component {
 - **Overridable by subclasses.** `protected` by default - a seam for subclasses, not a second public surface. Public only when an FC outside the class is meant to place `<dashboard.Sidebar />` from context.
 - Declared after `render()` - read the assembly, then the pieces it names.
 - Destructure what the body reads from `this` at the top, as in `render()`.
+- A PascalCase field holding a `Component` class renders that class as-is - its own instance and state, with props from the call site - so a slot takes either a function or a class.
 
 Subcomponents are **extension points**, not a general decomposition tool. Test: **would a subclass reasonably replace or wrap this renderer?** Yes for the element or row a variant swaps - `Toggle.Active`, a grid's `Row`, a combobox's `Input`, `Option` or `Empty`. No for layout that only places those slots - a styled `div` holding `<this.Input />` and a clear button is assembly, and stays in `render()`; a subclass changes assembly by overriding `render()`. A wrapper taking `children` is a slot only when the wrapper itself is the swap - a listbox that is a popover in one variant and a portal in another - not for every grouping `div`. If no, it is an implementation scope: a freestanding FC calling `Dashboard.get()`, keeping dependencies local without the override machinery. Decomposing a busy `render()` into those costs nothing. Either way, presence stays at the call site - `{open && <this.Menu>…</this.Menu>}`, `{selected && <this.Value />}` - and the slot always paints:
 

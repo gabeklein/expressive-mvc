@@ -134,12 +134,12 @@ function render(from: Component, context: Context) {
   return () => createElement(Component);
 }
 
-/** Rewrite each own capitalized function on `target` into a subcomponent. */
+/** Rewrite each own capitalized function on `target` into a subcomponent; a Component class renders as itself. */
 function subcomponents(target: object) {
   for (const key of Object.getOwnPropertyNames(target)) {
     if (!/^[A-Z]/.test(key)) continue;
     const { value } = Object.getOwnPropertyDescriptor(target, key)!;
-    if (typeof value != 'function') continue;
+    if (typeof value != 'function' || value.prototype instanceof Component) continue;
     Object.defineProperty(target, key, {
       configurable: true,
       get(this: Component) {

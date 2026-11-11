@@ -815,6 +815,31 @@ describe('subcomponents', () => {
     expect(error).not.toBeCalled();
   });
 
+  it('will render a Component class held in a PascalCase field as itself', async () => {
+    class Row extends Component {
+      label = 'row';
+
+      render() {
+        return <span>{this.label}</span>;
+      }
+    }
+
+    class Table extends Component {
+      Row = Row;
+
+      render() {
+        return <this.Row label="first" />;
+      }
+    }
+
+    let table!: Table;
+    render(<Table is={(x) => void (table = x)} />);
+
+    expect(table.Row).toBe(Row);
+    expect(screen).toHaveText('first');
+    expect(error).not.toBeCalled();
+  });
+
   it('will render from owner not yet activated', () => {
     class Control extends Component {
       value = 'foo';
