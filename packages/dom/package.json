@@ -1,6 +1,6 @@
 {
   "name": "@expressive/dom",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "MVC-native DOM renderer.",
   "license": "MIT",
   "author": {
