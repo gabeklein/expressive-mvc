@@ -27,7 +27,9 @@ export class Route extends Component {
   router = set(() => this.get(Router, false) || new Router());
 
   /** Component wrapping matched content - a function or class element type
-   * (a fellow Route subclass included), but not an intrinsic host tag. */
+   * (a fellow Route subclass included), but not an intrinsic host tag.
+   *
+   * Under a catch-all `to`, a Route subclass renders with `to="*"` - it matches the rest, read as `match['*']`. */
   as?: Exclude<JSX.ElementType, string> = undefined;
 
   /**
@@ -239,8 +241,14 @@ export class Route extends Component {
    * `super.render()` to place the default content.
    */
   render(): Component.Node {
-    const { as: Component, children } = this;
-    return Component ? <Component>{children}</Component> : children;
+    const { as: Component, children, to } = this;
+
+    if (!Component) return children;
+
+    const Page = Component as typeof Route;
+    const splat = Route.is(Page) && /(^|\/)\*$/.test(to);
+
+    return splat ? <Page to="*">{children}</Page> : <Component>{children}</Component>;
   }
 }
 

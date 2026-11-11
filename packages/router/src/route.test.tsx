@@ -230,6 +230,31 @@ describe('Route', () => {
       expect(await at(path, ui)).toBe(expected);
     });
 
+    describe('a Route subclass as a catch-all\'s page', () => {
+      class Page extends Route {
+        render() {
+          return <p>page:{this.match?.['*'] ?? 'none'}</p>;
+        }
+      }
+
+      it.each([
+        ['will match below the catch-all', '/docs/a/b', <Route to="docs/*" as={Page} />, 'page:a/b'],
+        ['will match the catch-all\'s own path with an empty rest', '/docs', <Route to="docs/*" as={Page} />, 'page:'],
+        ['will match a bare catch-all in a scope', '/docs/a', <Route to="docs"><Route to="*" as={Page} /></Route>, 'page:a'],
+        ['will keep its params from above', '/u/7/x', <Route to="u/:id/*" as={class extends Route { render() { return <p>{this.match!.id}:{this.match!['*']}</p>; } }} />, '7:x'],
+        ['will not take a catch-all from a :param parent', '/blog/hi', <Route to="blog/:slug" as={Page} />, 'page:none']
+      ])('%s', async (_, path, ui, expected) => {
+        expect(await at(path, <Route>{ui}</Route>)).toBe(expected);
+      });
+
+      it('will keep its declared children composing on the catch-all\'s base', async () => {
+        const Section = class extends Route {};
+        const ui = <Route><Route to="docs/*" as={Section}><Route to=":id" as={Post} /></Route></Route>;
+
+        expect(await at('/docs/42', ui)).toBe('id: 42');
+      });
+    });
+
     it('will unregister a child destroyed after its scope', async () => {
       location('/a/b');
       let scope!: Route;
