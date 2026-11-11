@@ -4181,6 +4181,158 @@ describe('on setup / ready stages (static)', () => {
     await expect(Promise.resolve(settled)).rejects.toThrow('failed');
   });
 
+  it('will destroy what was built if an init callback throws', async () => {
+    const log: string[] = [];
+    const handler = vi.fn();
+    let self!: Level;
+
+    class Logger extends Model {
+      protected new() {
+        log.push('logger new');
+        return () => log.push('logger destroyed');
+      }
+    }
+
+    class Level extends Model {
+      logger = new Logger();
+    }
+
+    Level.on({ catch: handler });
+
+    const create = () =>
+      Level.new(
+        function () {
+          self = this;
+          return () => log.push('level destroyed');
+        },
+        () => {
+          throw new Error('abort');
+        }
+      );
+
+    expect(create).toThrow('abort');
+    expect(log).toEqual(['logger new', 'logger destroyed', 'level destroyed']);
+    expect(self.get(null)).toBe(true);
+    expect(self.logger.get(null)).toBe(true);
+
+    await flushMicrotasks();
+    expect(handler).not.toBeCalled();
+  });
+
+  it('will destroy what was built if new() throws', () => {
+    const destroyed = vi.fn();
+
+    class Child extends Model {
+      protected new() {
+        return destroyed;
+      }
+    }
+
+    class Test extends Model {
+      child = new Child();
+
+      protected new() {
+        throw new Error('abort');
+      }
+    }
+
+    let self!: Test;
+
+    expect(() => Test.new((x) => void (self = x))).toThrow('abort');
+    expect(destroyed).toBeCalledTimes(1);
+    expect(self.get(null)).toBe(true);
+  });
+
+  it('will rethrow if an init callback destroys the instance then throws', () => {
+    const destroyed = vi.fn();
+
+    class Child extends Model {
+      protected new() {
+        return destroyed;
+      }
+    }
+
+    class Test extends Model {
+      child = new Child();
+    }
+
+    const create = () =>
+      Test.new(function () {
+        this.set(null);
+        throw new Error('abort');
+      });
+
+    expect(create).toThrow('abort');
+    expect(destroyed).toBeCalledTimes(1);
+  });
+
+  it('will destroy the instance if a setup handler throws', () => {
+    const destroyed = vi.fn();
+    let self!: Test;
+
+    class Test extends Model {}
+
+    Test.on({
+      setup() {
+        self = this;
+        return destroyed;
+      }
+    });
+
+    Test.on({
+      setup() {
+        throw new Error('abort');
+      }
+    });
+
+    expect(() => Test.new()).toThrow('abort');
+    expect(destroyed).toBeCalledTimes(1);
+    expect(self.get(null)).toBe(true);
+  });
+
+  it('will destroy a path built from init callbacks if a nested one throws', async () => {
+    const log: string[] = [];
+    const warn = mockWarn();
+    const built: Model[] = [];
+
+    class Leaf extends Model {
+      protected new() {
+        built.push(this);
+        return () => log.push('leaf');
+      }
+    }
+
+    class Child extends Model {
+      leaf = new Leaf();
+    }
+
+    class Root extends Model {
+      child?: Child = undefined;
+
+      protected new() {
+        return () => log.push('root');
+      }
+    }
+
+    const create = () =>
+      Root.new(function () {
+        built.push(this);
+        return {
+          child: new Child(function () {
+            built.push(this);
+            throw new Error('abort');
+          })
+        };
+      });
+
+    expect(create).toThrow('abort');
+    expect(log).toEqual(['leaf']);
+    expect(built.map((x) => x.get(null))).toEqual([true, true, true]);
+
+    await flushMicrotasks();
+    expect(warn).not.toBeCalled();
+  });
+
   it('will reject a pending read with the error an async new() rejects', async () => {
     class Test extends Model {
       value = set<number>();

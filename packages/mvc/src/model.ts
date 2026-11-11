@@ -806,26 +806,36 @@ function activate(
   active.held = !!up?.held;
   ACTIVE.set(state, active);
 
-  capture((release) => {
-    const queue = [...before, observe, ...args];
+  const o = observer(state, true);
 
-    listener(state, () => release(null), null);
+  try {
+    capture((release) => {
+      const queue = [...before, observe, ...args];
 
-    for (let i = 0; i < queue.length; i++) {
-      const arg = queue[i];
-      const called = typeof arg == 'function';
-      const out = called ? arg.call(state, state) : arg;
+      listener(state, () => release(null), null);
 
-      if (out instanceof Context) continue;
+      for (let i = 0; i < queue.length; i++) {
+        const arg = queue[i];
+        const called = typeof arg == 'function';
+        const out = called ? arg.call(state, state) : arg;
 
-      if (out instanceof Promise) {
-        waits.push(out);
-        out.catch((err) => report('setup', state, err));
-      } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
-      else if (typeof out == 'function') listener(state, out, null);
-      else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
-    }
-  });
+        if (out instanceof Context) continue;
+
+        if (out instanceof Promise) {
+          waits.push(out);
+          out.catch((err) => report('setup', state, err));
+        } else if (Array.isArray(out)) queue.splice(i + 1, 0, ...out);
+        else if (typeof out == 'function') listener(state, out, null);
+        else if (called ? plain(out) : typeof out == 'object') assign(state, out as Model.Assign<Model>, true);
+      }
+    });
+  } catch (error) {
+    ACTIVE.delete(state);
+    o.pending.clear();
+    (state as { [Observer]?: Observer | null })[Observer] = o;
+    event(state, null);
+    throw error;
+  }
 
   const settled = waits.length ? Promise.all(waits) : undefined;
   const hold = active.held || !!settled;
