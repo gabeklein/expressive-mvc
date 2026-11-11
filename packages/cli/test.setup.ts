@@ -1,0 +1,1 @@
+import '../mvc/test.setup';
