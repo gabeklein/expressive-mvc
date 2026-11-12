@@ -1,9 +1,10 @@
 import { Context } from '@expressive/mvc';
 
-import { PORTAL } from '../node/vnode';
+import { isVNode, PORTAL, vnode } from '../node/vnode';
 import type { Node as RenderNode, VNode } from '../node/vnode';
 import type { Appearance } from '../style/claim';
 import type { Boundary, Container, Fiber } from './fiber';
+import { hostOf } from './suspense';
 import { complete } from './mount';
 import { reconcileChildren } from './reconcile';
 
@@ -14,7 +15,8 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
   const portalEnd = document.createComment('/portal-root');
 
   parent.insertBefore(marker, before);
-  container.append(portalStart, portalEnd);
+  if (value.props[LEAD]) container.prepend(portalStart, portalEnd);
+  else container.append(portalStart, portalEnd);
 
   const output: Fiber = {
     kind: 'portal',
@@ -35,6 +37,20 @@ function mountPortal(value: VNode, parent: globalThis.Node, before: globalThis.N
   return complete(output, () => {
     reconcilePortal(output, value.props.children, context, boundary, appearance);
   });
+}
+
+const HOISTED = new Set(['title', 'meta', 'link']);
+const LEAD = Symbol('lead');
+
+function hoist(value: RenderNode, parent: globalThis.Node): RenderNode {
+  if (!isVNode(value) || typeof value.type != 'string' || !HOISTED.has(value.type)) return value;
+
+  const { head } = parent.ownerDocument!;
+  const host = hostOf(parent);
+
+  if (head.contains(host) || host instanceof SVGElement && host.localName != 'foreignObject') return value;
+
+  return vnode(PORTAL, { into: head, children: value, [LEAD]: value.type == 'title' }, value.key);
 }
 
 function target(into: unknown, parent: globalThis.Node): Container {
@@ -66,4 +82,4 @@ function unmountPortal(fiber: Fiber) {
   (fiber.portalEnd as ChildNode).remove();
 }
 
-export { mountPortal, patchPortal, unmountPortal };
+export { hoist, mountPortal, patchPortal, unmountPortal };

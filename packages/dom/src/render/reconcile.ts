@@ -11,7 +11,7 @@ import { move } from './fiber';
 import type { Boundary, Fiber } from './fiber';
 import { same } from './hot';
 import { mount, patchFragment, patchText, unmountFiber } from './mount';
-import { patchPortal } from './portal';
+import { hoist, patchPortal } from './portal';
 import { authored } from './style';
 import { gather } from './suspense';
 
@@ -38,7 +38,7 @@ function reconcileChildren(owner: Fiber, parent: globalThis.Node, before: global
 
   try {
     for (const [each, slot] of values) {
-      const value = source(each);
+      const value = hoist(source(each), parent);
 
       current = slot;
       const key = keyOf(value);

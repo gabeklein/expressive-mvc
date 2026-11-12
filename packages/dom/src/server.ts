@@ -35,6 +35,7 @@ const UNITLESS = new Set(
 
 const VOID = new Set('area base br col embed hr img input link meta param source track wbr'.split(' '));
 const RAW = new Set(['script', 'style']);
+const HOISTED = new Set(['title', 'meta', 'link']);
 const ALIASES: Record<string, string> = {
   acceptCharset: 'accept-charset',
   autoFocus: 'autofocus',
@@ -52,10 +53,13 @@ interface Output {
   html: string;
   /** Rules the render emitted, for a `<style>` in the document head. */
   css: string;
+  /** `<title>`, `<meta>` and `<link>` elements rendered outside SVG, for the document head - `html` keeps a marker in their place. */
+  head: string;
 }
 
 interface Pass {
   contexts: Context[];
+  head: string[];
   sink: Sink;
 }
 
@@ -94,7 +98,7 @@ function escape(value: string, attribute?: boolean) {
  * `new()` runs; effects and `ready` never do. Every instance is destroyed once rendered.
  * A suspended render is awaited and retried in place; no fallback is drawn.
  * A `catch` boundary handles an error once, then renders again; a second error propagates.
- * Portals render nothing.
+ * Portals render nothing; `<title>`, `<meta>` and `<link>` go to `head`, as `render()` hoists them.
  */
 async function renderToString(node: Node): Promise<Output> {
   const rules: string[] = [];
@@ -106,13 +110,13 @@ async function renderToString(node: Node): Promise<Output> {
     unitless: (property) => UNITLESS.has(property)
   };
   const context = new Context(Context.root);
-  const pass: Pass = { contexts: [context], sink };
+  const pass: Pass = { contexts: [context], head: [], sink };
 
   try {
     const html = await range('fragment', walk(node, pass, context));
     const css = [...rules, ...roots.values()].filter(Boolean).join('\n');
 
-    return { html, css };
+    return { html, css, head: pass.head.join('') };
   } finally {
     for (const context of pass.contexts.reverse()) context.pop();
   }
@@ -143,7 +147,12 @@ async function walk(value: Node, pass: Pass, context: Context, appearance?: Appe
   if (!isVNode(value)) throw new TypeError(`Cannot render ${String(value)}.`);
   if (value.type === Fragment) return range('fragment', walk(value.props.children, pass, context, appearance, svg));
   if (value.type === PORTAL) return '<!--portal-->';
-  if (typeof value.type == 'string') return element(value, pass, context, appearance, svg);
+  if (typeof value.type == 'string') {
+    if (!HOISTED.has(value.type) || svg) return element(value, pass, context, appearance, svg);
+
+    pass.head.push(await element(value, pass, context, appearance, svg));
+    return '<!--portal-->';
+  }
   if (typeof value.type != 'function') throw new Error(`Cannot render ${String(value.type)}.`);
 
   if (value.type === Component || value.type.prototype instanceof Component)
