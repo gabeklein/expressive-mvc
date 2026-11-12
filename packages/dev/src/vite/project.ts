@@ -73,7 +73,12 @@ else {
     clearTimeout(limit);
     el.replaceWith(next);
     next.hidden = false;
-    document.querySelectorAll('style[data-expressive="prerender"]').forEach(style => style.remove());
+    for (let node of [...document.head.childNodes].filter(node => node.data == "prerender"))
+      while (node) {
+        const next = node.data == "/prerender" ? null : node.nextSibling;
+        node.remove();
+        node = next;
+      }
   };
   const caught = () => next.textContent == el.textContent && swap();
   const observer = new MutationObserver(caught);
