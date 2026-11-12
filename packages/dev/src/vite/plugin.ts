@@ -209,7 +209,7 @@ export function expressive(): Plugin<Host> {
           return prerenderEntry(`./${ROUTES}`, true, sources.map(file => importRel(generatedDir, file)));
         }
         case htmlId:
-          return SHELL;
+          return project.htmlPath ? undefined : SHELL;
       }
     },
 
