@@ -12,7 +12,11 @@ class Exit extends Error {
 }
 
 class Miss extends Error {
-  constructor(readonly loader: () => Promise<unknown>) {
+  constructor(
+    readonly loader: () => Promise<unknown>,
+    readonly cache: Map<string, Model.Type>,
+    readonly key: string
+  ) {
     super();
   }
 }
@@ -33,7 +37,7 @@ class Miss extends Error {
  */
 function command(Root: Model.Type): Run {
   const name = kebab(Root.name).replace(/^-/, '');
-  const loaded = new Map<() => Promise<unknown>, Model.Type>();
+  const loaded = new Map<Function, Map<string, Model.Type>>();
 
   return async (argv: string[], out: Output) => {
     for (;;) {
@@ -65,9 +69,11 @@ function command(Root: Model.Type): Run {
           const target = step.target as Target;
 
           if (typeof target == 'function') {
-            const Type = target.prototype instanceof Model ? (target as Model.Type) : loaded.get(target as Miss['loader']);
+            const owner = this.constructor;
+            const cache = loaded.get(owner) || loaded.set(owner, new Map()).get(owner)!;
+            const Type = target.prototype instanceof Model ? (target as Model.Type) : cache.get(step.key);
 
-            if (!Type) throw new Miss(target as Miss['loader']);
+            if (!Type) throw new Miss(target as Miss['loader'], cache, step.key);
 
             return { [step.key]: new Type(enter(kebab(step.key))) };
           }
@@ -112,7 +118,7 @@ function command(Root: Model.Type): Run {
           try {
             const module = (await error.loader()) as { default?: Model.Type };
 
-            loaded.set(error.loader, (module.default || module) as Model.Type);
+            error.cache.set(error.key, (module.default || module) as Model.Type);
             continue;
           } catch (failed) {
             error = failed;

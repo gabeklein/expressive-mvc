@@ -371,6 +371,43 @@ describe('sub', () => {
     expect(lines).toEqual(['child destroyed', 'parent destroyed']);
   });
 
+  it('will tear down field children when the build aborts', async () => {
+    let loads = 0;
+
+    class Logger extends Model {
+      new() {
+        lines.push('logger new');
+        return () => lines.push('logger destroyed');
+      }
+    }
+
+    class Late extends Model {
+      logger = new Logger();
+
+      run() {}
+    }
+
+    class Test extends Model {
+      logger = new Logger();
+      late = sub(async () => (loads++, Late));
+    }
+
+    expect(await command(Test)(['--nope'], out)).toBe(2);
+    expect(lines.splice(0)).toEqual(['logger new', 'logger destroyed', '! Unknown option --nope.\nUsage: test [options] <command>']);
+
+    expect(await command(Test)(['late'], out)).toBe(0);
+    expect(lines).toEqual([
+      'logger new',
+      'logger destroyed',
+      'logger new',
+      'logger new',
+      'logger destroyed',
+      'logger destroyed'
+    ]);
+
+    expect(loads).toBe(1);
+  });
+
   it('will load a lazy sub once, when routed', async () => {
     const created = vi.fn();
 
