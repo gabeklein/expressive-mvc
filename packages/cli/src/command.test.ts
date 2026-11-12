@@ -233,6 +233,11 @@ describe('sub', () => {
     expect(lines).toEqual(['! Unknown command "nope".\nUsage: group [options] <command>']);
   });
 
+  it('will fail on an unknown command where a group takes args', async () => {
+    expect(await command(Sql)(['drop', 'db.ts'], out)).toBe(2);
+    expect(lines).toEqual(['! Unknown command "drop".\nUsage: sql [options] <command> <entry>']);
+  });
+
   it('will fill args once routing ends', async () => {
     class Test extends Model {
       name = arg();

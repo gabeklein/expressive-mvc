@@ -56,7 +56,13 @@ function command(Root: Model.Type): Run {
 
           if (!step) {
             if (!('run' in this)) {
-              if (specs.some((spec) => spec.kind == 'sub')) throw new Exit(2);
+              if (specs.some((spec) => spec.kind == 'sub')) {
+                const [extra] = reader.levels[reader.levels.length - 1].operands;
+
+                if (extra !== undefined) throw new Usage(`Unknown command "${extra}".`);
+
+                throw new Exit(2);
+              }
 
               throw new TypeError(`${this.constructor.name} has no run() method.`);
             }
