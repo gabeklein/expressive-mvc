@@ -1,5 +1,5 @@
 import type { Spec } from './input';
-import { isNamed, isPlural, isRequired, kebab, label, valueType } from './parse';
+import { isNamed, isPlural, isPositional, isRequired, kebab, label, valueType } from './parse';
 
 function operand(spec: Spec) {
   const name = kebab(spec.key) + (isPlural(spec) ? '...' : '');
@@ -32,7 +32,7 @@ function table(rows: [string, string][]) {
 }
 
 function scope(levels: Spec[][]) {
-  const leaf = levels[levels.length - 1];
+  const leaf = levels.at(-1)!;
   const seen = new Set<string>();
   const options: Spec[] = [];
 
@@ -44,7 +44,7 @@ function scope(levels: Spec[][]) {
       }
 
   return {
-    operands: leaf.filter((spec) => spec.kind == 'arg' || spec.kind == 'args'),
+    operands: leaf.filter(isPositional),
     commands: leaf.filter((spec) => spec.kind == 'sub'),
     options
   };

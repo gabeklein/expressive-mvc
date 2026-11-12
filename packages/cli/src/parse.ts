@@ -9,6 +9,7 @@ const kebab = (key: string) => key.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase(
 
 const isNamed = (spec: Spec) => spec.kind == 'flag' || spec.kind == 'opt' || spec.kind == 'list';
 const isPlural = (spec: Spec) => spec.kind == 'args' || spec.kind == 'list';
+const isPositional = (spec: Spec) => spec.kind == 'arg' || spec.kind == 'args';
 const isRequired = (spec: Spec) => !!spec.config.required && spec.config.default === undefined;
 
 const valueType = (spec: Spec) =>
@@ -24,7 +25,7 @@ function check(specs: Spec[]) {
   let rest: Spec | undefined;
 
   for (const spec of specs)
-    if (spec.kind == 'arg' || spec.kind == 'args') {
+    if (isPositional(spec)) {
       if (rest) throw new Error(`${label(rest)} takes the remaining arguments - ${label(spec)} cannot follow it.`);
 
       if (spec.kind == 'args') rest = spec;
@@ -86,7 +87,6 @@ interface Level {
 class Reader {
   readonly levels: Level[] = [];
   help = false;
-
   ended = false;
 
   private at = 0;
@@ -111,7 +111,7 @@ class Reader {
   }
 
   proceed(name: string) {
-    const level = this.levels[this.levels.length - 1];
+    const level = this.levels.at(-1)!;
 
     level.name += ' ' + name;
     level.inline = true;
@@ -119,10 +119,9 @@ class Reader {
   }
 
   private scan(routing: boolean): Spec | undefined {
-    const level = this.levels[this.levels.length - 1];
-    const { specs } = level;
-    const subs = new Map(specs.filter((spec) => spec.kind == 'sub').map((spec) => [kebab(spec.key), spec]));
-    const positional = specs.some((spec) => spec.kind == 'arg' || spec.kind == 'args');
+    const level = this.levels.at(-1)!;
+    const subs = new Map(level.specs.filter((spec) => spec.kind == 'sub').map((spec) => [kebab(spec.key), spec]));
+    const positional = level.specs.some(isPositional);
 
     routing &&= subs.size > 0;
 
@@ -152,7 +151,7 @@ class Reader {
 
     this.levels.forEach(({ specs, operands }, index) => {
       for (const spec of specs)
-        if (spec.kind == 'arg' || spec.kind == 'args') {
+        if (isPositional(spec)) {
           if (index == leaf)
             this.put([[index, spec]], values, spec.kind == 'arg' ? operands.splice(0, 1) : operands.splice(0));
         } else if (isNamed(spec)) {
@@ -254,7 +253,7 @@ class Reader {
   }
 
   private put(levels: [number, Spec][], values: Record<string, unknown>[], raw: string[]) {
-    const [, spec] = levels[levels.length - 1];
+    const [, spec] = levels.at(-1)!;
     let value: unknown;
 
     if (spec.kind == 'list' && spec.config.split)
@@ -281,9 +280,9 @@ class Reader {
 
       values[at][own.key] = value ??= isPlural(spec)
         ? raw.map((item) => read(spec, item, this.cwd))
-        : read(spec, raw[raw.length - 1], this.cwd);
+        : read(spec, raw.at(-1)!, this.cwd);
     }
   }
 }
 
-export { Reader, valueType, kebab, label, isNamed, isPlural, isRequired, Usage };
+export { Reader, valueType, kebab, label, isNamed, isPlural, isPositional, isRequired, Usage };

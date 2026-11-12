@@ -59,21 +59,20 @@ function command(Root: Model.Type): Run {
           if (!step) {
             if (reader.help) throw new Exit(0);
 
-            if (!('run' in this)) {
-              if (specs.some((spec) => spec.kind == 'sub')) {
-                const [extra] = reader.levels[reader.levels.length - 1].operands;
-
-                if (extra === undefined) throw new Exit(2);
-
-                throw new Usage(reader.ended ? `Unexpected argument "${extra}".` : `Unknown command "${extra}".`);
-              }
-
-              throw new TypeError(`${this.constructor.name} has no run() method.`);
+            if ('run' in this) {
+              finish();
+              run = () => (this as Model & { run(): unknown }).run();
+              return;
             }
 
-            finish();
-            run = () => (this as Model & { run(): unknown }).run();
-            return;
+            if (!specs.some((spec) => spec.kind == 'sub'))
+              throw new TypeError(`${this.constructor.name} has no run() method.`);
+
+            const [extra] = reader.levels.at(-1)!.operands;
+
+            if (extra === undefined) throw new Exit(2);
+
+            throw new Usage(reader.ended ? `Unexpected argument "${extra}".` : `Unknown command "${extra}".`);
           }
 
           const target = step.target as Target;
@@ -109,7 +108,7 @@ function command(Root: Model.Type): Run {
           level.inline ? level.specs.filter((spec) => spec.kind != 'sub') : level.specs
         );
 
-        return [names, specs, 'run' in path[path.length - 1]] as const;
+        return [names, specs, 'run' in path.at(-1)!] as const;
       };
 
       const quiet = Model.on({
