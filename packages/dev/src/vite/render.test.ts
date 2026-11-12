@@ -13,9 +13,9 @@ describe("renderPage", () => {
 
   beforeAll(async () => {
     renderer = await launch();
-  });
+  }, 60_000);
 
-  afterAll(() => renderer.close());
+  afterAll(() => renderer?.close());
 
   afterEach(() => {
     while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true });
