@@ -1,4 +1,3 @@
-import './render/adapter';
 import './jsx-runtime';
 
 import { Component, Context, Model, unbind } from '@expressive/mvc';
