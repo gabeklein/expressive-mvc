@@ -1,6 +1,6 @@
 import { def, Model } from '@expressive/mvc';
 
-type Kind = 'arg' | 'args' | 'flag' | 'opt' | 'list';
+type Kind = 'arg' | 'args' | 'flag' | 'opt' | 'list' | 'sub';
 
 /** How a raw value is read - paths resolve against the working directory. */
 type Type = 'string' | 'number' | 'file' | 'dir' | 'path';
@@ -53,7 +53,21 @@ interface Spec {
   key: string;
   kind: Kind;
   config: Single & Plural & Named & { split?: string };
+  target?: Target;
 }
+
+/** A command run inline by its parent - no inputs of its own. */
+interface Inline {
+  /** One line for the parent's `--help`. */
+  help?: string;
+  /** Runs as the command, called on the parent. */
+  run(): unknown;
+  prototype?: never;
+}
+
+type Loader<T extends Model = Model> = () => Promise<{ default: Model.Type<T> } | Model.Type<T>>;
+
+type Target = Model.Type | Loader | Inline;
 
 type Merge<C extends unknown[]> = C extends [infer H, ...infer R] ? Omit<H, keyof Merge<R>> & Merge<R> : {};
 
@@ -71,14 +85,14 @@ type One<C> = C extends { required: true } | { default: {} } ? Value<C> : Value<
 
 const SPECS = new WeakMap<Model, Spec[]>();
 
-function input(kind: Kind, configs: object[]): any {
+function input(kind: Kind, configs: object[], target?: Target): any {
   const config = Object.assign({}, ...configs);
 
   return def((key, self) => {
     const specs = SPECS.get(self) || [];
 
     SPECS.set(self, specs);
-    specs.push({ key, kind, config });
+    specs.push({ key, kind, config, target });
 
     const value = config.default;
 
@@ -154,6 +168,36 @@ function list<const C extends (Plural & Named & { split?: string })[]>(
   return input('list', configs);
 }
 
+/**
+ * Subcommand - routed to when the next operand is the field's name in kebab case.
+ *
+ * Takes a Model class, a loader for one (loaded only when routed to), or an inline command. The
+ * field holds the routed child, `true` for an inline one, else `undefined`. `--` ends routing.
+ *
+ * Options of every class on the routed path are accepted anywhere after their owner's name. A name
+ * declared at several levels is one option - the deepest definition reads the value for all. Only the
+ * last class on the path takes operands, so a parent's `arg`s fill only for its own `run` or an
+ * inline sub. A class with subs and no `run` is a group - run alone it prints help and exits 2.
+ *
+ * @example
+ * sync = sub(Sync, { help: 'apply schema changes' });
+ */
+function sub<T extends Model>(target: Model.Type<T> | Loader<T>, ...configs: Common[]): T | undefined;
+
+/**
+ * Inline subcommand - `run` is the command, called on the parent, with no inputs of its own.
+ *
+ * Operands after its name fill the parent's `arg`s.
+ *
+ * @example
+ * status = sub({ help: 'print status', run: () => console.log(this) });
+ */
+function sub(target: Inline, ...configs: Common[]): true | undefined;
+
+function sub(target: Target, ...configs: Common[]) {
+  return input('sub', [typeof target != 'function' ? { help: target.help } : {}, ...configs], target);
+}
+
 declare namespace arg {
   /** Config for {@link arg}. */
   type Config<T = any> = Single<T>;
@@ -174,5 +218,5 @@ declare namespace list {
   type Config<T = any> = Plural<T> & Named & { split?: string };
 }
 
-export { arg, args, flag, opt, list, SPECS };
-export type { Spec, Kind, Type };
+export { arg, args, flag, opt, list, sub, SPECS };
+export type { Spec, Kind, Type, Target, Inline };

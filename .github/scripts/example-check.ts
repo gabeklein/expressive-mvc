@@ -11,7 +11,7 @@ import ts from 'typescript';
  * as the instance.
  * Free names (`stripe`, `Cart`) are placeholders, so "cannot find name" is not reported.
  */
-const HOSTS: Record<string, string> = { mvc: 'Model', steps: 'Steps' };
+const HOSTS: Record<string, string> = { mvc: 'Model', steps: 'Steps', cli: 'Model' };
 
 const PLACEHOLDER = new Set([2304, 2552, 2582, 2662, 2663, 18004]);
 const MODIFIERS = String.raw`^(?:(?:async|protected|public|private|static|readonly|override|declare|get|set)\s+)*`;
@@ -71,7 +71,9 @@ for await (const config of new Glob('packages/*/tsconfig.json').scan('.')) {
   })();
 
   const host = HOSTS[pkg];
-  const header = `import { ${exported.join(', ')} } from '@expressive/${pkg}';\n`;
+  const header =
+    `import { ${exported.join(', ')} } from '@expressive/${pkg}';\n` +
+    (host && !exported.includes(host) ? `import { ${host} } from '@expressive/mvc';\n` : '');
   const virtual = new Map<string, { example: Example; offset: number }>();
   const sources = new Map<string, string>();
 

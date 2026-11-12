@@ -6,7 +6,7 @@ import { Model } from '@expressive/mvc';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { arg, args, flag, list, opt, SPECS } from './input';
-import { parse, Usage } from './parse';
+import { Reader, Usage } from './parse';
 
 let cwd: string;
 
@@ -22,7 +22,13 @@ afterAll(() => {
 });
 
 function read(Type: Model.Type, ...argv: string[]) {
-  return parse(SPECS.get(Type.new())!, argv, cwd);
+  const reader = new Reader(argv, cwd);
+
+  reader.enter(SPECS.get(Type.new())!);
+
+  const values = reader.finish();
+
+  return values === true || values[0];
 }
 
 function fails(Type: Model.Type, ...argv: string[]) {
@@ -48,7 +54,7 @@ describe('operands', () => {
   });
 
   it('will leave optional args unset', () => {
-    expect(read(Lint, 'a')).toEqual({ config: 'a', files: [] });
+    expect(read(Lint, 'a')).toEqual({ config: 'a' });
   });
 
   it('will fail on a missing required arg', () => {
@@ -64,7 +70,7 @@ describe('operands', () => {
   });
 
   it('will take operands after --, and a lone -', () => {
-    expect(read(Lint, '--', '--fix', '-')).toEqual({ config: '--fix', target: '-', files: [] });
+    expect(read(Lint, '--', '--fix', '-')).toEqual({ config: '--fix', target: '-' });
   });
 
   it('will keep an arg default when not given', () => {
@@ -109,13 +115,12 @@ describe('options', () => {
       force: true,
       dryRun: true,
       port: 80,
-      host: 'x',
-      tags: []
+      host: 'x'
     });
   });
 
   it('will negate a flag', () => {
-    expect(read(Serve, '--force', '--no-force')).toEqual({ force: false, tags: [] });
+    expect(read(Serve, '--force', '--no-force')).toEqual({ force: false });
   });
 
   it('will group short flags, closed by one taking a value', () => {
@@ -294,7 +299,7 @@ describe('counts', () => {
   }
 
   it('will bound plural counts', () => {
-    expect(read(Test, 'a', '--tags', 'x', '--tags', 'y')).toEqual({ files: ['a'], tags: ['x', 'y'], one: [] });
+    expect(read(Test, 'a', '--tags', 'x', '--tags', 'y')).toEqual({ files: ['a'], tags: ['x', 'y'] });
     expect(fails(Test, '--tags', 'x', '--tags', 'y')).toBe('<files> needs at least 1 value.');
     expect(fails(Test, 'a', 'b', 'c')).toBe('<files> takes at most 2 values.');
     expect(fails(Test, 'a', '--tags', 'x')).toBe('--tags needs at least 2 values.');
