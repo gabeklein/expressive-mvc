@@ -721,7 +721,30 @@ function init(state: Model, ...args: Model.Args) {
 
     if (key === null) return null;
 
-    activate(state, args, before, after);
+    const o = observer(state, true);
+    const mark = () => void PENDING.delete(mark);
+
+    PENDING.add(mark);
+
+    try {
+      activate(state, args, before, after);
+    } catch (error) {
+      const built = rest.filter((item) => PENDING.has(item)).concat(trailing(mark));
+
+      ACTIVE.delete(state);
+      CAUSE.set(state, error);
+      o.pending.clear();
+      (state as { [Observer]?: Observer | null })[Observer] = o;
+
+      try {
+        built.forEach((item) => event(item, null));
+        event(state, null);
+      } finally {
+        throw error;
+      }
+    } finally {
+      mark();
+    }
 
     let end = rest.length;
 
@@ -1004,7 +1027,7 @@ function provides(ctx: Context, value: Model) {
  * Pending Models constructed after this one - in a parent, the products of
  * its own initializers, until the last one it kept.
  */
-function trailing(state: Model) {
+function trailing(state: object) {
   const rest: Model[] = [];
   let seen = false;
 

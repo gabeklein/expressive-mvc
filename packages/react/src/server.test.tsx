@@ -75,6 +75,42 @@ describe('server render', () => {
     expect(resolved).not.toBeCalled();
   });
 
+  it('will end a request by popping its root context', async () => {
+    const order: string[] = [];
+    const rejected = vi.fn();
+    let app!: App;
+    let store!: Store;
+
+    class Store extends Component {
+      protected new() {
+        return () => void order.push('store');
+      }
+
+      render() {
+        return <span>store</span>;
+      }
+    }
+
+    class App extends Component {
+      protected new() {
+        return () => void order.push('app');
+      }
+
+      render() {
+        return <Store is={(s: Store) => void (store = s)} />;
+      }
+    }
+
+    expect(onServer(() => renderToString(<App is={(a: App) => void (app = a)} />))).toContain('store');
+
+    store.get(() => {}).then(undefined, rejected);
+    Context.get(app)!.pop();
+
+    await flushMicrotasks();
+    expect(order).toEqual(['store', 'app']);
+    expect(rejected).toBeCalledWith(expect.objectContaining({ message: `${store} is destroyed.` }));
+  });
+
   it('will isolate provided state per request', () => {
     class Session extends Model {
       user = 'anon';
