@@ -125,7 +125,13 @@ describe('types', () => {
       run() {}
     }
 
+    class Statics extends Model {
+      static help = 'leaked';
+      static run() {}
+    }
+
     class Test extends Model {
+      statics = sub(Statics);
       child = sub(Child);
       lazy = sub(async () => ({ default: Child }));
       inline = sub({ run() {} });
@@ -137,5 +143,7 @@ describe('types', () => {
     expectTypeOf(test.child).toEqualTypeOf<Child | undefined>();
     expectTypeOf(test.lazy).toEqualTypeOf<Child | undefined>();
     expectTypeOf(test.inline).toEqualTypeOf<true | undefined>();
+    expectTypeOf(test.statics).toEqualTypeOf<Statics | undefined>();
+    expect(SPECS.get(test)!.find((spec) => spec.key == 'statics')!.config.help).toBeUndefined();
   });
 });

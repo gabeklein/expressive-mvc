@@ -71,7 +71,10 @@ function help(name: string, levels: Spec[][], runs = true) {
 
   sections.push(
     'Options:\n' +
-      table([...options.map((spec): [string, string] => [option(spec), describe(spec)]), ['-h, --help', 'show this help']])
+      table([
+        ...options.map((spec): [string, string] => [option(spec), describe(spec)]),
+        [options.some((spec) => spec.config.short == 'h') ? '--help' : '-h, --help', 'show this help']
+      ])
   );
 
   return sections.join('\n\n');

@@ -83,18 +83,13 @@ interface Level {
   inline?: boolean;
 }
 
-/**
- * Reads argv along a command path, one level at a time - options float over every level entered.
- *
- * Throws {@link Usage} for input the path does not accept, and `Error` for inputs declared in an
- * order no argv could fill or a shared option declared differently.
- */
 class Reader {
   readonly levels: Level[] = [];
   help = false;
 
+  ended = false;
+
   private at = 0;
-  private ended = false;
   private long = new Map<string, Shared>();
   private short = new Map<string, Shared>();
 
@@ -103,7 +98,6 @@ class Reader {
     private cwd: string
   ) {}
 
-  /** Add a level's inputs to scope and read until its sub is named - that sub, or none at the end. */
   enter(specs: Spec[], name = '', owner = name): Spec | undefined {
     check(specs);
 
@@ -116,7 +110,6 @@ class Reader {
     return this.scan(true);
   }
 
-  /** Read the rest into the current level, as an inline sub of it named `name`. */
   proceed(name: string) {
     const level = this.levels[this.levels.length - 1];
 
@@ -151,35 +144,25 @@ class Reader {
     }
   }
 
-  /** Values per level entered, or `true` when help was asked for. */
   finish(): Record<string, unknown>[] | true {
     if (this.help) return true;
 
     const values = this.levels.map(() => ({}) as Record<string, unknown>);
-
     const leaf = this.levels.length - 1;
 
     this.levels.forEach(({ specs, operands }, index) => {
       for (const spec of specs)
         if (spec.kind == 'arg' || spec.kind == 'args') {
-          if (index < leaf) continue;
-
-          if (spec.kind == 'arg') this.put(values[index], spec, operands.splice(0, 1), isRequired(spec));
-          else this.put(values[index], spec, operands.splice(0), false);
-        }
-        else if (isNamed(spec)) {
+          if (index == leaf)
+            this.put([[index, spec]], values, spec.kind == 'arg' ? operands.splice(0, 1) : operands.splice(0));
+        } else if (isNamed(spec)) {
           const shared = this.long.get(kebab(spec.key))!;
 
           if (shared.spec != spec) continue;
 
-          const out: Record<string, unknown> = {};
-
-          if (spec.kind == 'flag') {
-            if (shared.flag !== undefined) out[spec.key] = shared.flag;
-          } else
-            this.put(out, spec, shared.raw, shared.levels.some(([, own]) => isRequired(own)));
-
-          if (spec.key in out) for (const [at, own] of shared.levels) values[at][own.key] = out[spec.key];
+          if (spec.kind != 'flag') this.put(shared.levels, values, shared.raw);
+          else if (shared.flag !== undefined)
+            for (const [at, own] of shared.levels) values[at][own.key] = shared.flag;
         }
 
       if (operands.length) throw new Usage(`Unexpected argument "${operands[0]}".`);
@@ -194,9 +177,15 @@ class Reader {
 
     if (shared) {
       const { spec: last } = shared;
+      const split = (spec: Spec) => (spec.config.split ? `split "${spec.config.split}"` : 'no split');
+      const differ = [
+        [last.kind, spec.kind],
+        [valueType(last), valueType(spec)],
+        [split(last), split(spec)]
+      ].find(([a, b]) => a != b);
 
-      if (last.kind != spec.kind || valueType(last) != valueType(spec) || last.config.split != spec.config.split)
-        throw new Error(`--${name} is declared differently by ${shared.owner} and ${owner}.`);
+      if (differ)
+        throw new Error(`--${name} is declared differently by ${shared.owner} (${differ[0]}) and ${owner} (${differ[1]}).`);
 
       shared.spec = spec;
       shared.owner = owner;
@@ -264,24 +253,36 @@ class Reader {
     }
   }
 
-  private put(out: Record<string, unknown>, spec: Spec, raw: string[], required: boolean) {
+  private put(levels: [number, Spec][], values: Record<string, unknown>[], raw: string[]) {
+    const [, spec] = levels[levels.length - 1];
+    let value: unknown;
+
     if (spec.kind == 'list' && spec.config.split)
       raw = raw.flatMap((value) => value.split(spec.config.split!).map((piece) => piece.trim()).filter(Boolean));
 
-    if (isPlural(spec)) {
-      const { min, max, default: fallback } = spec.config;
+    for (const [at, own] of levels) {
+      if (isPlural(own)) {
+        const { min, max, default: fallback } = own.config;
 
-      if (!raw.length && fallback) return;
+        if (!raw.length && fallback) continue;
 
-      if (min !== undefined && raw.length < min)
-        throw new Usage(`${label(spec)} needs at least ${min} value${min == 1 ? '' : 's'}.`);
+        if (min !== undefined && raw.length < min)
+          throw new Usage(`${label(own)} needs at least ${min} value${min == 1 ? '' : 's'}.`);
 
-      if (max !== undefined && raw.length > max)
-        throw new Usage(`${label(spec)} takes at most ${max} value${max == 1 ? '' : 's'}.`);
+        if (max !== undefined && raw.length > max)
+          throw new Usage(`${label(own)} takes at most ${max} value${max == 1 ? '' : 's'}.`);
 
-      if (raw.length) out[spec.key] = raw.map((value) => read(spec, value, this.cwd));
-    } else if (raw.length) out[spec.key] = read(spec, raw[raw.length - 1], this.cwd);
-    else if (required) throw new Usage(`Missing ${label(spec)}.`);
+        if (!raw.length) continue;
+      } else if (!raw.length) {
+        if (isRequired(own)) throw new Usage(`Missing ${label(own)}.`);
+
+        continue;
+      }
+
+      values[at][own.key] = value ??= isPlural(spec)
+        ? raw.map((item) => read(spec, item, this.cwd))
+        : read(spec, raw[raw.length - 1], this.cwd);
+    }
   }
 }
 

@@ -99,3 +99,13 @@ it('will list commands and every option in scope', () => {
     ].join('\n')
   );
 });
+
+it('will leave -h to an option claiming it', () => {
+  class Test extends Model {
+    host = opt({ short: 'h' });
+  }
+
+  expect(help('test', specs(Test))).toBe(
+    'Usage: test [options]\n\nOptions:\n  -h, --host <value>\n  --help              show this help'
+  );
+});

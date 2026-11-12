@@ -60,8 +60,9 @@ interface Spec {
 interface Inline {
   /** One line for the parent's `--help`. */
   help?: string;
-  /** Runs as the command - an arrow function reads the parent through `this`. */
+  /** Runs as the command, called on the parent. */
   run(): unknown;
+  prototype?: never;
 }
 
 type Loader<T extends Model = Model> = () => Promise<{ default: Model.Type<T> } | Model.Type<T>>;
@@ -171,9 +172,12 @@ function list<const C extends (Plural & Named & { split?: string })[]>(
  * Subcommand - routed to when the next operand is the field's name in kebab case.
  *
  * Takes a Model class, a loader for one (loaded only when routed to), or an inline command. The
- * field holds the routed child, `true` for an inline one, else `undefined`. Options of every class
- * on the routed path are accepted anywhere after their owner's name. A class with subs and no `run`
- * is a group - run alone it prints help and exits 2.
+ * field holds the routed child, `true` for an inline one, else `undefined`. `--` ends routing.
+ *
+ * Options of every class on the routed path are accepted anywhere after their owner's name. A name
+ * declared at several levels is one option - the deepest definition reads the value for all. Only the
+ * last class on the path takes operands, so a parent's `arg`s fill only for its own `run` or an
+ * inline sub. A class with subs and no `run` is a group - run alone it prints help and exits 2.
  *
  * @example
  * sync = sub(Sync, { help: 'apply schema changes' });
@@ -181,7 +185,9 @@ function list<const C extends (Plural & Named & { split?: string })[]>(
 function sub<T extends Model>(target: Model.Type<T> | Loader<T>, ...configs: Common[]): T | undefined;
 
 /**
- * Inline subcommand - `run` is the command, with no inputs of its own.
+ * Inline subcommand - `run` is the command, called on the parent, with no inputs of its own.
+ *
+ * Operands after its name fill the parent's `arg`s.
  *
  * @example
  * status = sub({ help: 'print status', run: () => console.log(this) });
@@ -189,7 +195,7 @@ function sub<T extends Model>(target: Model.Type<T> | Loader<T>, ...configs: Com
 function sub(target: Inline, ...configs: Common[]): true | undefined;
 
 function sub(target: Target, ...configs: Common[]) {
-  return input('sub', ['run' in target ? { help: target.help } : {}, ...configs], target);
+  return input('sub', [typeof target != 'function' ? { help: target.help } : {}, ...configs], target);
 }
 
 declare namespace arg {

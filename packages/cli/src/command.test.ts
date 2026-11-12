@@ -3,7 +3,7 @@ import { Steps } from '@expressive/steps';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { command } from './command';
-import { arg, args, flag, opt, sub } from './input';
+import { arg, args, flag, list, opt, sub } from './input';
 
 let lines: string[];
 
@@ -335,7 +335,7 @@ describe('sub', () => {
     }
 
     expect(await command(Parent)(['child'], out)).toBe(1);
-    expect(lines).toEqual(['! --port is declared differently by Parent and Child.']);
+    expect(lines).toEqual(['! --port is declared differently by Parent (number) and Child (string).']);
   });
 
   it('will fail a short claimed twice', async () => {
@@ -460,6 +460,249 @@ describe('sub', () => {
 
     expect(await command(Test)(['late'], out)).toBe(1);
     expect(lines).toEqual(['! not found']);
+  });
+
+  it('will print help for a group, before other errors', async () => {
+    expect(await command(Sql)(['--help'], out)).toBe(0);
+    expect(await command(Sql)(['-h', 'nope'], out)).toBe(0);
+    expect(lines[0]).toMatch(/^Usage: sql \[options\] <command> <entry>\n[^]*Commands:/);
+    expect(lines[1]).toBe(lines[0]);
+  });
+
+  it('will print help for an inline sub without its siblings', async () => {
+    expect(await command(Sql)(['check', '--help'], out)).toBe(0);
+    expect(lines[0]).toMatch(/^Usage: sql check \[options\] <entry>/);
+    expect(lines[0]).not.toMatch(/Commands:/);
+  });
+
+  it('will print help for a class with no run', async () => {
+    class Empty extends Model {}
+
+    expect(await command(Empty)(['--help'], out)).toBe(0);
+    expect(lines).toEqual(['Usage: empty [options]\n\nOptions:\n  -h, --help  show this help']);
+  });
+
+  it('will not route after --', async () => {
+    expect(await command(Sql)(['--', 'sync'], out)).toBe(2);
+    expect(lines).toEqual(['! Unexpected argument "sync".\nUsage: sql [options] <command> <entry>']);
+  });
+
+  it('will leave parent args unfilled when routed to a class sub', async () => {
+    class Child extends Model {
+      parent = get(Parent);
+      name = arg();
+
+      run() {
+        lines.push(`${this.parent.entry} ${this.name}`);
+      }
+    }
+
+    class Parent extends Model {
+      entry = arg({ required: true });
+      child = sub(Child);
+    }
+
+    expect(await command(Parent)(['child', 'x'], out)).toBe(0);
+    expect(lines).toEqual(['undefined x']);
+  });
+
+  it('will route a kebab-cased sub', async () => {
+    class Test extends Model {
+      dryRun = sub({ run: () => void lines.push('dry') });
+    }
+
+    expect(await command(Test)(['dry-run'], out)).toBe(0);
+    expect(lines).toEqual(['dry']);
+  });
+
+  it('will call an inline run on the parent', async () => {
+    class Test extends Model {
+      name = arg();
+
+      show = sub({
+        run() {
+          lines.push((this as unknown as Test).name!);
+        }
+      });
+    }
+
+    await command(Test)(['show', 'x'], out);
+    expect(lines).toEqual(['x']);
+  });
+
+  it('will read a shared option with the deepest definition', async () => {
+    class Child extends Model {
+      size = opt({ parse: (value) => value.length });
+      quiet = flag();
+
+      run() {
+        lines.push(`child ${this.size} ${this.quiet}`);
+      }
+    }
+
+    class Parent extends Model {
+      size = opt({ parse: (value) => ({ value }) });
+      quiet = flag();
+      child = sub(Child);
+
+      new() {
+        return () => lines.push(`parent ${this.size} ${this.quiet}`);
+      }
+    }
+
+    await command(Parent)(['--size', 'abc', '--quiet', 'child', '--no-quiet'], out);
+    expect(lines).toEqual(['child 3 false', 'parent 3 false']);
+  });
+
+  it('will check counts and required per level', async () => {
+    class Child extends Model {
+      tags = list({ default: ['d'] });
+      name = opt({ default: 'child' });
+
+      run() {}
+    }
+
+    class Parent extends Model {
+      tags = list({ min: 1 });
+      name = opt({ required: true });
+      child = sub(Child);
+    }
+
+    expect(await command(Parent)(['child', '--name', 'x'], out)).toBe(2);
+    expect(await command(Parent)(['child', '--tags', 'a'], out)).toBe(2);
+    expect(await command(Parent)(['child', '--tags', 'a', '--name', 'x'], out)).toBe(0);
+    expect(lines).toEqual([
+      '! --tags needs at least 1 value.\nUsage: parent child [options]',
+      '! Missing --name.\nUsage: parent child [options]'
+    ]);
+  });
+
+  it('will fail a shared option of another kind or split', async () => {
+    class Kind extends Model {
+      port = list();
+
+      run() {}
+    }
+
+    class Split extends Model {
+      tags = list({ split: ',' });
+
+      run() {}
+    }
+
+    class Parent extends Model {
+      port = opt();
+      tags = list();
+      kind = sub(Kind);
+      split = sub(Split);
+    }
+
+    await command(Parent)(['kind'], out);
+    await command(Parent)(['split'], out);
+
+    expect(lines).toEqual([
+      '! --port is declared differently by Parent (opt) and Kind (list).',
+      '! --tags is declared differently by Parent (no split) and Split (split ",").'
+    ]);
+  });
+
+  it('will wait for async new() on the path before run', async () => {
+    class Child extends Model {
+      ready = false;
+
+      async new() {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        this.ready = true;
+      }
+
+      run() {
+        lines.push(`ready ${this.ready}`);
+      }
+    }
+
+    class Parent extends Model {
+      child = sub(Child);
+    }
+
+    expect(await command(Parent)(['child'], out)).toBe(0);
+    expect(lines).toEqual(['ready true']);
+  });
+
+  it('will fail when an async new() rejects', async () => {
+    const ran = vi.fn();
+
+    class Test extends Model {
+      async new() {
+        throw new Error('no connection');
+      }
+
+      run() {
+        ran();
+      }
+    }
+
+    expect(await command(Test)([], out)).toBe(1);
+    expect(lines).toEqual(['! no connection']);
+    expect(ran).not.toHaveBeenCalled();
+  });
+
+  it('will pass on setup errors from Models off the path', async () => {
+    const caught = vi.fn();
+    const stop = Model.on({ catch: (error) => void caught(error) });
+
+    class Other extends Model {
+      async new() {
+        throw new Error('elsewhere');
+      }
+    }
+
+    class Test extends Model {
+      async run() {
+        Other.new();
+        await new Promise((resolve) => setTimeout(resolve, 1));
+      }
+    }
+
+    expect(await command(Test)([], out)).toBe(0);
+    stop();
+
+    expect(caught).toHaveBeenCalledWith(new Error('elsewhere'));
+  });
+
+  it('will fail a lazy sub that loads no class', async () => {
+    class Test extends Model {
+      named = sub(async () => ({ Late: class {} }) as any);
+      empty = sub(async () => 0 as any);
+    }
+
+    expect(await command(Test)(['named'], out)).toBe(1);
+    expect(await command(Test)(['empty'], out)).toBe(1);
+    expect(lines).toEqual(['! Sub "named" did not load a Model class.', '! Sub "empty" did not load a Model class.']);
+  });
+
+  it('will load each lazy level of a path', async () => {
+    let loads = 0;
+
+    class Leaf extends Model {
+      run() {
+        lines.push('leaf');
+      }
+    }
+
+    class Middle extends Model {
+      leaf = sub(async () => (loads++, Leaf));
+    }
+
+    class Root extends Model {
+      middle = sub(async () => (loads++, { default: Middle }));
+    }
+
+    const run = command(Root);
+
+    expect(await run(['middle', 'leaf'], out)).toBe(0);
+    expect(await run(['middle', 'leaf'], out)).toBe(0);
+    expect(loads).toBe(2);
+    expect(lines).toEqual(['leaf', 'leaf']);
   });
 
   it('will fail a sub with no run', async () => {

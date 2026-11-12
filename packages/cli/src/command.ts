@@ -26,11 +26,13 @@ class Miss extends Error {
  *
  * Its `arg`, `args`, `flag`, `opt` and `list` fields are filled from argv before `new()`. A `sub`
  * named in argv is created in turn - every class on the routed path, outermost first, each filled
- * before any `new()` runs. The last one's `run()` is awaited, then the path is destroyed. A usage
- * error prints to `out.error` and returns 2; `--help` or `-h` prints help for the path and returns
- * 0. `run` returning `undefined` or `true` gives 0, `false` 1, a number itself; anything else prints
- * to `out.log` and gives 0. A throw prints its message and gives 1. The command name in help is the
- * class name in kebab case.
+ * before any `new()` runs. Models held in plain fields activate earlier, before argv is read. Once
+ * every class on the path is ready, the last one's `run()` is awaited, then the path is destroyed.
+ *
+ * A usage error prints to `out.error` and returns 2; `--help` or `-h` prints help for the path and
+ * returns 0. `run` returning `undefined` or `true` gives 0, `false` 1, a number itself; anything else
+ * prints to `out.log` and gives 0. A throw, or a failed async `new()`, prints its message and gives 1.
+ * The command name in help is the class name in kebab case.
  *
  * @example
  * export default command(Lint);
@@ -55,13 +57,15 @@ function command(Root: Model.Type): Run {
           const step = reader.enter(specs, named, this.constructor.name);
 
           if (!step) {
+            if (reader.help) throw new Exit(0);
+
             if (!('run' in this)) {
               if (specs.some((spec) => spec.kind == 'sub')) {
                 const [extra] = reader.levels[reader.levels.length - 1].operands;
 
-                if (extra !== undefined) throw new Usage(`Unknown command "${extra}".`);
+                if (extra === undefined) throw new Exit(2);
 
-                throw new Exit(2);
+                throw new Usage(reader.ended ? `Unexpected argument "${extra}".` : `Unknown command "${extra}".`);
               }
 
               throw new TypeError(`${this.constructor.name} has no run() method.`);
@@ -86,7 +90,7 @@ function command(Root: Model.Type): Run {
 
           reader.proceed(kebab(step.key));
           finish();
-          run = () => target.run();
+          run = () => target.run.call(this);
 
           return { [step.key]: true };
         };
@@ -108,8 +112,16 @@ function command(Root: Model.Type): Run {
         return [names, specs, 'run' in path[path.length - 1]] as const;
       };
 
+      const quiet = Model.on({
+        catch(error, kind) {
+          return kind == 'setup' && path.includes(this) ? undefined : error;
+        }
+      });
+
       try {
         root = Root.new(enter(name));
+
+        for (const level of path) await level.get(() => {});
 
         const result = await run();
 
@@ -122,9 +134,13 @@ function command(Root: Model.Type): Run {
       } catch (error) {
         if (error instanceof Miss) {
           try {
-            const module = (await error.loader()) as { default?: Model.Type };
+            const module = (await error.loader()) as { default?: Model.Type } | undefined;
+            const Type = (module && (module.default || module)) as Model.Type;
 
-            error.cache.set(error.key, (module.default || module) as Model.Type);
+            if (!(Type?.prototype instanceof Model))
+              throw new TypeError(`Sub "${kebab(error.key)}" did not load a Model class.`);
+
+            error.cache.set(error.key, Type);
             continue;
           } catch (failed) {
             error = failed;
@@ -146,6 +162,7 @@ function command(Root: Model.Type): Run {
         out.error(error instanceof Error ? error.message : String(error));
         return 1;
       } finally {
+        quiet();
         root?.set(null);
       }
     }
