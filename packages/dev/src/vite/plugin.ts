@@ -9,7 +9,7 @@ import type { AppConfig } from "../server/config";
 import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, prerenderEntry, resolveProject, serverEntry, type Project } from "./project";
 import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
-import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
+import { generateRoutes, remoteEntries, remoteOf, staticPaths, type Remote } from "./routes";
 import { isCall, toNode } from "@expressive/rpc/http";
 import { dispatch, verify, type Seats } from "@expressive/rpc/protocol";
 import { SCRIPT, guardScript, type Sources } from "@expressive/rpc/vite";
@@ -202,8 +202,12 @@ export function expressive(): Plugin<Host> {
           return generateRoutes(project.appDir!, generatedDir, scanExports);
         case serverId:
           return serverEntry(project, generatedDir, exposure, seated(project));
-        case prerenderId:
-          return prerenderEntry(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!), !!project.appDir);
+        case prerenderId: {
+          if (!project.appDir) return prerenderEntry(importRel(generatedDir, project.appPath!), false);
+
+          const { sources } = await staticPaths(project.appDir, scanExports);
+          return prerenderEntry(`./${ROUTES}`, true, sources.map(file => importRel(generatedDir, file)));
+        }
         case htmlId:
           return SHELL;
       }

@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 
 import { Component, Model } from "@expressive/mvc";
 
@@ -51,9 +51,11 @@ describe("app/ routing (codegen)", () => {
       "docs/index.tsx": PAGE,
       "docs/(intro).tsx": PAGE,
       "docs/guide/(setup).tsx": PAGE,
-      "blog/[slug].tsx": PAGE,
-      "blog/[slug]/(edit).tsx": PAGE,
+      "blog/[slug].tsx": PAGE + "; export const paths = () => [];",
+      "blog/[slug]/(edit).tsx": PAGE + "; export const paths = () => [];",
       "files/[...].tsx": PAGE,
+      "(paths).tsx": PAGE + "; export const paths = () => [];",
+      "tally/[id].tsx": PAGE + "; export const paths = () => [];",
       "tally/index.tsx": PAGE,
       "tally/(sub).tsx": PAGE,
       "tally/remote.ts": "export async function add() {}",
@@ -67,7 +69,10 @@ describe("app/ routing (codegen)", () => {
       writeFileSync(join(appDir, path), src);
     }
 
-    expect((await staticPaths(appDir, scanExports)).sort()).toEqual(["/", "/about", "/docs", "/docs/guide/setup", "/docs/intro"]);
+    const { paths, sources } = await staticPaths(appDir, scanExports);
+
+    expect(paths.sort()).toEqual(["/", "/about", "/docs", "/docs/guide/setup", "/docs/intro", "/paths"]);
+    expect(sources.map(file => relative(appDir, file)).sort()).toEqual(["blog/[slug].tsx", "blog/[slug]/(edit).tsx"]);
   });
 
   const PAGE = "export function Page(){ return null }";

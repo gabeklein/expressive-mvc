@@ -13,14 +13,16 @@ export async function prerender(root: string): Promise<string[]> {
   const project = resolveProject(root);
   const dir = join(root, "dist", "client");
   const shell = readFileSync(join(dir, "index.html"), "utf8");
-  const queue = project.appDir ? await staticPaths(project.appDir, scanExports) : ["/"];
   const written: string[] = [];
 
   writeFileSync(join(dir, SHELL), shell);
 
-  const { render, close } = await launch(root);
+  const { paths, render, close } = await launch(root);
 
   try {
+    const listed = project.appDir ? (await staticPaths(project.appDir, scanExports)).paths : ["/"];
+    const queue = new Set([...listed, ...await paths()]);
+
     for (const path of queue) {
       try {
         const page = await render(path, shell);
