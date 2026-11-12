@@ -41,19 +41,29 @@ Server components compose these normally - fetch on the server, pass serializabl
 | `render()` | ✓ | ✓ |
 | effects declared in `new()` | never | ✓ |
 | `on({ ready })`, `await state.get(() => {})` | never for a host-owned instance | ✓ |
-| `new()`'s returned teardown | never | ✓ |
+| `new()`'s returned teardown | when the request ends | ✓ |
 
-The last three rows are the rules that matter. There is no unmount on the server, so a resource opened in the `new()` body - a socket, a subscription, a file handle - leaks there. An effect declared in `new()` waits for the owning component to commit, which never happens on the server, so that is where such work belongs.
+The last three rows are the rules that matter. There is no unmount on the server, so a resource opened in the `new()` body - a socket, a subscription, a file handle - stays open until the request ends, which by default means garbage collection. An effect declared in `new()` waits for the owning component to commit, which never happens on the server, so that is where such work belongs.
 
 <br />
 
-## Three rules for request safety
+## Four rules for request safety
 
 **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated - one request never sees another's.
 
 **An instance held in `Context.root` is process-wide - and on the server, that means shared across requests.** Root suits process state: config, feature flags, a warmed cache. Keep per-request data out of it; provide it with `<Component for>` instead.
 
 **Resources belong in an effect or the framework's request scope, never the `new()` body.** An effect never fires on the server, so client resources stay client-side for free. Anything the server itself must open and close belongs to the request handler, which actually has a close.
+
+**End a request by popping its root's context.** Grab the root with `is` and pop the context its host pushed. Everything rendered beneath it is destroyed at once - `new()` teardowns run, children first, and a pending `await state.get(() => {})` rejects. Skip it and the same happens whenever the garbage collector gets there.
+
+```tsx
+let app!: App;
+const html = renderToString(<App is={(a) => void (app = a)} />);
+Context.get(app)!.pop();
+```
+
+A root that isn't a Component - a function component, say - wraps in a bare `<Component is={…}>` to get an instance to pop.
 
 <br />
 

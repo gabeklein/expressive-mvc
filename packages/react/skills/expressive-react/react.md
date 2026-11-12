@@ -85,11 +85,18 @@ React can discard a render before committing it - a suspended first mount, a dro
 
 ## Server render (SSR / RSC)
 
-Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Nothing commits, so for a host-owned Component and the children it owns, effects declared in `new()` never run, `on({ ready })` never fires and `await state.get(() => {})` never resolves; the `new()` body does. Request-safety rules:
+Expressive components render on the server - `renderToString`, and the SSR pass of an RSC app (they are client components) - without touching the DOM. Nothing commits, so for a host-owned Component and the children it owns, effects declared in `new()` never run, `on({ ready })` never fires and `await state.get(() => {})` stays pending; the `new()` body does. Request-safety rules:
 
 - **Request state goes in a `<Component for>`.** Each render builds its own context, so provided instances are isolated per request.
 - **An instance held in `Context.root` is process-wide, *shared across requests* on the server** - fit for config, flags or a warmed cache. Keep per-request data out; provide it with `<Component for>`.
-- **Resources belong in an effect or the request handler, never the `new()` body.** The body runs on the server but its returned teardown does not (no unmount), so a socket or handle opened there leaks. An effect is client-only; server-side resources are the framework's request scope to open and close.
+- **Resources belong in an effect or the request handler, never the `new()` body.** The body runs on the server, but nothing unmounts there - its teardown waits for the request to end, so a socket or handle opened there outlives the response. An effect is client-only; server-side resources are the framework's request scope to open and close.
+- **End a request by popping its root's context.** It destroys every instance the host built beneath the root: teardowns run, children first, and a pending readiness await rejects `is destroyed.`. Without it they go at garbage collection. A root that is not a Component wraps in a bare `<Component is={…}>`:
+
+```tsx
+let app!: App;
+const html = renderToString(<App is={(a) => void (app = a)} />);
+Context.get(app)!.pop();
+```
 
 To render a specific request's data (a path, a session), provide it per request: `<Component for={Session} …>`. Each render's `Router` is its own, so paths never bleed between requests; provide `<Component for={Router} path={…}>` to render a request's path.
 
