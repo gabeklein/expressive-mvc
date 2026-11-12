@@ -21,7 +21,8 @@ declare namespace get {
  * Nearest upstream instance of a type - owner, then ancestors and their children, then context.
  *
  * Nearest match wins - an ancestor beats a sibling at its own level. Never resolves to itself.
- * A sibling replaced on its ancestor updates the field. A match in the owner tree wins over context.
+ * A sibling replaced on its ancestor updates the field. A match in the owner tree wins over context,
+ * unless a context layer between this instance and the match provides the type.
  * Context is the fallback - a closer provider arriving replaces the value; a provider leaving
  * suspends reads until another arrives. Throws if none resolves by the time the owning tree activates.
  * `get(Model)` is the owner - throws if none.
@@ -177,7 +178,7 @@ function above<T extends Model>(
     if (callback)
       subject.set(null, () => release?.());
 
-    if (hasParent && hasParent instanceof Type) {
+    if (hasParent && hasParent instanceof Type && !nearer(subject, hasParent, Type)) {
       assign(hasParent as T);
       return {};
     }
@@ -195,7 +196,7 @@ function above<T extends Model>(
       const at = level;
 
       if (p instanceof Type) {
-        if (!found) {
+        if (!found && !nearer(subject, p, Type)) {
           found = true;
           depth = at;
           assign(p as T);
@@ -252,6 +253,15 @@ function above<T extends Model>(
       enumerable: false
     };
   });
+}
+
+function nearer(subject: Model, owner: Model, Type: Model.Extends) {
+  const stop = Context.get(owner);
+
+  for (let ctx: Context | undefined = Context.get(subject); ctx && ctx !== stop; ctx = ctx.parent)
+    for (const [state] of ctx.provide.get(Type) || []) if (state !== subject) return true;
+
+  return false;
 }
 
 function below<T extends Model>(

@@ -19,7 +19,7 @@ class Child extends Model {
 }
 ```
 
-Owner and siblings win; otherwise the field follows its context provider - a closer one arriving replaces it. On removal an optional field reads `undefined`; a required one suspends until another arrives.
+Owner and siblings win, unless a context layer between this instance and that match provides the type - a `<Component for={x}>` inside the owner's render; otherwise the field follows its context provider - a closer one arriving replaces it. On removal an optional field reads `undefined`; a required one suspends until another arrives.
 
 ### Upstream with callback
 
@@ -89,7 +89,7 @@ Per-overload contract: JSDoc on hover, or `node_modules/@expressive/mvc/dist/fie
 ## Behavior
 
 - All `get()` properties are **non-enumerable** (hidden from `Object.keys()`, spread, and `ref(this)`).
-- Upstream walks ancestors by depth - each ancestor, then siblings under it, then the next ancestor up; the nearest match wins, an ancestor beats a sibling at its own level. The context hierarchy is the fallback.
+- Upstream walks ancestors by depth - each ancestor, then siblings under it, then the next ancestor up; the nearest match wins, an ancestor beats a sibling at its own level. A provider in a context layer between this instance and the matched ancestor beats the ancestor. The context hierarchy is the fallback.
 - Siblings under one parent resolve regardless of field order - a required lookup waits for the activating ancestor to finish before throwing.
 - Never resolves to itself.
 - The upstream callback is not reactive - the upstream's own value changes do not re-run it.
