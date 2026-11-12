@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "expressive",
@@ -54,7 +53,7 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.3",
+        "@expressive/mvc": "^0.94.4",
       },
       "optionalPeers": [
         "@expressive/mvc",
@@ -110,7 +109,7 @@
         "vite": "^7.3.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.3",
+        "@expressive/mvc": "^0.94.4",
         "vite": ">=5",
       },
       "optionalPeers": [
@@ -119,7 +118,7 @@
     },
     "packages/mvc": {
       "name": "@expressive/mvc",
-      "version": "0.94.3",
+      "version": "0.94.4",
       "devDependencies": {
         "@types/node": "^18.19.0",
         "tsdown": "^0.20.1",
@@ -140,15 +139,15 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.3",
+        "@expressive/mvc": "^0.94.4",
         "preact": "^10.0.0",
       },
     },
     "packages/react": {
       "name": "@expressive/react",
-      "version": "0.94.3",
+      "version": "0.94.4",
       "devDependencies": {
-        "@expressive/mvc": "^0.94.3",
+        "@expressive/mvc": "^0.94.4",
         "@testing-library/react": "^16.3.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
@@ -160,7 +159,7 @@
         "vite": "^7.3.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.3",
+        "@expressive/mvc": "^0.94.4",
         "react": ">=16.14.0 <20.0.0",
         "vite": ">=5",
       },
@@ -198,7 +197,7 @@
         "vite": "^8.0.0",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.3",
+        "@expressive/mvc": "^0.94.4",
         "vite": "^8.0.0",
       },
       "optionalPeers": [
@@ -223,7 +222,7 @@
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
-        "@expressive/mvc": "^0.94.3",
+        "@expressive/mvc": "^0.94.4",
       },
     },
     "website": {

@@ -71,7 +71,7 @@
     "test": "bun run typecheck && bun run coverage"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.94.3",
+    "@expressive/mvc": "^0.94.4",
     "vite": ">=5"
   },
   "peerDependenciesMeta": {
