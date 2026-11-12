@@ -305,9 +305,8 @@ remote module is only ever its call stub.
 
 The empty shell moves to `dist/client/200.html`. The built service serves `<path>/index.html`, then
 falls back to the shell; a static host needs its fallback pointed at `200.html` (Cloudflare Pages:
-`/* /200.html 200` in `_redirects`). On load, the client renders into a hidden copy of the root and
-swaps it in once it matches the static page, or after a second - there is no hydration, so the page
-is not interactive until then.
+`/* /200.html 200` in `_redirects`). On load, the client hydrates the static page - it adopts the
+markup in place, and a part still loading keeps its static markup until it renders.
 
 Nothing is written into the project. The shell, the client entry and the generated router module
 are virtual, addressed under `/.expressive/`. The router module regenerates when files appear or

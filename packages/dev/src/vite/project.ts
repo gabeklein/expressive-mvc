@@ -58,7 +58,7 @@ function appEntry(root: string): Pick<Project, "appDir" | "appPath"> {
 
 export function bootstrap(appImport: string): string {
   return `\
-import { render } from "@expressive/dev";
+import { hydrate, render } from "@expressive/dev";
 import { jsx } from "@expressive/dev/jsx-runtime";
 import App from ${JSON.stringify(appImport)};
 
@@ -67,28 +67,14 @@ if (!el) throw new Error("Missing #root element");
 
 if (!el.hasChildNodes()) render(jsx(App, {}), el);
 else {
-  const next = el.cloneNode();
-  const swap = () => {
-    observer.disconnect();
-    clearTimeout(limit);
-    el.replaceWith(next);
-    next.hidden = false;
-    for (let node of [...document.head.childNodes].filter(node => node.data == "prerender"))
-      while (node) {
-        const next = node.data == "/prerender" ? null : node.nextSibling;
-        node.remove();
-        node = next;
-      }
-  };
-  const caught = () => next.textContent == el.textContent && swap();
-  const observer = new MutationObserver(caught);
-  const limit = setTimeout(swap, 1000);
+  hydrate(jsx(App, {}), el);
 
-  next.hidden = true;
-  el.after(next);
-  observer.observe(next, { subtree: true, childList: true, characterData: true });
-  render(jsx(App, {}), next);
-  caught();
+  for (let node of [...document.head.childNodes].filter(node => node.data == "prerender"))
+    while (node) {
+      const next = node.data == "/prerender" ? null : node.nextSibling;
+      node.remove();
+      node = next;
+    }
 }
 `;
 }

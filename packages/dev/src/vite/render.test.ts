@@ -61,7 +61,7 @@ describe("launch", { timeout: 30_000 }, () => {
 
     expect(about.path).toBe("/about");
     expect(about.blank).toBe(false);
-    expect(about.html).toMatch(/^<html><head><meta charset="utf-8"><!--prerender--><title>About<\/title><!--\/prerender--><title>t<\/title><!--prerender--><style>\.Layout\{color: teal;\}<\/style><!--\/prerender--><\/head><body><div id="root"><!--fragment-->.*<main class="Layout">.*<h2>about<!--portal--><\/h2>.*<\/main>.*<\/div><\/body><\/html>$/);
+    expect(about.html).toMatch(/^<html><head><meta charset="utf-8"><!--prerender--><title>About<\/title><!--\/prerender--><title>t<\/title><style data-expressive="prerender">\.Layout\{color: teal;\}<\/style><\/head><body><div id="root"><!--fragment-->.*<main class="Layout">.*<h2>about<!--portal--><\/h2>.*<\/main>.*<\/div><\/body><\/html>$/);
     expect(about.html).not.toContain("<h1>");
 
     renderer.close();
