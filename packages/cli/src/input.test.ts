@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { arg, args, flag, list, opt, SPECS } from './input';
+import { arg, args, flag, list, opt, SPECS, sub } from './input';
 
 describe('fields', () => {
   it('will start at defaults', () => {
@@ -118,5 +118,24 @@ describe('types', () => {
     expectTypeOf(test.ports).toEqualTypeOf<number[]>();
     expectTypeOf(test.sizes).toEqualTypeOf<number[]>();
     expectTypeOf(test.dates).toEqualTypeOf<Date[]>();
+  });
+
+  it('will type subs', () => {
+    class Child extends Model {
+      run() {}
+    }
+
+    class Test extends Model {
+      child = sub(Child);
+      lazy = sub(async () => ({ default: Child }));
+      inline = sub({ run() {} });
+    }
+
+    const test = Test.new();
+
+    expect(test.child).toBeUndefined();
+    expectTypeOf(test.child).toEqualTypeOf<Child | undefined>();
+    expectTypeOf(test.lazy).toEqualTypeOf<Child | undefined>();
+    expectTypeOf(test.inline).toEqualTypeOf<true | undefined>();
   });
 });
