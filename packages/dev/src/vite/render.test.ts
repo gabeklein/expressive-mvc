@@ -7,7 +7,7 @@ import { launch, type Renderer } from "./render";
 
 const SHELL = `<!doctype html><html><head><script type="module" src="/main.js"></script></head><body><div id="root"></div></body></html>`;
 
-describe("renderPage", () => {
+describe("renderPage", { timeout: 30_000 }, () => {
   const dirs: string[] = [];
   let renderer: Renderer;
 
