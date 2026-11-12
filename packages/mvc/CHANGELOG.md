@@ -1,5 +1,15 @@
 # @expressive/mvc
 
+## 0.94.4
+
+### Patch Changes
+
+- [#703](https://github.com/gabeklein/expressive/pull/703) [`caf3d0d`](https://github.com/gabeklein/expressive/commit/caf3d0db7d28307bbce7ad8a11d5b230925ee1f9) `get(Type)` prefers a provider nearer than the matching owner. A `<Component for={x}>` rendered inside a `Type` now resolves `get(Type)` below it to `x` rather than to the outer instance, matching `Type.get()`.
+
+- [#693](https://github.com/gabeklein/expressive/pull/693) [`280c14b`](https://github.com/gabeklein/expressive/commit/280c14bac70afb4fd981e8d8660e4004b27a7329) Skill corrections for server render: `new()`'s teardown runs when the request ends, not never, and a request ends by popping its root's context - `Context.get(root).pop()` destroys everything the host built beneath it, runs the teardowns and rejects a pending readiness await.
+
+- [#692](https://github.com/gabeklein/expressive/pull/692) [`66ebf60`](https://github.com/gabeklein/expressive/commit/66ebf6005a217808dcf48320abebe398eecdbeb5) A synchronous throw while a Model activates - from an init callback, a `setup` or `ready` handler, or `new()` - now destroys the instance and everything it built before the error escapes `.new()`. Children that already activated run their cleanups, and Models constructed for the instance but not yet activated are destroyed rather than reported `unused`. Effects and pending reads waiting on the instance reject with the original error. Previously the half-built instance could no longer be destroyed, so its children were orphaned.
+
 ## 0.94.3
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @expressive/react
 
+## 0.94.4
+
+### Patch Changes
+
+- [#693](https://github.com/gabeklein/expressive/pull/693) [`280c14b`](https://github.com/gabeklein/expressive/commit/280c14bac70afb4fd981e8d8660e4004b27a7329) Skill corrections for server render: `new()`'s teardown runs when the request ends, not never, and a request ends by popping its root's context - `Context.get(root).pop()` destroys everything the host built beneath it, runs the teardowns and rejects a pending readiness await.
+- Updated dependencies [[`caf3d0d`](https://github.com/gabeklein/expressive/commit/caf3d0db7d28307bbce7ad8a11d5b230925ee1f9), [`280c14b`](https://github.com/gabeklein/expressive/commit/280c14bac70afb4fd981e8d8660e4004b27a7329), [`66ebf60`](https://github.com/gabeklein/expressive/commit/66ebf6005a217808dcf48320abebe398eecdbeb5)]:
+  - @expressive/mvc@0.94.4
+
 ## 0.94.3
 
 ### Patch Changes
