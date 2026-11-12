@@ -346,7 +346,7 @@ describe("app/ routing (codegen)", () => {
 
   it("module always exports a default App component, host-neutral", async () => {
     const out = await generate({ "index.tsx": PAGE });
-    expect(out).toContain("const App = () => (");
+    expect(out).toContain("const App = (props) => (");
     expect(out).toContain("export default App;");
     expect(out).not.toContain("@expressive/router");
     expect(out).not.toContain("@expressive/react");

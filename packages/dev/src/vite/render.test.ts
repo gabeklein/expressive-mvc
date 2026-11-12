@@ -1,101 +1,104 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { launch, type Renderer } from "./render";
+import { launch } from "./render";
 
-const SHELL = `<!doctype html><html><head><script type="module" src="/main.js"></script></head><body><div id="root"></div></body></html>`;
+const PACKAGES = fileURLToPath(new URL("../../../", import.meta.url));
+const CONFIG = `export default {
+  resolve: {
+    alias: [
+      { find: /^@expressive\\/([^/]+)$/, replacement: ${JSON.stringify(PACKAGES)} + "$1/src" },
+      { find: /^@expressive\\/([^/]+)\\/(.+)$/, replacement: ${JSON.stringify(PACKAGES)} + "$1/src/$2" },
+    ],
+  },
+};
+`;
+const SHELL = `<html><head><title>t</title></head><body><div id="root"></div></body></html>`;
 
-describe("renderPage", { timeout: 30_000 }, () => {
+describe("launch", { timeout: 30_000 }, () => {
   const dirs: string[] = [];
-  let renderer: Renderer;
-
-  beforeAll(async () => {
-    renderer = await launch();
-  }, 60_000);
-
-  afterAll(() => renderer?.close());
 
   afterEach(() => {
     while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true });
   });
 
-  function client(files: Record<string, string>) {
-    const dir = mkdtempSync(join(tmpdir(), "prerender-"));
-    dirs.push(dir);
+  function project(files: Record<string, string>) {
+    const root = mkdtempSync(join(tmpdir(), "prerender-"));
+    dirs.push(root);
 
-    for (const [file, source] of Object.entries(files)) writeFileSync(join(dir, file), source);
+    for (const [file, source] of Object.entries({ "vite.config.mjs": CONFIG, ...files })) {
+      mkdirSync(dirname(join(root, file)), { recursive: true });
+      writeFileSync(join(root, file), source);
+    }
 
-    return dir;
+    return root;
   }
 
-  it("will wait for timers, chunks and calls to settle, then serialize the document", async () => {
-    const dir = client({
-      "chunk.js": `export const text = "Hello";`,
-      "main.js": `
-        const style = document.createElement("style");
-        style.dataset.expressive = "dom";
-        document.head.append(style);
-        style.sheet.insertRule(".a { inset: 0; color: color-mix(in srgb, red 50%, blue); }", 0);
-        console.log("booting");
-        fetch("/.expressive/call", { method: "POST" });
-        new EventSource("/.expressive/stream");
-        setTimeout(async () => {
-          const { text } = await import("./chunk.js");
-          const link = document.createElement("link");
-          link.rel = "modulepreload";
-          link.href = new URL("/chunk.js", location.href).href;
-          document.head.append(link);
-          document.getElementById("root").innerHTML = '<p class="a">' + text + "</p>";
-        }, 50);
+  it("will render a routed page at its path into the shell, with the rules it used", async () => {
+    const root = project({
+      "app/index.tsx": `
+        import { style } from "@expressive/dev";
+        export const Page = () => <h1>home</h1>;
+        export function Layout(props) { return <main>{props.children}</main>; }
+        style(Layout, { color: "teal" });
       `,
+      "app/(about).tsx": `export const Page = () => <h2>about</h2>;`,
     });
+    const renderer = await launch(root);
 
-    const page = await renderer.render({ dir, shell: SHELL, path: "/about" });
+    const about = await renderer.render("/about", SHELL);
 
-    expect(page.path).toBe("/about");
-    expect(page.blank).toBe(false);
-    expect(page.html).toMatch(/^<!doctype html>\n<html>/);
-    expect(page.html).toContain(`<p class="a">Hello</p>`);
-    expect(page.html).toContain(`<link rel="modulepreload" href="/chunk.js">`);
-    expect(page.html).toContain(`<style data-expressive="prerender">.a { inset: 0px; color: color-mix(in srgb, red, blue); }</style>`);
+    expect(about.path).toBe("/about");
+    expect(about.blank).toBe(false);
+    expect(about.html).toMatch(/^<html><head><title>t<\/title><style data-expressive="prerender">\.Layout\{color: teal;\}<\/style>\n<\/head><body><div id="root"><!--fragment-->.*<main class="Layout">.*<h2>about<\/h2>.*<\/main>.*<\/div><\/body><\/html>$/);
+    expect(about.html).not.toContain("<h1>");
+
+    renderer.close();
+    expect(existsSync(join(root, "dist", ".prerender"))).toBe(false);
   });
 
-  it("will report the path a page moved to", async () => {
-    const dir = client({ "main.js": `history.replaceState(null, "", "/elsewhere"); document.getElementById("root").textContent = "moved";` });
+  it("will report where a page redirects and when it renders nothing", async () => {
+    const root = project({
+      "app/index.tsx": `export const Page = () => null;`,
+      "app/(old).tsx": `import { Redirect } from "@expressive/dev"; export const Page = () => <Redirect to="/" />;`,
+    });
+    const renderer = await launch(root);
 
-    expect(await renderer.render({ dir, shell: SHELL, path: "/" })).toMatchObject({ path: "/elsewhere", blank: false });
+    expect(await renderer.render("/old", SHELL)).toMatchObject({ path: "/" });
+    expect(await renderer.render("/", SHELL)).toMatchObject({ path: "/", blank: true });
+    renderer.close();
   });
 
-  it("will report a page that renders nothing", async () => {
-    const dir = client({ "main.js": "" });
+  it("will render a single-file app, into a root with attributes", async () => {
+    const root = project({
+      "app.tsx": `export default () => <p>single</p>;`,
+    });
+    const renderer = await launch(root);
+    const page = await renderer.render("/", `<head></head><div id="root" class="x">\n</div>`);
 
-    expect(await renderer.render({ dir, shell: SHELL, path: "/" })).toMatchObject({ blank: true });
+    expect(page.html).toBe(`<head></head><div id="root" class="x"><!--fragment--><!--function--><p>single</p><!--/function--><!--/fragment--></div>`);
+    await expect(renderer.render("/", `<div id="app"></div>`)).rejects.toThrow("The shell has no empty #root element.");
+    renderer.close();
   });
 
-  it("will throw the errors a page logs", async () => {
-    const dir = client({ "main.js": `console.error("broke"); fetch("http://127.0.0.1:9/"); import("./missing.js");` });
+  it("will bundle a remote module as its client stub", async () => {
+    const root = project({
+      "app/index.tsx": `export const Page = () => <p>home</p>;`,
+      "app/tally/index.tsx": `import { add } from "./remote"; export const Page = () => <p>{String(typeof add)}</p>;`,
+      "app/tally/remote.ts": `export async function add(a: number, b: number) { return "SERVER_ONLY_" + (a + b); }`,
+    });
+    const renderer = await launch(root);
+    const out = join(root, "dist", ".prerender");
+    const code = readdirSync(out, { recursive: true })
+      .filter((file) => String(file).endsWith(".js"))
+      .map((file) => readFileSync(join(out, String(file)), "utf8"))
+      .join("\n");
 
-    await expect(renderer.render({ dir, shell: SHELL, path: "/" })).rejects.toThrow("broke");
+    expect(code).toContain("tally/remote");
+    expect(code).not.toContain("SERVER_ONLY_");
+    renderer.close();
   });
-
-  it("will throw if a page does not settle", async () => {
-    const dir = client({ "main.js": `setInterval(() => (document.getElementById("root").textContent = Math.random()), 5);` });
-
-    await expect(renderer.render({ dir, shell: SHELL, path: "/", timeout: 200 })).rejects.toThrow("did not settle within 200ms.");
-  });
-});
-
-it("will throw if playwright-core is missing", async () => {
-  vi.resetModules();
-  vi.doMock("playwright-core", () => {
-    throw new Error("Cannot find package");
-  });
-
-  const { launch } = await import("./render");
-
-  await expect(launch()).rejects.toThrow("Prerendering needs playwright-core");
-
-  vi.doUnmock("playwright-core");
 });

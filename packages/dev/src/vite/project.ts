@@ -88,6 +88,27 @@ else {
 `;
 }
 
+export function prerenderEntry(appImport: string, routed: boolean): string {
+  return `\
+import { renderToString } from "@expressive/dom/server";
+import { Router } from "@expressive/dev";
+import { jsx } from "@expressive/dev/jsx-runtime";
+import App from ${JSON.stringify(appImport)};
+
+export default async function page(path) {
+  let router;
+  const stop = Router.on({ setup(self) { router = self; } });
+
+  try {
+    const output = await renderToString(jsx(App, ${routed ? "{ path }" : "{}"}));
+    return { ...output, path: router ? router.path : path };
+  } finally {
+    stop();
+  }
+}
+`;
+}
+
 export function ensureBootstrap(html: string): string {
   let out = html;
 

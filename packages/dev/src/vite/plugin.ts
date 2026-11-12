@@ -6,7 +6,7 @@ import { createServerModuleRunner, runnerImport, type Plugin, type ViteDevServer
 import type { ModuleRunner } from "vite/module-runner";
 
 import type { AppConfig } from "../server/config";
-import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, resolveProject, serverEntry, type Project } from "./project";
+import { GENERATED, SHELL, bootstrap, ensureBootstrap, importRel, prerenderEntry, resolveProject, serverEntry, type Project } from "./project";
 import { runtime } from "../client/twin";
 import { Exposure, shapeOf, type Definition, type Exposed } from "./remote";
 import { generateRoutes, remoteEntries, remoteOf, type Remote } from "./routes";
@@ -21,6 +21,8 @@ import { hasSeat, scanExports, scanRemote } from "./scan";
 const MAIN = "main.tsx";
 const ROUTES = "routes.tsx";
 const SERVER = "server.ts";
+const PRERENDER = "prerender.tsx";
+const DOM_SERVER = "@expressive/dom/server";
 const CALL = "call.ts";
 const REMOTE_IMPORT = /(^|\/)remote(\/|\.[cm]?[jt]s$|$)/;
 
@@ -62,6 +64,7 @@ export function expressive(): Plugin<Host> {
   let mainId: string;
   let routesId: string;
   let serverId: string;
+  let prerenderId: string;
   let callId: string;
   let htmlId: string;
   let runner: ModuleRunner | undefined;
@@ -108,7 +111,7 @@ export function expressive(): Plugin<Host> {
         optimizeDeps: { entries, include: DEPS },
         resolve: { alias: hosted() },
         environments: { ssr: { resolve: { external: SHARED } } },
-        build: env.isSsrBuild ? undefined : { rollupOptions: { input: project.htmlPath ?? join(root, "index.html") } },
+        build: env.isSsrBuild || user.build?.rollupOptions?.input ? undefined : { rollupOptions: { input: project.htmlPath ?? join(root, "index.html") } },
       };
     },
 
@@ -118,6 +121,7 @@ export function expressive(): Plugin<Host> {
       mainId = join(generatedDir, MAIN);
       routesId = join(generatedDir, ROUTES);
       serverId = join(generatedDir, SERVER);
+      prerenderId = join(generatedDir, PRERENDER);
       callId = join(generatedDir, CALL);
       htmlId = join(root, "index.html");
     },
@@ -142,11 +146,13 @@ export function expressive(): Plugin<Host> {
         case mainId:
         case routesId:
         case serverId:
+        case prerenderId:
         case callId:
           return generated;
       }
 
       if (id === htmlId && !existsSync(htmlId)) return htmlId;
+      if (id === DOM_SERVER && importer === prerenderId) return this.resolve(id, fileURLToPath(import.meta.url), { skipSelf: true });
       if (options.ssr || !importer || !REMOTE_IMPORT.test(id) || !SCRIPT.test(importer.split("?")[0])) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
@@ -196,6 +202,8 @@ export function expressive(): Plugin<Host> {
           return generateRoutes(project.appDir!, generatedDir, scanExports);
         case serverId:
           return serverEntry(project, generatedDir, exposure, seated(project));
+        case prerenderId:
+          return prerenderEntry(project.appDir ? `./${ROUTES}` : importRel(generatedDir, project.appPath!), !!project.appDir);
         case htmlId:
           return SHELL;
       }

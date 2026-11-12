@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -641,6 +641,17 @@ describe("vite host", () => {
     expect(html).toContain('<div id="root"></div>');
     expect(html).toMatch(/<script type="module" crossorigin src="\/assets\/index-[^"]+\.js"><\/script>/);
     expect(html).not.toContain(".expressive/main.tsx");
+  });
+
+  it("will resolve the prerender entry's renderer from this package", async () => {
+    const root = project({ "app.tsx": "export default () => null" });
+    const host = expressive();
+    await resolveConfig({ root, configFile: false, logLevel: "silent", plugins: [host] }, "build");
+    const resolve = vi.fn(async () => ({ id: "renderer" }));
+    const hook = host.resolveId as (this: unknown, id: string, importer: string, options: object) => Promise<unknown>;
+
+    expect(await hook.call({ resolve }, "@expressive/dom/server", join(realpathSync(root), ".expressive/prerender.tsx"), {})).toEqual({ id: "renderer" });
+    expect(resolve).toHaveBeenCalledWith("@expressive/dom/server", expect.stringMatching(/plugin\.ts$/), { skipSelf: true });
   });
 
   it("will throw if config is read before the dev server runs", async () => {

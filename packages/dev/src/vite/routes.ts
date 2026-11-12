@@ -60,7 +60,7 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
     ...(loaders.length ? ["", ...loaders] : []),
     ...(wrappers.length ? ["", ...wrappers] : []),
     "",
-    "const App = () => (\n  <Router>", tree, "  </Router>\n);\n",
+    "const App = (props) => (\n  <Router {...props}>", tree, "  </Router>\n);\n",
     "export default App;\n",
   ].join("\n");
 }
