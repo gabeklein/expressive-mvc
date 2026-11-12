@@ -708,6 +708,22 @@ describe('fetch mode', () => {
       expect(child.base).toBe(inner);
     });
 
+    it('will keep a parent of its own type', async () => {
+      class Node extends Model {
+        parent = get(Node, false);
+      }
+
+      const outer = new Node();
+      const layer = new Context().push(outer);
+      const inner = new Node();
+
+      layer.push(inner);
+      layer.add(new Node(), true);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(inner.parent).toBe(outer);
+    });
+
     it('will keep its parent when only the parent provides', () => {
       class Base extends Model {}
       class Outer extends Base {}

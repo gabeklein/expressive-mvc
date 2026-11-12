@@ -259,7 +259,7 @@ function nearer(subject: Model, owner: Model, Type: Model.Extends) {
   const stop = Context.get(owner);
 
   for (let ctx: Context | undefined = Context.get(subject); ctx && ctx !== stop; ctx = ctx.parent)
-    if (ctx.provide.get(Type)?.size) return true;
+    for (const [state] of ctx.provide.get(Type) || []) if (state !== subject) return true;
 
   return false;
 }
