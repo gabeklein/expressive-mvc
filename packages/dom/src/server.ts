@@ -92,13 +92,10 @@ function escape(value: string, attribute?: boolean) {
 /**
  * Render a node to markup and the style rules it emits, waiting on anything it suspends for.
  *
- * Components render without placement - effects and `ready` never run - and are destroyed once done.
+ * `new()` runs; effects and `ready` never do. Every instance is destroyed once rendered.
  * A suspended render is awaited and retried in place; no fallback is drawn.
  * A `catch` boundary handles an error once, then renders again; a second error propagates.
  * Portals render nothing.
- *
- * @example
- * const { html, css } = await renderToString(<App />);
  */
 async function renderToString(node: Node): Promise<Output> {
   const rules: string[] = [];

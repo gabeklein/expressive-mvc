@@ -9,7 +9,7 @@ description: Expressive MVC's DOM renderer (@expressive/dom) - renders Model/Com
 
 ## Status
 
-A tested browser renderer, pre-1.0 - not an LTS contract. Use it for applications prepared to track minor releases. The documented behavior is intentional; package shape and extension seams may change before stabilization. Renderer internals are private—import only the package root and its JSX runtime entries.
+A tested browser renderer, pre-1.0 - not an LTS contract. Use it for applications prepared to track minor releases. The documented behavior is intentional; package shape and extension seams may change before stabilization. Renderer internals are private—import only the package root, its JSX runtime entries and `/server`.
 
 ```jsonc
 {
@@ -323,6 +323,24 @@ await pending(() => {
 return <Portal into={document.body}><Dialog /></Portal>;
 ```
 
+## Server rendering
+
+`renderToString(node)` from `@expressive/dom/server` renders without a DOM and resolves to `{ html, css }`: the container's markup as `render()` leaves it, range comments included, and the style rules it emitted.
+
+```tsx
+import { renderToString } from '@expressive/dom/server';
+
+const { html, css } = await renderToString(<App />);
+```
+
+- Suspended renders and lazy components are awaited and retried in place - fallbacks never draw.
+- `new()` runs; effects and `ready` do not. Every instance is destroyed once rendered.
+- A `catch` boundary handles one error, then its component renders again; a second error rejects.
+- Portals and event handlers render nothing. `value`, `checked` and `selected` become attributes; textarea `value` becomes its text.
+- Numbers in `css` take `px` from a fixed table of unitless properties instead of the CSSOM, and values are not normalized - rule text can differ from the browser's while class names match.
+
+There is no hydration: mounting with `render()` replaces the markup.
+
 ## Hot reload (Vite)
 
 ```ts
@@ -338,4 +356,4 @@ A top-level function component (`function View()`, `const View = () => …`, Pas
 
 ## Boundaries
 
-The renderer is browser-only: no native target, SSR, or hydration. It has no general hook API, memo wrapper, synthetic events, or devtools ownership. Build-time expressive-jsx extraction is not included.
+The renderer targets the browser, with `renderToString` for servers: no native target, streaming, or hydration. It has no general hook API, memo wrapper, synthetic events, or devtools ownership. Build-time expressive-jsx extraction is not included.
