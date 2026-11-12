@@ -74,7 +74,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
-  const claimed = claim(element, appearance, resolved, next.className, next.style);
+  const claimed = claim(element.ownerDocument, appearance, resolved, next.className, next.style);
 
   applyClaim(element, fiber.claimed, claimed);
   fiber.claimed = claimed;

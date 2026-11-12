@@ -1,3 +1,4 @@
+import { sinking } from './protocol';
 import { Style } from './stylesheet';
 import type { style } from './stylesheet';
 
@@ -10,6 +11,10 @@ let probe: CSSStyleDeclaration | undefined;
  * canonical value; the answer is a property of CSS, not of the value.
  */
 function bare(property: string) {
+  const sink = sinking();
+
+  if (sink) return sink.unitless(property);
+
   let known = unitless.get(property);
 
   if (known === undefined) {
