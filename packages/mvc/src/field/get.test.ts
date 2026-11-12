@@ -687,6 +687,42 @@ describe('fetch mode', () => {
       expect(callback).toBeCalledWith(consumer.remote, consumer);
     });
 
+    it('will prefer a provider nearer than its parent', () => {
+      class Base extends Model {}
+      class Outer extends Base {}
+      class Inner extends Base {}
+      class Child extends Model {
+        base = get(Base);
+      }
+
+      const outer = new Outer();
+      const inner = Inner.new();
+      const layer = new Context().push(outer).push();
+
+      layer.add(inner);
+
+      const child = new Child();
+
+      layer.push(child);
+
+      expect(child.base).toBe(inner);
+    });
+
+    it('will keep its parent when only the parent provides', () => {
+      class Base extends Model {}
+      class Outer extends Base {}
+      class Child extends Model {
+        base = get(Base);
+      }
+
+      const outer = new Outer();
+      const child = new Child();
+
+      new Context().push(outer).push().push(child);
+
+      expect(child.base).toBe(outer);
+    });
+
     it('will follow a closer provider', async () => {
       class Ambient extends Model {}
       class Child extends Model {
