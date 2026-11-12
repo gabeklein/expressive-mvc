@@ -10,6 +10,7 @@ export default defineConfig({
     index: 'src/index.ts',
     'jsx-runtime': 'src/jsx-runtime.ts',
     'jsx-dev-runtime': 'src/jsx-dev-runtime.ts',
+    server: 'src/server.ts',
     vite: 'src/vite.ts'
   },
   format: ['esm'],

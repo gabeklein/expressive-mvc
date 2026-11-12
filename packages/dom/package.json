@@ -23,7 +23,8 @@
     "./src/render/component.ts",
     "./dist/index.js",
     "./dist/jsx-runtime.js",
-    "./dist/jsx-dev-runtime.js"
+    "./dist/jsx-dev-runtime.js",
+    "./dist/server.js"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -39,6 +40,10 @@
     "./jsx-dev-runtime": {
       "types": "./dist/jsx-dev-runtime.d.ts",
       "default": "./dist/jsx-dev-runtime.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
     },
     "./vite": {
       "types": "./dist/vite.d.ts",

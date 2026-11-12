@@ -192,8 +192,12 @@ function unmountComponent(fiber: Fiber) {
   fiber.childContext?.pop();
 }
 
+function unplaced(instance: Component) {
+  PLACED.set(instance, new Promise(() => {}));
+}
+
 function renderable(value: unknown): value is Component {
   return value instanceof Component;
 }
 
-export { mountComponent, mountFunction, mountOwnedComponent, patchComponent, patchFunction, renderable, unmountComponent };
+export { mountComponent, mountFunction, mountOwnedComponent, patchComponent, patchFunction, renderable, unmountComponent, unplaced };
