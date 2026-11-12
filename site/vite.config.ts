@@ -5,4 +5,5 @@ import { docsTree } from "./tree.ts";
 
 export default defineConfig({
   plugins: [mdx(), docsTree("../website/content/docs")],
+  resolve: { dedupe: ["@expressive/dev", "@expressive/dom", "@expressive/mvc"] },
 });
