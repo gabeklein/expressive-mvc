@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="data:," />
     <title>Expressive</title>
-    <style>body { margin: 0; }</style>
+    <style>body { margin: 0; background: var(--paper); color-scheme: light; } [data-theme="dark"] body { color-scheme: dark; } .shiki span { color: var(--shiki-light); } [data-theme="dark"] .shiki span { color: var(--shiki-dark); }</style>
+    <script>document.documentElement.dataset.theme = localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");</script>
   </head>
   <body>
     <div id="root"></div>

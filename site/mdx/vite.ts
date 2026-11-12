@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import rollup, { type Options as MdxOptions } from "@mdx-js/rollup";
+import rehypeShiki from "@shikijs/rehype";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
@@ -18,7 +19,7 @@ const PROVIDER = fileURLToPath(new URL("./index.ts", import.meta.url));
  *
  * Each module exports `frontmatter`, `toc` and its content as `default`. Headings get slug ids.
  */
-export default function mdx({ toc, remarkPlugins, ...options }: Options = {}): Plugin {
+export default function mdx({ toc, remarkPlugins, rehypePlugins, ...options }: Options = {}): Plugin {
   return {
     enforce: "pre",
     ...(rollup({
@@ -26,6 +27,7 @@ export default function mdx({ toc, remarkPlugins, ...options }: Options = {}): P
       jsxImportSource: "@expressive/dev",
       providerImportSource: PROVIDER,
       remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter, remarkGfm, [remarkToc, toc], ...(remarkPlugins ?? [])],
+      rehypePlugins: [[rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false, lazy: true, fallbackLanguage: "text" }], ...(rehypePlugins ?? [])],
     }) as Plugin),
   };
 }

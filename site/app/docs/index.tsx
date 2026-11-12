@@ -6,6 +6,7 @@ import { Mdx } from "../../mdx";
 import { style } from "../style";
 import { Anchor, Card, Cards, Compare, H1, H2, H3, H4, Playground, Tab, Tabs } from "./components";
 import type { Node } from "../../tree";
+import { Pre, Search, ThemeToggle } from "./tools";
 
 export default class Docs extends Mdx {
   h1 = H1;
@@ -19,13 +20,18 @@ export default class Docs extends Mdx {
   Tabs = Tabs;
   Tab = Tab;
   Playground = Playground;
+  pre = Pre;
 }
 
 export function Layout({ children }: { children?: Component.Node }) {
   return (
     <div _frame>
       <nav _sidebar>
-        <Link to="/docs" _brand>Expressive</Link>
+        <div _top>
+          <Link to="/docs" _brand>Expressive</Link>
+          <ThemeToggle />
+        </div>
+        <Search />
         <Tree nodes={tree} />
       </nav>
       <div _main>{children}</div>
@@ -46,7 +52,8 @@ style(Layout, $ => ({
     borderInlineEnd: ["1px", "solid", $.line],
     fontSize: "0.9rem",
   },
-  _brand: { display: "block", fontWeight: 700, marginBottom: 16, color: $.ink, textDecoration: "none" },
+  _top: { row: 8, justifyContent: "space-between", marginBottom: 16 },
+  _brand: { fontWeight: 700, color: $.ink, textDecoration: "none" },
   _main: { minWidth: 0 },
   $narrow: { _frame: { gridTemplateColumns: "1fr" }, _sidebar: { position: "static", height: "auto" } },
 }));

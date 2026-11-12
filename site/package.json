@@ -15,6 +15,7 @@
     "@expressive/mvc": "workspace:*",
     "@expressive/router": "workspace:*",
     "@mdx-js/rollup": "^3.1.1",
+    "@shikijs/rehype": "^4.4.1",
     "estree-util-value-to-estree": "^3.0.0",
     "github-slugger": "^2.0.0",
     "mdast-util-to-string": "^4.0.0",

@@ -7,7 +7,9 @@ class Site extends Css {
   readonly $accent = "#3a5bd9";
   readonly $code = "#f5f5f7";
   readonly $mono = "ui-monospace, SFMono-Regular, Menlo, monospace";
+  readonly $paper = "#ffffff";
   readonly $narrow = "@media (max-width: 900px)";
+  readonly $dark = ':is([data-theme="dark"], [data-theme="dark"] *)';
 
   row(gap?: number) {
     return { display: "flex", alignItems: "center", gap };
@@ -15,6 +17,7 @@ class Site extends Css {
 }
 
 export const style = Site.use($ => ({
+  $dark: { $ink: "#ececf1", $muted: "#a1a1aa", $line: "#2e2e33", $accent: "#8ea4ff", $code: "#1c1c21", $paper: "#111114" },
   _a: { color: $.accent, textDecoration: "none" },
   _code: { fontFamily: $.mono, fontSize: "0.9em", background: $.code, padding: "0.1em 0.3em", borderRadius: 4 },
   _pre: {
@@ -30,7 +33,7 @@ export const style = Site.use($ => ({
   _blockquote: { margin: [16, 0], padding: [4, 16], borderInlineStart: ["3px", "solid", $.line], color: $.muted },
   _table: { borderCollapse: "collapse", width: "100%", margin: [16, 0], display: "block", overflowX: "auto" },
   _th: { textAlign: "start", borderBottom: ["1px", "solid", $.line], padding: [6, 10] },
-  _tab: { font: "inherit", fontSize: "0.85rem", padding: [4, 10], border: ["1px", "solid", $.line], borderRadius: 6, background: "white", cursor: "pointer" },
+  _tab: { font: "inherit", fontSize: "0.85rem", padding: [4, 10], border: ["1px", "solid", $.line], borderRadius: 6, background: $.paper, color: $.ink, cursor: "pointer" },
   _selected: { borderColor: $.accent, color: $.accent },
   _td: { borderBottom: ["1px", "solid", $.line], padding: [6, 10], verticalAlign: "top" },
 }));

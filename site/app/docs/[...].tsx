@@ -3,6 +3,7 @@ import { Route } from "@expressive/dev";
 
 import { style } from "../style";
 import { H1 } from "./components";
+import { Pager } from "./tools";
 import { docOf, slugs, type Entry, type Module } from "./content";
 
 const views = new Map<string, () => Promise<{ default: () => Component.Node }>>();
@@ -11,7 +12,7 @@ function viewOf(slug: string) {
   let view = views.get(slug);
 
   if (!view)
-    views.set(slug, view = () => docOf(slug)!.then(module => ({ default: () => <Doc module={module} /> })));
+    views.set(slug, view = () => docOf(slug)!.then(module => ({ default: () => <Doc module={module} path={`/docs/${slug}`.replace(/\/$/, "")} /> })));
 
   return view;
 }
@@ -33,6 +34,7 @@ style(Page);
 
 class Doc extends Component {
   module = set<Module>();
+  path = "";
 
   protected new() {
     this.get(() => {
@@ -55,6 +57,7 @@ class Doc extends Component {
           {title && <H1 id="top">{title}</H1>}
           {description && <p _lead>{description}</p>}
           <Content />
+          <Pager path={this.path} />
         </article>
         <aside _aside>
           <Toc entries={toc} />

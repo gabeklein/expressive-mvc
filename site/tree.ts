@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { Plugin } from "vite";
+import GithubSlugger from "github-slugger";
 import { parse } from "yaml";
 
 export interface Leaf {
@@ -16,6 +17,47 @@ export interface Section {
 export type Node = Leaf | Section;
 
 const ID = "virtual:docs-tree";
+const SEARCH = "virtual:docs-search";
+
+export interface Passage {
+  id: string;
+  heading: string;
+  text: string;
+}
+
+export interface Document {
+  path: string;
+  title: string;
+  sections: Passage[];
+}
+
+function plain(markdown: string) {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/^\s*(import|export) .*$/gm, " ")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[`*_>#|{}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sectionsOf(source: string, title: string): Passage[] {
+  const body = source.replace(/^---\n[\s\S]*?\n---\n?/, "").replace(/```[\s\S]*?```/g, block => block.replace(/^#/gm, " "));
+  const slugger = new GithubSlugger();
+  const sections: Passage[] = [{ id: "", heading: title, text: "" }];
+
+  for (const line of body.split("\n")) {
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+
+    if (heading) sections.push({ id: slugger.slug(heading[2].trim()), heading: heading[2].trim(), text: "" });
+    else sections[sections.length - 1].text += line + "\n";
+  }
+
+  return sections
+    .map(section => ({ ...section, text: plain(section.text).slice(0, 400) }))
+    .filter(section => section.id || section.text);
+}
 
 export function docsTree(dir: string, base = "/docs"): Plugin {
   let root = "";
@@ -57,14 +99,31 @@ export function docsTree(dir: string, base = "/docs"): Plugin {
       root = resolve(config.root, dir);
     },
     resolveId(id) {
-      if (id === ID) return "\0" + ID;
+      if (id === ID || id === SEARCH) return "\0" + id;
     },
     load(id) {
-      if (id !== "\0" + ID) return;
+      if (id !== "\0" + ID && id !== "\0" + SEARCH) return;
 
       const tree = walk(root, base, file => this.addWatchFile(file));
 
-      return `export default ${JSON.stringify(tree)};`;
+      if (id === "\0" + ID) return `export default ${JSON.stringify(tree)};`;
+
+      const documents: Document[] = [];
+      const visit = (nodes: Node[], folder: string) => {
+        for (const node of nodes) {
+          if (!("path" in node)) {
+            visit(node.pages, folder);
+            continue;
+          }
+
+          const rest = node.path.slice(base.length).replace(/^\//, "");
+          const file = [join(root, rest + ".mdx"), join(root, rest, "index.mdx"), join(root, "index.mdx")].find(existsSync)!;
+          documents.push({ path: node.path, title: node.title, sections: sectionsOf(readFileSync(file, "utf8"), node.title) });
+        }
+      };
+
+      visit(tree, root);
+      return `export default ${JSON.stringify(documents)};`;
     },
   };
 }
