@@ -12,6 +12,7 @@ import { settle, suspend, unwait } from './suspense';
 const roots = new WeakMap<Container, () => void>();
 const focusing: Element[] = [];
 let passiveRender = false;
+let rendering: Fiber | undefined;
 let depth = 0;
 
 /**
@@ -79,6 +80,9 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
     fiber.staging ||= fragment();
 
   const run = () => pass(() => {
+    const parent = rendering;
+    rendering = fiber;
+
     try {
       const output = probed ? probed.output as RenderNode : consume(fiber, render);
       reconcile(fiber, output, scope.context, fiber.boundary, renderedAppearance(fiber));
@@ -94,6 +98,8 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
       return true;
     } catch (thrown) {
       return suspend(fiber, thrown, passive, empty);
+    } finally {
+      rendering = parent;
     }
   });
 
@@ -104,4 +110,4 @@ function attempt(fiber: Fiber, passive: boolean, render: () => RenderNode): true
   }
 }
 
-export { attempt, depth, focusing, pass, passiveRender, render };
+export { attempt, depth, focusing, pass, passiveRender, render, rendering };
