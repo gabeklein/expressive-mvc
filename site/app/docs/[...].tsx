@@ -38,10 +38,8 @@ class Doc extends Component {
 
   protected new() {
     this.get(() => {
-      const { title } = this.module.frontmatter ?? {};
+      void this.module;
       const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
-
-      document.title = title ? `${title} - Expressive` : "Expressive";
 
       if (target) target.scrollIntoView();
       else scrollTo(0, 0);
@@ -53,6 +51,8 @@ class Doc extends Component {
 
     return (
       <div _page>
+        <title>{title ? `${title} - Expressive` : "Expressive"}</title>
+        {description && <meta name="description" content={description} />}
         <article>
           {title && <H1 id="top">{title}</H1>}
           {description && <p _lead>{description}</p>}
