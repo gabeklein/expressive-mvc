@@ -3,7 +3,7 @@ import { Route } from "@expressive/dev";
 
 import { style } from "../style";
 import { H1 } from "./components";
-import { docOf, type Entry, type Module } from "./content";
+import { docOf, slugs, type Entry, type Module } from "./content";
 
 const views = new Map<string, () => Promise<{ default: () => Component.Node }>>();
 
@@ -15,6 +15,8 @@ function viewOf(slug: string) {
 
   return view;
 }
+
+export const paths = () => slugs().filter(slug => !/^api(\/|$)/.test(slug)).map(slug => `/docs/${slug}`.replace(/\/$/, ""));
 
 export function Page() {
   const { base, match = {} } = Route.get();

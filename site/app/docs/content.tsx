@@ -33,6 +33,10 @@ const prose = (Content: Module["default"]) => style(Content, $ => ({
   _img: { maxWidth: "100%" },
 }));
 
+export function slugs() {
+  return [...loaders.keys()];
+}
+
 export function docOf(slug: string): Promise<Module> | undefined {
   const load = loaders.get(slug);
 
