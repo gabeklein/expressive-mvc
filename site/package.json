@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "expressive dev",
-    "build": "expressive build",
+    "build": "expressive build --prerender",
     "start": "node dist/server/index.js",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test"

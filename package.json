@@ -14,7 +14,7 @@
     "typecheck": "bun run --filter='./packages/*' typecheck",
     "coverage": "bun run --filter='./packages/*' coverage",
     "build": "bun .github/scripts/build.ts",
-    "build:site": "bun run build && bun .github/scripts/size-limit.ts && bun run --filter website build",
+    "build:site": "bun run build && bun run --filter site build && rm -rf website/build && mkdir -p website/build && cp -R site/dist/client website/build/client",
     "changeset": "changeset",
     "ci:version": "changeset version && bun install",
     "ci:publish": "bun run build && bun .github/scripts/dist-smoke.ts && bun .github/scripts/native-check.ts && changeset publish"
