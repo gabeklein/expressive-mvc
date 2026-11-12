@@ -197,7 +197,7 @@ export function expressive(): Plugin<Host> {
         case serverId:
           return serverEntry(project, generatedDir, exposure, seated(project));
         case htmlId:
-          return SHELL;
+          return project.htmlPath ? undefined : SHELL;
       }
     },
 
