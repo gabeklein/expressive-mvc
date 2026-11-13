@@ -1,6 +1,6 @@
 ---
 name: expressive-rpc
-description: Typed server calls for Vite apps (@expressive/rpc) - modules in api/ run on the server, the client imports them as stubs. Use when adding or debugging server calls - module rules, values, http errors, gates and Current, client configure, server entry, Worker/Node deploy.
+description: Typed server calls for Vite apps (@expressive/rpc) - modules in api/ run on the server, the client imports them as stubs. Use when adding or debugging server calls - module rules, trunk, values, http errors, gates and Current, client configure, server entry, Worker/Node deploy.
 ---
 
 # @expressive/rpc
@@ -47,9 +47,39 @@ A module under `dir` may export:
 
 Anything else fails the build: a sync function, a value, a re-export, a non-Error class, a default outside an index. Twin-shaped exports (Model classes) are refused - stateful twins are `@expressive/dev`'s.
 
-Only calls the client build imports are served. Helpers belong outside `dir` (`server/`, `shared/`) and are imported from it; a type a call's signature names must be importable by the client.
+Only calls the client build imports are served - or, with a [trunk](#trunk), only its leaves. Helpers belong outside `dir` (`server/`, `shared/`) and are imported from it; a type a call's signature names must be importable by the client.
 
 `dir` is relative to Vite's root and may sit outside it: `rpc({ dir: "../api/src" })` serves calls from a sibling workspace package, imported from the client by relative path. Path aliases in that package's own tsconfig resolve with Vite's `resolve: { tsconfigPaths: true }`.
+
+## Trunk
+
+A trunk groups calls for the client as an object, and is the folder's allowlist. It is `trunk.ts` at the root of `dir`; its default export is an object whose leaves are async functions and Error classes imported by name from modules under `dir`:
+
+```ts
+// api/trunk.ts
+import { search as searchClaims, create, Duplicate } from "./claim/search";
+import { search as searchAttorneys } from "./attorney/search";
+
+export type * as claim from "./claim/search";   // types ride beside it
+
+export default {
+  claim: { search: searchClaims, create, errors: { Duplicate } },
+  attorney: { search: searchAttorneys },
+};
+```
+
+```ts
+// src/main.ts
+import api, { type claim } from "../api/trunk";
+
+const found: claim.Result[] = await api.claim.search(query);
+```
+
+- Each leaf is followed through re-exports to the module that defines it. Its path, id and gates are that module's, as if imported directly - the trunk only groups.
+- With a trunk, only its leaves are served. A module's other exports stay on the server unchecked - helpers, constants, sync functions, re-exports, Models - and an index may re-export. Its Error classes still cross, so a thrown one rebuilds with its class.
+- Client code may import only the trunk from `dir`; importing any other module there fails the build. `import type` is fine.
+- Keys are written out - no spread, computed key or method. Nesting is free; a nested object may be a local `const`. A leaf is an imported name, never a default export, a namespace member or a function declared in the trunk.
+- The trunk exports only its default and types (`export type`, `export type * as ns from`).
 
 ## Addressing
 

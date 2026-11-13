@@ -43,6 +43,7 @@ try {
 `vite build` emits the client in `dist/client` and a server bundle in `dist/server/index.js` - `export default { fetch }` - that runs as a Cloudflare Worker (with `nodejs_compat`) or under Node through `toNode(server.fetch)` from `@expressive/rpc/http`.
 
 - **Errors** - `HttpError` and its subclasses (`NotFound`, `Forbidden`, `Conflict`, ...) set the reply's status and are rebuilt on the client, so `instanceof` works. Export your own subclasses from the folder.
+- **Trunk** - `api/trunk.ts` default-exports an object of calls imported from the folder (`{ claim: { search }, attorney: { search: findAttorney } }`); the client imports that object. Only its leaves are served, so other exports stay on the server, and each call keeps its own folder's gates.
 - **Gates** - an `index.ts` default runs before every call in its folder and below: a function, whose activated Models are the call's context and refuse it if their `new()` fails, or a `Model` with `static key()`. Throw to refuse.
 - **Values** - `Date`, `BigInt`, `Map`, `Set`, `Uint8Array` and `undefined` in arrays survive the trip, tagged inside plain JSON.
 - **Cookies** - declare them as fields of a `Cookies` subclass; `AppCookies.get().session` reads this request's, `AppCookies.set({ session: id })` sends `Set-Cookie` with the reply.
