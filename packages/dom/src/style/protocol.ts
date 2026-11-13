@@ -5,7 +5,15 @@ interface Block {
   group?: true;
   name: string;
   ordinal: number;
+  part?: Part;
+  parts?: Block[];
   when?: readonly Condition[];
+}
+
+interface Part {
+  anchor?: Block;
+  chain: readonly string[];
+  name: string;
 }
 
 type Condition = string | { on: Block; state: string };
@@ -30,6 +38,8 @@ type EnterAppearance = (parent?: AppearanceContext, key?: string, defines?: bool
 type Emit = (block: Block, depth: number, document: Document) => string;
 
 const SUBCOMPONENT = /^_[A-Z]/;
+const PART = /^__[a-z]/;
+const anchors = new Set<string>();
 const registrations = new WeakMap<object, EnterAppearance>();
 const tokens = new WeakMap<object, ResolvedAppearance>();
 let emitter: Emit | undefined;
@@ -70,6 +80,15 @@ function reserved(key: string) {
     throw new Error(`"${key}" is reserved for subcomponents in style() maps.`);
 }
 
+function isPart(key: string) {
+  if (!key.startsWith('__')) return false;
+
+  if (!PART.test(key))
+    throw new Error(`Part "${key}" must start with a lowercase letter.`);
+
+  return true;
+}
+
 function createAppearanceToken(appearance: ResolvedAppearance) {
   const token = {};
   tokens.set(token, appearance);
@@ -81,14 +100,16 @@ function appearanceToken(value: unknown) {
 }
 
 export {
+  anchors,
   appearanceToken,
   createAppearanceToken,
   emitClass,
   enterAppearance,
+  isPart,
   registerAppearance,
   registerEmitter,
   reserved,
   SUBCOMPONENT
 };
 
-export type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearance };
+export type { AppearanceContext, Block, Condition, Declaration, Part, ResolvedAppearance };

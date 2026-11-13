@@ -40,3 +40,12 @@ export function place(node: Component.Node, root: HTMLElement = document.createE
   render(node, root);
   return root;
 }
+
+declare module './src/style/stylesheet' {
+  interface Parts {
+    control: true;
+    input: true;
+    menu: true;
+    option: true;
+  }
+}

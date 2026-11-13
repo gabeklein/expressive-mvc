@@ -1,5 +1,5 @@
 import * as appearance from './appearance';
-import { registerEmitter } from './protocol';
+import { anchors, registerEmitter } from './protocol';
 import type { Block } from './protocol';
 import { serialize } from './declarations';
 import type { Declaration } from './declarations';
@@ -27,6 +27,23 @@ type Variable<T> = Extract<
   string
 >;
 
+type Chars<S extends string> = S extends `${infer C}${infer R}` ? C | Chars<R> : never;
+
+type Lower = Chars<'abcdefghijklmnopqrstuvwxyz'>;
+
+type Lexical = `_${Lower | Uppercase<Lower> | Chars<'0123456789'>}${string}`;
+
+type Marked = `__${Extract<keyof Parts | keyof HTMLElementTagNameMap, string>}`;
+
+/**
+ * Names of public parts, augmented by libraries that mark them.
+ *
+ * Each key types a `__name` attribute on host elements and a `__name` key in `style()` maps.
+ * Tag names are always valid keys.
+ * Augment with `declare module '@expressive/dom' { interface Parts { input: true } }`.
+ */
+interface Parts {}
+
 type Bare<K> = K extends `$${infer N}` ? N : never;
 
 type Tokens<T> = { readonly [K in Variable<T> as Bare<K>]: string };
@@ -41,7 +58,8 @@ type Key<T> =
   | style.Property
   | Macro<T>
   | `--${string}`
-  | `_${string}`
+  | Lexical
+  | Marked
   | Named<T>
   | Variable<T>
   | style.Condition;
@@ -79,6 +97,7 @@ declare namespace style {
    * Body of a `style()` map - declarations, macro calls, rules and conditions.
    *
    * Bare keys are declarations or calls to a macro of `T`. `_name` opens a rule or descendant scope.
+   * `__name` styles marked parts and `name` tags anywhere below - see {@link Parts}.
    * `:state`, `@media …` and a `$name` condition of `T` apply their body conditionally; a `$name` variable of `T` takes a value.
    * A rule or condition body may be an array of maps, merged in order.
    */
@@ -158,6 +177,7 @@ interface Sheet {
   element: HTMLStyleElement;
   emitted: WeakMap<Block, Map<number, string>>;
   names: Map<string, string>;
+  parted: WeakMap<Block, Set<number>>;
   positions: [number, number][];
 }
 
@@ -251,13 +271,33 @@ function layers(type: Function) {
 }
 
 function emit(block: Block, depth: number, document: Document) {
+  const name = place(block, depth, document);
+  const { parts } = block;
+
+  if (parts) {
+    const { parted } = sheets.get(document)!;
+    let done = parted.get(block);
+    if (!done) parted.set(block, (done = new Set()));
+
+    anchors.add(name);
+
+    if (!done.has(depth)) {
+      done.add(depth);
+      for (const part of parts) place(part, depth, document);
+    }
+  }
+
+  return name;
+}
+
+function place(block: Block, depth: number, document: Document): string {
   let sheet = sheets.get(document);
 
   if (!sheet?.element.sheet) {
     const element = document.createElement('style');
     element.dataset.expressive = 'dom';
     document.head.append(element);
-    sheet = { element, emitted: new WeakMap(), names: new Map(), positions: [] };
+    sheet = { element, emitted: new WeakMap(), names: new Map(), parted: new WeakMap(), positions: [] };
     sheets.set(document, sheet);
     attachRoots(document);
   }
@@ -270,16 +310,31 @@ function emit(block: Block, depth: number, document: Document) {
   const cached = byDepth.get(depth);
   if (cached) return cached;
 
+  const { part } = block;
   const when = block.when || [];
   const at = when.filter((condition) => typeof condition == 'string' && condition[0] == '@') as string[];
   const pseudo = when.filter((condition) => typeof condition == 'string' && condition[0] == ':').join('');
   const split = pseudo.indexOf('::');
   const states = split < 0 ? pseudo : pseudo.slice(0, split);
   const element = split < 0 ? '' : pseudo.slice(split);
+  const held = when.map((condition) => typeof condition != 'string' && condition.on === part?.anchor ? condition.state : '').join('');
   const scope = when.map((condition) =>
-    typeof condition == 'string' ? '' : `:where(.${emit(condition.on, 0, document)}${condition.state}) `
+    typeof condition == 'string' || condition.on === part?.anchor ? '' : `:where(.${place(condition.on, 0, document)}${condition.state}) `
   ).join('');
-  const selector = `${scope}.%${states ? `:where(${states})` : ''}${element}`;
+  const tail = `${states ? `:where(${states})` : ''}${element}`;
+  let selector = `${scope}.%${tail}`;
+
+  if (part) {
+    const { anchor, chain, name } = part;
+
+    selector = [`.__${name}`, name].map((subject) => {
+      const path = [...chain, subject];
+      path[0] += `:where(:scope${held}, :scope${held} *)`;
+      return scope + path.join(' ') + tail;
+    }).join(', ');
+
+    at.push(`@scope (${anchor ? `.${place(anchor, 0, document)}` : ':root'})`);
+  }
   const css = block.group ? `\0${groups++}` : serialize(document, block.declarations);
   const key = [...at, selector, css].join('\0');
   const label = [
@@ -314,3 +369,4 @@ function emit(block: Block, depth: number, document: Document) {
 }
 
 export { Style, style };
+export type { Lexical, Parts };

@@ -1,6 +1,6 @@
 /** @jsxImportSource @expressive/dom */
 import { Component } from '@expressive/mvc';
-import { Css, render } from '@expressive/dom';
+import { Css, Portal, render } from '@expressive/dom';
 
 const style = Css.use();
 
@@ -186,6 +186,72 @@ document.documentElement.dataset.mode = 'dark';
 check('variable default under a root state', getComputedStyle(swatch).color, 'rgb(31, 31, 31)');
 delete document.documentElement.dataset.mode;
 
+function Select({ menu }: { menu?: boolean }) {
+  return (
+    <div __control _box>
+      <input __input _field />
+      <a _link>owned</a>
+      <a>plain</a>
+      {menu && <Portal into={document.body}><ul __menu data-open=""><li __option>option</li></ul></Portal>}
+    </div>
+  );
+}
+
+style(Select, {
+  _box: { color: 'rgb(50, 50, 50)' },
+  _field: { color: 'rgb(51, 51, 51)', padding: '1px', outlineStyle: 'dotted' },
+  _link: { color: 'rgb(52, 52, 52)' }
+});
+
+function Card() {
+  return <article><Select /></article>;
+}
+
+style(Card, { __input: { color: 'rgb(53, 53, 53)' } });
+
+const kit = Css.use({ __input: { color: 'rgb(59, 59, 59)', padding: '2px', margin: '3px' } });
+
+function Page() {
+  return (
+    <main data-on="">
+      <Select menu />
+      <Select _year />
+      <Card />
+    </main>
+  );
+}
+
+kit(Page, {
+  __input: { color: 'rgb(54, 54, 54)', margin: '4px' },
+  __a: { color: 'rgb(55, 55, 55)' },
+  _year: { __control: { borderTopWidth: '5px', borderTopStyle: 'solid' }, __input: { color: 'rgb(56, 56, 56)' } },
+  ':is([data-on])': { _year: { __input: { letterSpacing: '3px' } }, __control: { wordSpacing: '6px' } },
+  __menu: { ':is([data-open])': { __option: { color: 'rgb(57, 57, 57)' } } }
+});
+
+const parts = document.createElement('div');
+document.body.append(parts);
+render(<Page />, parts);
+
+const [first, year, carded] = parts.querySelectorAll('input');
+const [owned, plain] = parts.querySelectorAll('a');
+const [control, yearControl] = parts.querySelectorAll<HTMLElement>('div.__control');
+
+check('part beats owner rule', getComputedStyle(first).color, 'rgb(54, 54, 54)');
+check('owner declarations still apply under a part', getComputedStyle(first).outlineStyle, 'dotted');
+check('pack part beats owner rule', getComputedStyle(first).paddingTop, '2px');
+check('page part beats pack part', getComputedStyle(first).marginTop, '4px');
+check('tag default loses to owner rule', getComputedStyle(owned).color, 'rgb(52, 52, 52)');
+check('tag default styles unowned tag', getComputedStyle(plain).color, 'rgb(55, 55, 55)');
+check('nearest scope wins', getComputedStyle(carded).color, 'rgb(53, 53, 53)');
+check('nested under flag wins over top level', getComputedStyle(year).color, 'rgb(56, 56, 56)');
+check('nested under flag reaches the child root', getComputedStyle(yearControl).borderTopWidth, '5px');
+check('nested under flag skips other children', getComputedStyle(control).borderTopWidth, '0px');
+check('anchor state reaches parts', getComputedStyle(control).wordSpacing, '6px');
+check('outer state before a nested anchor', getComputedStyle(year).letterSpacing, '3px');
+check('outer state skips other anchors', getComputedStyle(first).letterSpacing, 'normal');
+check('portal root carries anchors', getComputedStyle(document.body.querySelector('li.__option')!).color, 'rgb(57, 57, 57)');
+
 document.querySelector('style[data-expressive=dom]')!.remove();
 
 function Late() {
@@ -196,10 +262,11 @@ style(Late, { _late: { color: 'rgb(5, 5, 5)' } });
 
 const second = document.createElement('div');
 document.body.append(second);
-render(<><Late /><Field /></>, second);
+render(<><Late /><Field /><Card /></>, second);
 
 check('stylesheet recreated', getComputedStyle(second.querySelector('u')!).color, 'rgb(5, 5, 5)');
 second.querySelector('input')!.focus();
+check('part rules recreated', getComputedStyle(second.querySelector('input.__input')!).color, 'rgb(53, 53, 53)');
 check('group anchor recreated', getComputedStyle(second.querySelector('label b')!).color, 'rgb(14, 14, 14)');
 
 report();

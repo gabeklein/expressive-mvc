@@ -31,7 +31,7 @@ function unmatched(
   for (const key of Object.keys(props)) {
     const name = key.slice(1);
 
-    if (key[0] != '_' || SUBCOMPONENT.test(key) || name == tag || known.has(name)) continue;
+    if (key[0] != '_' || key[1] == '_' || SUBCOMPONENT.test(key) || name == tag || known.has(name)) continue;
     if (author?.props && key in author.props || target && key in target) continue;
 
     const near = [...known].find((other) => distance(name, other) <= 2);

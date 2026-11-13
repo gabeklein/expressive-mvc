@@ -1573,3 +1573,189 @@ describe('conditions', () => {
     expect(() => place(<Classy />)).toThrow('Classes are not supported inside ":hover".');
   });
 });
+
+describe('parts', () => {
+  function sheet(match: string) {
+    const { sheet } = document.head.querySelector<HTMLStyleElement>('style[data-expressive=dom]')!;
+    return [...sheet!.cssRules]
+      .map((rule) => rule.cssText.replace(/\s+/g, ' '))
+      .filter((rule) => rule.includes(match));
+  }
+
+  it('will mark parts with a class and anchor rules on the declaring roots', () => {
+    function Field({ hint }: { hint?: boolean }) {
+      return <label _field className="ext"><input __input __control={hint} /></label>;
+    }
+
+    function Fields() {
+      return <main><Field /><Field hint /></main>;
+    }
+
+    style(Field, { _field: { display: 'block' } });
+    style(Fields, { __input: { color: 'red', ':hover': { color: 'blue' } } });
+
+    const root = place(<Fields />);
+    const [first, second] = root.querySelectorAll('input');
+
+    expect(root.querySelector('main')!.className).toBe('Fields-group');
+    expect(root.querySelector('label')!.className).toBe('ext Field_field');
+    expect(first.className).toBe('__input');
+    expect(second.className).toBe('__input __control');
+    expect(first.hasAttribute('__input')).toBe(false);
+    expect(sheet('Fields')).toEqual([
+      '@scope (.Fields-group) { .__input:where(:scope, :scope *), input:where(:scope, :scope *) { color: red; } }',
+      '@scope (.Fields-group) { .__input:where(:scope, :scope *):where(:hover), input:where(:scope, :scope *):where(:hover) { color: blue; } }'
+    ]);
+  });
+
+  it('will emit parts once per depth', () => {
+    function OptionItem() {
+      return <li __option />;
+    }
+
+    function Options() {
+      return <ul><OptionItem /><OptionItem /></ul>;
+    }
+
+    style(Options, { __option: { color: 'red' } });
+
+    place(<><Options /><Options /></>);
+    expect(sheet('Options')).toHaveLength(1);
+  });
+
+  it('will hold anchor states and wrap media', () => {
+    function Navbar() {
+      return <nav><a __control>link</a></nav>;
+    }
+
+    style(Navbar, {
+      ':focus-within': { __control: { color: 'red' } },
+      '@media (max-width: 600px)': { __control: { padding: '2px', '::after': { content: '"!"' } } }
+    });
+
+    place(<Navbar />);
+    expect(sheet('Navbar')).toEqual([
+      '@scope (.Navbar-group) { .__control:where(:scope:focus-within, :scope:focus-within *), control:where(:scope:focus-within, :scope:focus-within *) { color: red; } }',
+      '@media (max-width: 600px) { @scope (.Navbar-group) { .__control:where(:scope, :scope *), control:where(:scope, :scope *) { padding: 2px; } } }',
+      '@media (max-width: 600px) { @scope (.Navbar-group) { .__control:where(:scope, :scope *)::after, control:where(:scope, :scope *)::after { content: "!"; } } }'
+    ]);
+  });
+
+  it('will chain nested parts through their states and media', () => {
+    function Dropdown() {
+      return <ul __menu><li __option /></ul>;
+    }
+
+    style(Dropdown, {
+      __menu: {
+        __option: { color: 'red' },
+        ':is([open]), :focus': { __option: { color: 'blue' } },
+        '@media print': { __option: { color: 'black' } },
+        __input: undefined
+      }
+    });
+
+    place(<Dropdown />);
+    expect(sheet('Dropdown')).toEqual([
+      '@scope (.Dropdown-group) { :where(:is(.__menu, menu)):where(:scope, :scope *) .__option, :where(:is(.__menu, menu)):where(:scope, :scope *) option { color: red; } }',
+      '@scope (.Dropdown-group) { :where(:is(.__menu, menu):is([open])):where(:scope, :scope *) .__option, :where(:is(.__menu, menu):is([open])):where(:scope, :scope *) option { color: blue; } }',
+      '@scope (.Dropdown-group) { :where(:is(.__menu, menu):focus):where(:scope, :scope *) .__option, :where(:is(.__menu, menu):focus):where(:scope, :scope *) option { color: blue; } }',
+      '@media print { @scope (.Dropdown-group) { :where(:is(.__menu, menu)):where(:scope, :scope *) .__option, :where(:is(.__menu, menu)):where(:scope, :scope *) option { color: black; } } }'
+    ]);
+  });
+
+  it('will anchor parts nested in a rule on that rule\'s element', () => {
+    function Picker() {
+      return <div><input __input /></div>;
+    }
+
+    function Form() {
+      return <form><Picker _year /><Picker _month /></form>;
+    }
+
+    style(Form, {
+      _year: { __input: { color: 'red' } },
+      _month: { color: 'gray', __input: { color: 'blue' }, _div: { padding: '1px' } },
+      ':hover': { _year: { __input: { color: 'green' } } }
+    });
+
+    const root = place(<Form />);
+    const [year, month] = root.querySelectorAll('div');
+
+    expect(root.querySelector('form')!.className).toBe('Form-group');
+    expect(year.className).toBe('Form_year-group');
+    expect(month.className).toBe('Form_month-d1 Form_month-group');
+    expect(sheet('@scope (.Form_')).toEqual([
+      '@scope (.Form_year-group) { .__input:where(:scope, :scope *), input:where(:scope, :scope *) { color: red; } }',
+      '@scope (.Form_year-group) { :where(.Form-group:hover) .__input:where(:scope, :scope *), :where(.Form-group:hover) input:where(:scope, :scope *) { color: green; } }',
+      '@scope (.Form_month-group) { .__input:where(:scope, :scope *), input:where(:scope, :scope *) { color: blue; } }'
+    ]);
+  });
+
+  it('will scope pack parts to the document', () => {
+    function Frame() {
+      return <main><input __input /></main>;
+    }
+
+    Pack.use({ __input: { color: 'red' } })(Frame);
+
+    place(<Frame />);
+    expect(sheet(':root')).toEqual([
+      '@scope (:root) { .__input:where(:scope, :scope *), input:where(:scope, :scope *) { color: red; } }'
+    ]);
+  });
+
+  it('will type part marks from Parts', () => {
+    const marked = <input __input _field />;
+    // @ts-expect-error - not a declared part
+    const typo = <input __inptu />;
+    const numbered = <div _2col />;
+
+    expect([marked, typo, numbered]).toHaveLength(3);
+  });
+
+  it('will throw for a rule inside a part', () => {
+    function Bad() {
+      return <div />;
+    }
+
+    style(Bad, { __input: { _icon: { color: 'red' } } });
+
+    expect(() => place(<Bad />)).toThrow('Rule "_icon" cannot apply inside part "__input".');
+  });
+
+  it('will throw for a part inside a pseudo-element', () => {
+    function Bad() {
+      return <div />;
+    }
+
+    style(Bad, { __input: { '::before': { __option: { color: 'red' } } } });
+
+    expect(() => place(<Bad />)).toThrow('Parts cannot nest inside pseudo-element "::before".');
+  });
+
+  it('will throw for classes in a part', () => {
+    function Bad() {
+      return <div />;
+    }
+
+    style(Bad, { __input: { glow: true } });
+
+    expect(() => place(<Bad />)).toThrow('Classes are not supported in part "__input".');
+  });
+
+  it('will throw for a capitalized part', () => {
+    function Bad() {
+      return <div />;
+    }
+
+    function Mark() {
+      return <div {...{ __Input: true }} />;
+    }
+
+    style(Bad, { ...{ __Input: { color: 'red' } } });
+
+    expect(() => place(<Bad />)).toThrow('Part "__Input" must start with a lowercase letter.');
+    expect(() => place(<Mark />)).toThrow('Part "__Input" must start with a lowercase letter.');
+  });
+});

@@ -32,6 +32,20 @@ describe('style map types', () => {
     expect(map).toBeTypeOf('object');
   });
 
+  it('will type part keys from Parts and tags', () => {
+    const map: Map = {
+      __input: { color: 'red', __option: { color: 'blue' } },
+      __a: { color: 'green' },
+      _active: { __menu: { color: 'gray' } }
+    };
+    // @ts-expect-error - not a declared part or tag
+    const typo: Map = { __inptu: { color: 'red' } };
+    // @ts-expect-error - a part must be a map
+    const value: Map = { __input: 'red' };
+
+    expect([map, typo, value]).toHaveLength(3);
+  });
+
   it('will reject unknown keys, objects and bad macro arguments', () => {
     // @ts-expect-error - not a CSS property or macro
     const typo: Map = { colr: 'red' };

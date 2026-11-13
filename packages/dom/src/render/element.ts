@@ -4,7 +4,7 @@ import type { VNode } from '../node/vnode';
 import { applyClaim, claim } from '../style/claim';
 import type { Appearance } from '../style/claim';
 import { unmatched } from '../style/diagnose';
-import { reserved } from '../style/protocol';
+import { isPart, reserved } from '../style/protocol';
 import { inserted } from './commits';
 import type { Boundary, Fiber } from './fiber';
 import { complete, unmountFiber } from './mount';
@@ -63,9 +63,12 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     fiber.children = [];
   }
 
+  const marks: string[] = [next.className];
+
   for (const key of Object.keys({ ...previous, ...next })) {
     if (key[0] == '_') {
-      reserved(key);
+      if (!isPart(key)) reserved(key);
+      else if (next[key]) marks.push(key);
       continue;
     }
 
@@ -74,7 +77,7 @@ function patchProps(fiber: Fiber, next: Record<string, any>, appearance?: Appear
     patchProp(fiber, element, key, previous[key], next[key]);
   }
 
-  const claimed = claim(element, appearance, resolved, next.className, next.style);
+  const claimed = claim(element, appearance, resolved, marks.length > 1 ? marks.join(' ') : next.className, next.style);
 
   applyClaim(element, fiber.claimed, claimed);
   fiber.claimed = claimed;
