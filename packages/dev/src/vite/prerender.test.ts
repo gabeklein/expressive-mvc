@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -40,25 +40,25 @@ function built(files: Record<string, string>) {
   return root;
 }
 
-function renderer(render: (path: string, shell: string) => Page) {
+function renderer(render: (path: string, shell: string) => Page, listed: string[] = []) {
   const close = vi.fn();
-  launch.mockResolvedValueOnce({ render: async (path: string, shell: string) => render(path, shell), close });
+  launch.mockResolvedValueOnce({ paths: async () => listed, render: async (path: string, shell: string) => render(path, shell), close });
   return { close };
 }
 
 it("will write each static page and keep the shell as 200.html", async () => {
   const root = built({ "app/index.tsx": PAGE, "app/(about).tsx": PAGE, "app/docs/(intro).tsx": PAGE, "app/blog/[slug].tsx": PAGE });
-  const { close } = renderer((path, shell) => ({ path, blank: false, html: `${path} ${shell}` }));
+  const { close } = renderer((path, shell) => ({ path, blank: false, html: `${path} ${shell}` }), ["/blog/hello", "/about"]);
   const client = join(root, "dist", "client");
 
-  expect(await prerender(root)).toEqual(["/", "/about", "/docs/intro"]);
+  expect(await prerender(root)).toEqual(["/", "/about", "/docs/intro", "/blog/hello"]);
+  expect(readFileSync(join(client, "blog", "hello", "index.html"), "utf8")).toBe(`/blog/hello ${SHELL}`);
   expect(readFileSync(join(client, "200.html"), "utf8")).toBe(SHELL);
   expect(readFileSync(join(client, "index.html"), "utf8")).toBe(`/ ${SHELL}`);
   expect(readFileSync(join(client, "docs", "intro", "index.html"), "utf8")).toBe(`/docs/intro ${SHELL}`);
-  expect(existsSync(join(client, "blog"))).toBe(false);
   expect(close).toHaveBeenCalled();
   expect(launch).toHaveBeenCalledWith(root);
-  expect(log).toHaveBeenCalledWith("Prerendered 3 pages.");
+  expect(log).toHaveBeenCalledWith("Prerendered 4 pages.");
 });
 
 it("will leave a page that moves, renders nothing or fails to the client", async () => {

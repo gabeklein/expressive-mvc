@@ -289,9 +289,16 @@ node dist/server/index.js  run the built service (port from index.ts, default 30
 `dist/client/<path>/index.html`. Suspended data is awaited; effects never run, so data loaded in an
 effect is not in the page.
 
-Only pages that need nothing at request time are rendered: `[param]` and `[...]` routes are
-skipped, and so is every folder with a `remote.ts` or `remote/` folder, along with everything below
-it. Those pages stay client-rendered, and the build never runs server code. A page that redirects,
+Only pages that need nothing at request time are rendered. A `[param]` or `[...]` route is skipped
+unless its module exports `paths()`, returning the absolute paths to render:
+
+```tsx
+// app/blog/[slug].tsx
+export const paths = async () => (await listPosts()).map(post => `/blog/${post.slug}`);
+```
+
+Every folder with a `remote.ts` or `remote/` folder is skipped, along with everything below it.
+Those pages stay client-rendered, and the build never runs server code. A page that redirects,
 renders nothing or throws is skipped with a warning. The bundle uses the client's transforms, so a
 remote module is only ever its call stub.
 

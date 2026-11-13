@@ -12,11 +12,15 @@ export interface Page {
 }
 
 export interface Renderer {
+  paths(): Promise<string[]>;
   render(path: string, shell: string): Promise<Page>;
   close(): void;
 }
 
-type Render = (path: string) => Promise<{ html: string; css: string; path: string }>;
+interface Bundle {
+  default(path: string): Promise<{ html: string; css: string; path: string }>;
+  paths(): Promise<string[]>;
+}
 
 const ROOT = /(<div\b[^>]*\bid=["']root["'][^>]*>)\s*(<\/div>)/;
 
@@ -29,9 +33,10 @@ export async function launch(root: string): Promise<Renderer> {
   const url = pathToFileURL(join(outDir, "prerender.js"));
   url.search = String(Date.now());
 
-  const { default: page }: { default: Render } = await import(url.href);
+  const { default: page, paths }: Bundle = await import(url.href);
 
   return {
+    paths,
     async render(path, shell) {
       if (!ROOT.test(shell)) throw new Error("The shell has no empty #root element.");
 

@@ -46,8 +46,16 @@ describe("launch", { timeout: 30_000 }, () => {
         style(Layout, { color: "teal" });
       `,
       "app/(about).tsx": `export const Page = () => <h2>about</h2>;`,
+      "app/blog/[slug].tsx": `
+        import { Route } from "@expressive/dev";
+        export const Page = () => <h3>{Route.get().match.slug}</h3>;
+        export const paths = async () => ["/blog/a", "/blog/b"];
+      `,
     });
     const renderer = await launch(root);
+
+    expect(await renderer.paths()).toEqual(["/blog/a", "/blog/b"]);
+    expect((await renderer.render("/blog/b", SHELL)).html).toContain("<h3>b</h3>");
 
     const about = await renderer.render("/about", SHELL);
 

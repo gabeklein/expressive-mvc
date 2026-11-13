@@ -65,19 +65,24 @@ export async function generateRoutes(appDir: string, outDir: string, scan: Expor
   ].join("\n");
 }
 
-/** Paths of the pages no `:param`, `*` or remote module reaches - those a build can render ahead. */
-export async function staticPaths(appDir: string, scan: ExportScanner): Promise<string[]> {
+/**
+ * Pages a build can render ahead - none a remote module reaches. Fixed paths are listed;
+ * below a `:param` or `*`, modules exporting `paths()` are returned to list their own.
+ */
+export async function staticPaths(appDir: string, scan: ExportScanner): Promise<{ paths: string[]; sources: string[] }> {
   const paths: string[] = [];
+  const sources: string[] = [];
 
-  (function walk(node: RouteNode, path: string) {
+  (function walk(node: RouteNode, path: string, dynamic: boolean) {
     if (node.server) return;
-    if (node.exports.has("Page")) paths.push(path || "/");
+    if (dynamic && node.exports.has("paths")) sources.push(node.file!);
+    if (!dynamic && node.exports.has("Page")) paths.push(path || "/");
 
     for (const child of node.children)
-      if (!precedence(child.segment)) walk(child, `${path}/${child.segment}`);
-  })(await scanDir(appDir, "", "", scan), "");
+      walk(child, `${path}/${child.segment}`, dynamic || !!precedence(child.segment));
+  })(await scanDir(appDir, "", "", scan), "", false);
 
-  return paths;
+  return { paths, sources };
 }
 
 function newNode(fields: Partial<RouteNode>): RouteNode {

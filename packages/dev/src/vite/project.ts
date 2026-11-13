@@ -88,12 +88,19 @@ else {
 `;
 }
 
-export function prerenderEntry(appImport: string, routed: boolean): string {
+export function prerenderEntry(appImport: string, routed: boolean, sources: string[] = []): string {
+  const imports = sources.map((source, index) => `import { paths as p${index} } from ${JSON.stringify(source)};\n`).join("");
+  const lists = sources.map((_, index) => `p${index}()`).join(", ");
+
   return `\
 import { renderToString } from "@expressive/dom/server";
 import { Router } from "@expressive/dev";
 import { jsx } from "@expressive/dev/jsx-runtime";
 import App from ${JSON.stringify(appImport)};
+${imports}
+export async function paths() {
+  return (await Promise.all([${lists}])).flat();
+}
 
 export default async function page(path) {
   let router;
