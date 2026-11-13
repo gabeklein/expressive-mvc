@@ -112,4 +112,15 @@ describe('unmatched flags', () => {
 
     expect(warn).not.toHaveBeenCalled();
   });
+
+  it('will not warn for part marks', () => {
+    function Marked() {
+      return <input __input />;
+    }
+
+    style(Marked, { _field: {} });
+
+    place(<Marked />);
+    expect(warn).not.toHaveBeenCalled();
+  });
 });

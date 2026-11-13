@@ -5,6 +5,7 @@ import type { JSX as Base } from '@expressive/mvc/jsx-runtime';
 import { childrenOf, isVNode, vnode } from './node/vnode';
 import type { Node, VNode } from './node/vnode';
 import type { Attributes as Loaded, Module } from './node/loader';
+import type { Lexical, Parts } from './style/stylesheet';
 
 type Words =
   | 'AnimationCancel' | 'AnimationEnd' | 'AnimationIteration' | 'AnimationStart'
@@ -63,9 +64,11 @@ type Attributes<T extends Element> = EventAttributes<T> & {
   key?: string | number | null;
   ref?: ((node: T | null) => unknown) | { current: T | null };
   style?: Style;
-  [attribute: `_${string}`]: unknown;
+  [attribute: Lexical]: unknown;
   [attribute: `data-${string}`]: unknown;
   [attribute: `aria-${string}`]: unknown;
+} & {
+  [K in keyof Parts as `__${K & string}`]?: boolean;
 };
 
 type Intrinsics = {
@@ -106,7 +109,7 @@ declare module '@expressive/mvc/jsx-runtime' {
   namespace JSX {
     interface IntrinsicAttributes {
       style?: Style;
-      [attribute: `_${string}`]: unknown;
+      [attribute: Lexical]: unknown;
     }
   }
 }
