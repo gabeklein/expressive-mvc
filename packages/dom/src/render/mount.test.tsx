@@ -48,9 +48,43 @@ describe('mount', () => {
   it('will reject unsupported render values and element types', () => {
     const root = document.createElement('main');
 
-    expect(() => render({} as never, root)).toThrow('Cannot render');
-    expect(() => render(vnode(Symbol('unknown'), {}), root)).toThrow('Cannot render');
+    expect(() => render({} as never, root)).toThrow('Cannot render plain object.');
+    expect(() => render(Symbol('loose') as never, root)).toThrow('Cannot render Symbol(loose).');
+    expect(() => render(vnode(Symbol('unknown'), {}), root)).toThrow('Cannot use Symbol(unknown) as an element type.');
+    expect(() => render(vnode(<div /> as never, {}), root)).toThrow('Cannot use an element as an element type.');
     expect(root.textContent).toBe('');
+  });
+
+  it('will name what was rendered and the component it came from', () => {
+    class Row {}
+    const Loose = () => <div>{Promise.resolve() as never}</div>;
+    const Detached = () => new Row() as never;
+    const Mistaken = () => Loose as never;
+    const Bare = () => Object.create(null);
+    const Anonymous = [() => new (class {})() as never][0];
+
+    class Page extends Component {
+      render() {
+        return <Detached />;
+      }
+    }
+
+    const root = document.createElement('main');
+
+    expect(() => render(<Loose />, root)).toThrow('Cannot render Promise instance in Loose.');
+    expect(() => render(<Page />, root)).toThrow('Cannot render Row instance in Detached.');
+    expect(() => render(<Mistaken />, root)).toThrow('Cannot render function Loose in Mistaken.');
+    expect(() => render(<Bare />, root)).toThrow('Cannot render plain object in Bare.');
+    expect(() => render(<Anonymous />, root)).toThrow('Cannot render anonymous instance in anonymous.');
+  });
+
+  it('will name an element made by another copy of the package', () => {
+    const foreign = { [Symbol('@expressive/dom.vnode')]: true, type: 'div', props: {} };
+    const Page = () => foreign as never;
+
+    expect(() => render(<Page />, document.createElement('main'))).toThrow(
+      'Cannot render an element from another copy of @expressive/dom in Page. Is the package loaded twice?'
+    );
   });
 
   it('will throw if a Model class is rendered as an element', () => {
