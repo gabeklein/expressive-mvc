@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Context, get, set, Model } from "@expressive/mvc";
 
-import { construct, Current, headersOf, install, onBuild, seated, within, type Seat } from "./context";
+import { construct, Current, headersOf, install, onBuild, seated, within, type Gate, type Seat } from "./context";
 
 const request = (url = "/", cookie = "") => new Request(`http://localhost${url}`, { headers: { cookie } });
 const call = <T>(segments: string[], run: () => T) => within(request("/" + segments.join("/")), segments, run);
@@ -9,7 +9,7 @@ const call = <T>(segments: string[], run: () => T) => within(request("/" + segme
 beforeAll(install);
 afterEach(() => vi.useRealTimers());
 
-const walk = <T>(req: Request, segments: string[], seats: (Seat | undefined)[], run: () => T) => within(req, segments, run, seats);
+const walk = <T>(req: Request, segments: string[], seats: (Seat | Gate | undefined)[], run: () => T) => within(req, segments, run, seats);
 
 describe("server get", () => {
   it("will leave a bare context lookup outside a call to the host", async () => {
@@ -293,6 +293,133 @@ describe("seats", () => {
     shop.set(null);
 
     expect(cart.instance.get(null)).toBe(true);
+  });
+});
+
+describe("gates", () => {
+  const tick = () => new Promise(resolve => setTimeout(resolve));
+
+  class Denied extends Error { status = 401; }
+
+  it("will run a function gate per call, its Models found by get() in the call and gone after", async () => {
+    class Session extends Model { user = "ada"; }
+    const gate = vi.fn(() => void Session.new());
+
+    const first = await walk(request(), ["app"], [undefined, gate], () => Session.get());
+    const second = await walk(request(), ["app", "inner"], [undefined, gate], () => Session.get());
+
+    expect(gate).toHaveBeenCalledTimes(2);
+    expect(first.user).toBe("ada");
+    expect(second).not.toBe(first);
+    expect(first.get(null)).toBe(true);
+    await expect(walk(request(), ["app"], [], () => Session.get())).rejects.toThrow("Could not find Session in context.");
+  });
+
+  it("will wait for each Model a gate activates, even after an await or built bare and set", async () => {
+    let done!: () => void;
+    class Session extends Model {
+      user?: string = undefined;
+      protected async new() {
+        await new Promise<void>(resolve => (done = resolve));
+        this.user = "ada";
+      }
+    }
+    class Tenant extends Model {}
+    const run = vi.fn(() => [Session.get().user, Tenant.get()]);
+    const call = walk(request(), [], [async () => {
+      new Session().set();
+      await tick();
+      Tenant.new();
+    }], run);
+
+    await tick();
+    await tick();
+    expect(run).not.toHaveBeenCalled();
+
+    done();
+    expect(await call).toEqual(["ada", expect.any(Tenant)]);
+  });
+
+  it("will keep each call's Models apart", async () => {
+    class Session extends Model { user = ""; }
+    const gate = () => void Session.new({ user: Current.get().url.searchParams.get("user")! });
+
+    const users = await Promise.all(["ada", "bob"].map(user => walk(request(`/?user=${user}`), [], [gate], async () => (await tick(), Session.get().user))));
+
+    expect(users).toEqual(["ada", "bob"]);
+  });
+
+  it("will refuse a call whose gate throws", async () => {
+    const run = vi.fn();
+
+    await expect(walk(request(), [], [() => { throw new Denied("Sign in."); }], run)).rejects.toBeInstanceOf(Denied);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("will refuse a call when a Model the gate activates fails its new(), unreported", async () => {
+    class Session extends Model {
+      protected async new() {
+        await tick();
+        throw new Denied("Expired.");
+      }
+    }
+    let built!: Session;
+    const run = vi.fn();
+    const failed = vi.fn();
+
+    process.on("uncaughtException", failed);
+
+    try {
+      await expect(walk(request(), ["app"], [undefined, () => void (built = Session.new())], run)).rejects.toThrow("Expired.");
+      await tick();
+    } finally {
+      process.off("uncaughtException", failed);
+    }
+
+    expect(run).not.toHaveBeenCalled();
+    expect(built.get(null)).toBe(true);
+    expect(failed).not.toHaveBeenCalled();
+  });
+
+  it("will report a Model's failed new() outside a gate as usual", async () => {
+    class Late extends Model {
+      protected async new() {
+        throw new Error("late");
+      }
+    }
+    const escaped: unknown[] = [];
+    const queue = globalThis.queueMicrotask;
+    const spy = vi.spyOn(globalThis, "queueMicrotask").mockImplementation(task => queue(() => {
+      try {
+        task();
+      } catch (error) {
+        escaped.push(error);
+      }
+    }));
+
+    try {
+      await walk(request(), [], [() => {}], () => void Late.new());
+      await tick();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(escaped).toEqual([new Error("late")]);
+  });
+
+  it("will run an inner gate with the outer gate's Models in reach, and seats below it per call", async () => {
+    class Session extends Model { user = "ada"; }
+    class Admin extends Model {
+      protected new() {
+        if (Session.get().user !== "ada") throw new Denied("Admins only.");
+      }
+    }
+    class Panel extends Model { static ttl = 60; }
+
+    const [admin, panel] = await walk(request(), ["admin", "panel"], [() => void Session.new(), () => void Admin.new(), Panel], () => [Admin.get(), Panel.get()]);
+
+    expect(admin).toBeInstanceOf(Admin);
+    expect(panel.get(null)).toBe(true);
   });
 });
 

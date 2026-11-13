@@ -1,4 +1,4 @@
-import { within, type Seat } from "./context";
+import { within, type Gate, type Seat } from "./context";
 
 export interface Exports {
   calls: Record<string, unknown>;
@@ -51,7 +51,7 @@ export function resolve<E extends Exports>(endpoints: Endpoint<E>[], at: string[
 
 export type Call = (...args: unknown[]) => unknown;
 
-export type Seats = (pattern: string[]) => Promise<Seat | undefined>;
+export type Seats = (pattern: string[]) => Promise<Seat | Gate | undefined>;
 
 export interface Invocation {
   request: Request;
@@ -139,7 +139,7 @@ export function walkOf(list: Endpoint[], at: string[]): { pattern: string[]; seg
   return { pattern, segments };
 }
 
-export function seatsAlong(seats: Seats, pattern: string[]): Promise<(Seat | undefined)[]> {
+export function seatsAlong(seats: Seats, pattern: string[]): Promise<(Seat | Gate | undefined)[]> {
   return Promise.all(Array.from({ length: pattern.length + 1 }, (_, i) => seats(pattern.slice(0, i))));
 }
 
