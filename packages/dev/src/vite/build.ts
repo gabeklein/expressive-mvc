@@ -43,6 +43,23 @@ export function serverBuild(root: string, { write = true }: BuildOptions = {}): 
   };
 }
 
+export function prerenderBuild(root: string, outDir: string): InlineConfig {
+  return {
+    root,
+    configFile: viteConfigFile(root),
+    plugins: [expressive()],
+    logLevel: "warn",
+    build: {
+      outDir,
+      emptyOutDir: true,
+      minify: false,
+      copyPublicDir: false,
+      modulePreload: false,
+      rollupOptions: { input: "/.expressive/prerender.tsx", preserveEntrySignatures: "strict", output: { format: "es", entryFileNames: "prerender.js", codeSplitting: false } },
+    },
+  };
+}
+
 /** `expressive build` - the client into `dist/client`, then the server into `dist/server/index.js`. */
 export async function runBuild(root = process.cwd(), options: BuildOptions = {}): Promise<void> {
   await build(clientBuild(root, options));

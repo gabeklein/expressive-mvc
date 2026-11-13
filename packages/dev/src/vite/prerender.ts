@@ -1,5 +1,4 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { availableParallelism } from "node:os";
 import { join } from "node:path";
 
 import { resolveProject } from "./project";
@@ -17,14 +16,14 @@ export async function prerender(root: string): Promise<string[]> {
   const queue = project.appDir ? await staticPaths(project.appDir, scanExports) : ["/"];
   const written: string[] = [];
 
-  const { render, close } = await launch();
-
   writeFileSync(join(dir, SHELL), shell);
 
-  async function work() {
-    for (let path; (path = queue.shift()); ) {
+  const { render, close } = await launch(root);
+
+  try {
+    for (const path of queue) {
       try {
-        const page = await render({ dir, shell, path });
+        const page = await render(path, shell);
 
         if (page.path !== path) {
           console.warn(`${path} redirected to ${page.path} at build - left to the client.`);
@@ -43,15 +42,11 @@ export async function prerender(root: string): Promise<string[]> {
         console.warn(`${path} was not prerendered: ${(error as Error).message}`);
       }
     }
-  }
-
-  try {
-    await Promise.all(Array.from({ length: Math.min(availableParallelism(), queue.length) }, work));
   } finally {
-    await close();
+    close();
   }
 
   console.log(`Prerendered ${written.length} page${written.length == 1 ? "" : "s"}.`);
 
-  return written.sort();
+  return written;
 }

@@ -284,14 +284,16 @@ node dist/server/index.js  run the built service (port from index.ts, default 30
 
 ### Prerendering
 
-`expressive build --prerender` loads each page in headless Chrome after the build and writes the
-settled document, styles included, to `dist/client/<path>/index.html`. It needs `playwright-core`
-installed beside `@expressive/dev` and Chrome; `CHROME` names a binary.
+`expressive build --prerender` bundles the app for Node after the build, renders each page with
+`renderToString` from `@expressive/dom/server`, and writes it, with the style rules it used, to
+`dist/client/<path>/index.html`. Suspended data is awaited; effects never run, so data loaded in an
+effect is not in the page.
 
 Only pages that need nothing at request time are rendered: `[param]` and `[...]` routes are
 skipped, and so is every folder with a `remote.ts` or `remote/` folder, along with everything below
 it. Those pages stay client-rendered, and the build never runs server code. A page that redirects,
-renders nothing or logs an error is skipped with a warning.
+renders nothing or throws is skipped with a warning. The bundle uses the client's transforms, so a
+remote module is only ever its call stub.
 
 The empty shell moves to `dist/client/200.html`. The built service serves `<path>/index.html`, then
 falls back to the shell; a static host needs its fallback pointed at `200.html` (Cloudflare Pages:

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import type { Job, Page } from "./render";
+import type { Page } from "./render";
 
 const launch = vi.hoisted(() => vi.fn());
 
@@ -40,15 +40,15 @@ function built(files: Record<string, string>) {
   return root;
 }
 
-function renderer(render: (job: Job) => Page) {
-  const close = vi.fn(async () => {});
-  launch.mockResolvedValueOnce({ render: async (job: Job) => render(job), close });
+function renderer(render: (path: string, shell: string) => Page) {
+  const close = vi.fn();
+  launch.mockResolvedValueOnce({ render: async (path: string, shell: string) => render(path, shell), close });
   return { close };
 }
 
 it("will write each static page and keep the shell as 200.html", async () => {
   const root = built({ "app/index.tsx": PAGE, "app/(about).tsx": PAGE, "app/docs/(intro).tsx": PAGE, "app/blog/[slug].tsx": PAGE });
-  const { close } = renderer(({ path, shell }) => ({ path, blank: false, html: `${path} ${shell}` }));
+  const { close } = renderer((path, shell) => ({ path, blank: false, html: `${path} ${shell}` }));
   const client = join(root, "dist", "client");
 
   expect(await prerender(root)).toEqual(["/", "/about", "/docs/intro"]);
@@ -57,12 +57,13 @@ it("will write each static page and keep the shell as 200.html", async () => {
   expect(readFileSync(join(client, "docs", "intro", "index.html"), "utf8")).toBe(`/docs/intro ${SHELL}`);
   expect(existsSync(join(client, "blog"))).toBe(false);
   expect(close).toHaveBeenCalled();
+  expect(launch).toHaveBeenCalledWith(root);
   expect(log).toHaveBeenCalledWith("Prerendered 3 pages.");
 });
 
 it("will leave a page that moves, renders nothing or fails to the client", async () => {
   const root = built({ "app/(a).tsx": PAGE, "app/(b).tsx": PAGE, "app/(c).tsx": PAGE, "app/(d).tsx": PAGE });
-  renderer(({ path }) => {
+  renderer((path) => {
     if (path == "/a") return { path: "/", blank: false, html: "" };
     if (path == "/b") return { path, blank: true, html: "" };
     if (path == "/c") throw new Error("broke");
@@ -70,7 +71,7 @@ it("will leave a page that moves, renders nothing or fails to the client", async
   });
 
   expect(await prerender(root)).toEqual(["/d"]);
-  expect(warn.mock.calls.map(([message]: unknown[]) => message).sort()).toEqual([
+  expect(warn.mock.calls.map(([message]: unknown[]) => message)).toEqual([
     "/a redirected to / at build - left to the client.",
     "/b rendered nothing at build - left to the client.",
     "/c was not prerendered: broke",
@@ -80,7 +81,7 @@ it("will leave a page that moves, renders nothing or fails to the client", async
 
 it("will render a single-file app at its root", async () => {
   const root = built({ "app.tsx": "export default () => null" });
-  renderer(({ path }) => ({ path, blank: false, html: "app" }));
+  renderer((path) => ({ path, blank: false, html: "app" }));
 
   expect(await prerender(root)).toEqual(["/"]);
   expect(readFileSync(join(root, "dist", "client", "index.html"), "utf8")).toBe("app");
