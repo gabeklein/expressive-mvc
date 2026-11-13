@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Component } from '@expressive/mvc';
-import { Portal, render } from '../index';
+import { Portal, render, style } from '../index';
 import { flushMicrotasks, mockPromise, mount } from '../../test.setup';
 
 describe('Portal', () => {
@@ -113,5 +113,50 @@ describe('Portal', () => {
 
     release();
     expect(nextPortal.textContent).toBe('');
+  });
+
+  it('will carry anchors of its logical ancestors onto portalled roots', async () => {
+    const layer = document.body.appendChild(document.createElement('aside'));
+
+    function Menu() {
+      return <ul __menu><li __option>one</li></ul>;
+    }
+
+    class Picker extends Component {
+      open = true;
+
+      render() {
+        return <section>{this.open && <Portal into={layer}><Menu /><b /></Portal>}</section>;
+      }
+    }
+
+    function Page() {
+      return <main><Picker _wide /></main>;
+    }
+
+    style(Picker);
+    style(Page, { __option: { color: 'red' }, _wide: { __menu: { color: 'blue' } } });
+
+    const root = document.body.appendChild(document.createElement('div'));
+    render(<Page />, root);
+
+    expect(layer.querySelector('ul')!.className).toBe('__menu Page_wide-group Page-group');
+    expect(layer.querySelector('b')!.className).toBe('Page_wide-group Page-group');
+
+    const bare = document.body.appendChild(document.createElement('div'));
+    bare.className = 'Page-group plain';
+    render(<Portal into={layer}><i /></Portal>, bare);
+
+    expect(layer.querySelector('i')!.className).toBe('Page-group');
+  });
+
+  it('will not carry classes that anchor no parts', () => {
+    const layer = document.body.appendChild(document.createElement('aside'));
+    const root = document.body.appendChild(document.createElement('div'));
+
+    root.className = 'plain';
+    render(<Portal into={layer}><i /></Portal>, root);
+
+    expect(layer.querySelector('i')!.hasAttribute('class')).toBe(false);
   });
 });

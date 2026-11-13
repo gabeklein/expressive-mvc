@@ -3,6 +3,7 @@ import { Context } from '@expressive/mvc';
 import { PORTAL } from '../node/vnode';
 import type { Node as RenderNode, VNode } from '../node/vnode';
 import type { Appearance } from '../style/claim';
+import { anchors } from '../style/protocol';
 import type { Boundary, Container, Fiber } from './fiber';
 import { complete } from './mount';
 import { reconcileChildren } from './reconcile';
@@ -52,6 +53,14 @@ function target(into: unknown, parent: globalThis.Node): Container {
 }
 
 function reconcilePortal(fiber: Fiber, value: RenderNode, context: Context, boundary?: Boundary, appearance?: Appearance) {
+  const carried: string[] = [];
+
+  for (let node = fiber.start.parentNode; node instanceof Element; node = node.parentNode)
+    for (const name of node.classList) if (anchors.has(name)) carried.push(name);
+
+  if (carried.length)
+    appearance = { ...appearance, entries: [...appearance?.entries || [], { hops: 0, style: carried.join(' ') }] };
+
   reconcileChildren(fiber, fiber.portalEnd!.parentNode!, fiber.portalEnd!, value, context, boundary, appearance);
 }
 
