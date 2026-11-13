@@ -156,20 +156,20 @@ describe("calls", () => {
 });
 
 describe("trunk", () => {
-  it("will build the trunk's object from the stubs of the modules defining its leaves", () => {
+  it("will add each group as an object and each leaf as an export, from the stubs of the modules defining them", () => {
     const search = { file: "/app/api/claim/search.ts", name: "search" };
     const tree = new Map<string, Tree | Leaf>([
-      ["claim", new Map([["search", search], ["create", { file: "/app/api/claim/search.ts", name: "create" }]])],
+      ["claim", new Map<string, Tree | Leaf>([["search", search], ["create", { file: "/app/api/claim/search.ts", name: "create" }], ["empty", new Map()]])],
       ["attorney", new Map([["search", { file: "/app/api/attorney/search.ts", name: "search" }]])],
-      ["find-all", search],
-      ["empty", new Map()],
+      ["findAll", search],
     ]);
 
-    expect(new Manifest().trunk("/app/api/trunk.ts", tree)).toBe([
+    expect(new Manifest().trunk("/app/api/index.ts", tree)).toEqual([
       `import { search as t0, create as t1 } from "./claim/search.ts";`,
       `import { search as t2 } from "./attorney/search.ts";`,
-      `export default { "claim": { "search": t0, "create": t1 }, "attorney": { "search": t2 }, "find-all": t0, "empty": {} };`,
-      "",
-    ].join("\n"));
+      `const g0 = { "search": t0, "create": t1, "empty": {} };`,
+      `const g1 = { "search": t2 };`,
+      `export { g0 as "claim", g1 as "attorney", t0 as "findAll" };`,
+    ]);
   });
 });

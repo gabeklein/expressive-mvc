@@ -10,30 +10,57 @@ export interface Leaf {
 export type Tree = Map<string, Tree | Leaf>;
 
 export interface Trunk {
+  /** The trunk's groups and imported leaves, by export name. */
   tree: Tree;
+  /** Its other named exports - the index's own calls and Error classes. */
+  own: string[];
   problems: string[];
 }
 
+type Imported = ReturnType<Module["imports"]["get"]>;
+type Context = { module: Module; sources: Sources; owned: (file: string) => boolean; problems: string[] };
+
 const NAMED = "a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it.";
+
+/** An index exporting an object - a group of calls - is its folder's trunk; its default stays the gate. */
+export function isTrunk(module: Module): boolean {
+  return [...module.exports].some(([name, value]) => name !== "default" && !!objectOf(value, module));
+}
 
 export async function scanTrunk(file: string, source: string, sources: Sources, owned: (file: string) => boolean): Promise<Trunk> {
   const module = moduleOf(file, source);
-  const problems = [...module.errors];
+  const context: Context = { module, sources, owned, problems: [...module.errors] };
   const tree: Tree = new Map();
+  const own: string[] = [];
 
-  for (const node of module.body) if (!allowed(node)) problems.push("A trunk exports its default object and types only.");
+  for (const node of module.body) {
+    if (node.type === "ExportAllDeclaration" && node.exportKind !== "type")
+      context.problems.push("A trunk names each export - export * would hide which calls cross.");
 
-  const root = trunkOf(module);
+    if (node.type !== "ExportNamedDeclaration" || node.exportKind === "type") continue;
 
-  if (!root) problems.push("A trunk's default is an object - its leaves are the calls the client gets.");
-  else await branch(root, [], tree, module, sources, owned, problems);
+    const { declaration } = node;
 
-  return { tree, problems };
-}
+    if (declaration?.type === "VariableDeclaration") {
+      for (const { id, init } of declaration.declarations)
+        if (id.type === "Identifier") await entry(id.name, init, importOf(init, module), tree, own, context);
+        else context.problems.push("A destructured export is neither an async function nor an Error subclass - the client could not use it.");
+    }
+    else if ((declaration?.type === "FunctionDeclaration" || declaration?.type === "ClassDeclaration") && declaration.id) own.push(declaration.id.name);
+    else if (declaration) context.problems.push("A server module exports async functions and Error subclasses only.");
 
-/** A module's default as a trunk object - an index whose default is one is its folder's trunk. */
-export function trunkOf(module: Module): ESTree.ObjectExpression | undefined {
-  return objectOf(module.exports.get("default"), module);
+    for (const spec of node.specifiers) {
+      if (spec.exportKind === "type") continue;
+
+      const name = nameOf(spec.exported);
+      const local = nameOf(spec.local);
+
+      if (node.source) await leaf(name, { from: node.source.value, name: local }, tree, context);
+      else await entry(name, module.locals.get(local), module.imports.get(local), tree, own, context);
+    }
+  }
+
+  return { tree, own, problems: context.problems };
 }
 
 export function leaves(tree: Tree, into = new Map<string, Set<string>>()): Map<string, Set<string>> {
@@ -44,15 +71,9 @@ export function leaves(tree: Tree, into = new Map<string, Set<string>>()): Map<s
   return into;
 }
 
-function allowed(node: Module["body"][number]): boolean {
-  switch (node.type) {
-    case "ExportAllDeclaration":
-      return node.exportKind === "type";
-    case "ExportNamedDeclaration":
-      return node.exportKind === "type" || node.declaration?.type === "TSInterfaceDeclaration" || node.declaration?.type === "TSTypeAliasDeclaration";
-    default:
-      return true;
-  }
+function importOf(value: Value, module: Module): Imported {
+  value = unwrap(value);
+  return value?.type === "Identifier" ? module.imports.get(value.name) : undefined;
 }
 
 function unwrap(value: Value): Value {
@@ -68,41 +89,55 @@ function objectOf(value: Value, module: Module, seen = new Set<string>()): ESTre
   if (value?.type === "ObjectExpression") return value;
 }
 
-async function branch(object: ESTree.ObjectExpression, path: string[], tree: Tree, module: Module, sources: Sources, owned: (file: string) => boolean, problems: string[]) {
+/** A top-level export: a group, an imported leaf, or the index's own. */
+async function entry(name: string, value: Value, imported: Imported, tree: Tree, own: string[], context: Context) {
+  const object = objectOf(value, context.module);
+
+  if (object) {
+    const group: Tree = new Map();
+    tree.set(name, group);
+    await branch(object, [name], group, context);
+  }
+  else if (imported && !imported.type) await leaf(name, imported, tree, context);
+  else own.push(name);
+}
+
+async function branch(object: ESTree.ObjectExpression, path: string[], tree: Tree, context: Context) {
+  const { module, problems } = context;
+
   for (const prop of object.properties) {
     if (prop.type === "SpreadElement" || prop.computed || prop.kind !== "init" || prop.method) {
-      problems.push(`${path.join(".") || "The trunk"} has a ${prop.type === "SpreadElement" ? "spread" : prop.computed ? "computed key" : "method"} - a trunk's keys are written out, each an object or an imported name.`);
+      problems.push(`${path.join(".")} has a ${prop.type === "SpreadElement" ? "spread" : prop.computed ? "computed key" : "method"} - a trunk's keys are written out, each an object or an imported name.`);
       continue;
     }
 
     const key = prop.key.type === "Identifier" ? prop.key.name : String((prop.key as { value: unknown }).value);
     const at = [...path, key];
-    const where = at.join(".");
     const value = unwrap(prop.value);
     const nested = objectOf(value, module);
 
     if (nested) {
       const sub: Tree = new Map();
       tree.set(key, sub);
-      await branch(nested, at, sub, module, sources, owned, problems);
+      await branch(nested, at, sub, context);
       continue;
     }
 
-    const imported = value?.type === "Identifier" ? module.imports.get(value.name) : undefined;
+    const imported = importOf(value, module);
 
-    if (!imported || imported.type) {
-      problems.push(`${where} is not an imported name - ${NAMED}`);
-      continue;
-    }
-
-    const from = await sources.resolve(imported.from, module.file);
-    const leaf = from ? await definition(from, imported.name, sources) : undefined;
-
-    if (!leaf) problems.push(`${where} is ${imported.name} from "${imported.from}", which does not export it.`);
-    else if (!owned(leaf.file)) problems.push(`${where} is defined outside the trunk's folder, in ${leaf.file} - ${NAMED}`);
-    else if (leaf.name === "default") problems.push(`${where} is a default export - ${NAMED}`);
-    else tree.set(key, leaf);
+    if (!imported || imported.type) problems.push(`${at.join(".")} is not an imported name - ${NAMED}`);
+    else await leaf(key, imported, tree, context, at.join("."));
   }
+}
+
+async function leaf(key: string, imported: { from: string; name: string }, tree: Tree, { module, sources, owned, problems }: Context, where = key) {
+  const from = await sources.resolve(imported.from, module.file);
+  const found = from ? await definition(from, imported.name, sources) : undefined;
+
+  if (!found) problems.push(`${where} is ${imported.name} from "${imported.from}", which does not export it.`);
+  else if (!owned(found.file)) problems.push(`${where} is defined outside the trunk's folder, in ${found.file} - ${NAMED}`);
+  else if (found.name === "default") problems.push(`${where} is a default export - ${NAMED}`);
+  else tree.set(key, found);
 }
 
 /** Where `name` is declared, following re-exports and exported imports to the module that defines it. */

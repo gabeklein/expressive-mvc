@@ -9,7 +9,7 @@ import { toNode } from "../http/node";
 import { guardScript } from "./guard";
 import { Manifest, SCRIPT, locate, type Exposed, type Located } from "./manifest";
 import { moduleOf, scanModule, type Sources } from "./scan";
-import { leaves, scanTrunk, trunkOf } from "./trunk";
+import { isTrunk, leaves, scanTrunk } from "./trunk";
 
 export interface Options {
   dir?: string;
@@ -58,14 +58,14 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
   const indexAt = (pattern: string[]) => INDEX.map(name => join(folder, ...pattern, name)).find(existsSync);
   const under = (trunk: string) => (file: string) => file.startsWith(dirname(trunk) + sep);
 
-  /** The trunk whose folder holds `file` - an index on its path whose default is an object. */
+  /** The trunk whose folder holds `file` - an index on its path exporting a group of calls. */
   function trunkFor(file: string): string | undefined {
     const { pattern } = located(file)!;
     const trunks: string[] = [];
 
     for (let i = 0; i <= pattern.length; i++) {
       const index = indexAt(pattern.slice(0, i));
-      if (index && trunkOf(moduleOf(index, readFileSync(index, "utf8")))) trunks.push(index);
+      if (index && isTrunk(moduleOf(index, readFileSync(index, "utf8")))) trunks.push(index);
     }
 
     if (trunks.length > 1) throw new Error(`${relative(root, trunks[1])} is a trunk inside ${relative(root, dirname(trunks[0]))} - trunks do not nest.`);
@@ -86,20 +86,19 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
   }
 
   async function trunked(file: string, resolve: Resolve) {
-    const { tree, problems } = await scanTrunk(file, readFileSync(file, "utf8"), sources(resolve), other => owned(other) && under(file)(other));
+    const { tree, own, problems } = await scanTrunk(file, readFileSync(file, "utf8"), sources(resolve), other => owned(other) && under(file)(other));
 
     fail(file, problems);
 
-    return { tree, allowed: leaves(tree) };
+    return { tree, own, allowed: leaves(tree) };
   }
 
   async function gateAt(pattern: string[], resolve: Resolve): Promise<Located | undefined> {
     const file = indexAt(pattern);
     const at = file && located(file);
-    const trunk = at && trunkFor(at.file);
+    const only = at && trunkFor(at.file) ? new Set(manifest.modules.get(at.file)?.calls) : undefined;
 
-    if (!at || trunk === at.file) return;
-    if ((await scanned(at, resolve, trunk ? new Set(manifest.modules.get(at.file)?.calls) : undefined)).gate) return at;
+    if (at && (await scanned(at, resolve, only)).gate) return at;
   }
 
   async function gates(resolve: Resolve): Promise<Located[]> {
@@ -209,12 +208,16 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
       const trunk = trunkFor(at.file);
 
       if (trunk === at.file) {
-        const { tree, allowed } = await trunked(trunk, resolve);
+        const { tree, own, allowed } = await trunked(trunk, resolve);
 
         for (const exposed of manifest.modules.values())
           if (under(trunk)(exposed.file)) exposed.calls = exposed.calls.filter(name => allowed.get(exposed.file)?.has(name));
 
-        return manifest.trunk(trunk, tree);
+        const exposed: Exposed = { ...at, ...(await scanned(at, resolve, new Set(own))) };
+
+        manifest.modules.set(at.file, exposed);
+
+        return manifest.stub(exposed, located, { lines: manifest.trunk(trunk, tree) });
       }
 
       if (trunk) this.addWatchFile(trunk);

@@ -3,7 +3,7 @@ import { dirname, relative, sep } from "node:path";
 
 import type { Exports } from "../call";
 import type { ErrorClass, Parent } from "./scan";
-import type { Tree } from "./trunk";
+import type { Leaf, Tree } from "./trunk";
 
 export const SCRIPT = /\.[cm]?[jt]sx?$/;
 
@@ -93,32 +93,32 @@ export class Manifest<E extends Exposed = Exposed> {
     ].join("\n");
   }
 
-  /** The trunk as the client gets it: its object, each leaf imported from the stub of the module defining it. */
-  trunk(file: string, tree: Tree): string {
+  /** A trunk's lines for its index's stub: each group as an object, each leaf from the stub of the module defining it. */
+  trunk(file: string, tree: Tree): string[] {
     const json = JSON.stringify;
     const imports = new Map<string, Map<string, string>>();
+    const groups: string[] = [];
     let count = 0;
 
-    const object = (tree: Tree): string => {
-      const entries = [...tree].map(([key, value]) => {
-        if (value instanceof Map) return `${json(key)}: ${object(value)}`;
+    const render = (node: Tree | Leaf): string => {
+      if (node instanceof Map) return node.size ? `{ ${[...node].map(([key, child]) => `${json(key)}: ${render(child)}`).join(", ")} }` : "{}";
 
-        const names = imports.get(value.file) ?? imports.set(value.file, new Map()).get(value.file)!;
-        const alias = names.get(value.name) ?? names.set(value.name, `t${count++}`).get(value.name)!;
-
-        return `${json(key)}: ${alias}`;
-      });
-
-      return entries.length ? `{ ${entries.join(", ")} }` : "{}";
+      const names = imports.get(node.file) ?? imports.set(node.file, new Map()).get(node.file)!;
+      return names.get(node.name) ?? names.set(node.name, `t${count++}`).get(node.name)!;
     };
+    
+    const exports = [...tree].map(([key, entry]) => {
+      if (!(entry instanceof Map)) return `${render(entry)} as ${json(key)}`;
 
-    const body = object(tree);
+      groups.push(`const g${groups.length} = ${render(entry)};`);
+      return `g${groups.length - 1} as ${json(key)}`;
+    });
 
     return [
       ...[...imports].map(([from, names]) => `import { ${[...names].map(([name, alias]) => `${name} as ${alias}`).join(", ")} } from ${json(importOf(file, from))};`),
-      `export default ${body};`,
-      "",
-    ].join("\n");
+      ...groups,
+      `export { ${exports.join(", ")} };`,
+    ];
   }
 
   table(group: E[], alias: (file: string) => string): string {
