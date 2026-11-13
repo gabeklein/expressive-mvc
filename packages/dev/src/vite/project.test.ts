@@ -64,12 +64,10 @@ describe("ensureBootstrap", () => {
 });
 
 describe("bootstrap", () => {
-  const boot = (render: (node: unknown, el: HTMLElement) => void) => {
+  const boot = (render: (node: unknown, el: HTMLElement) => void, hydrate = vi.fn()) => {
     const body = bootstrap("./app").replace(/^import .*$/gm, "");
-    new Function("render", "jsx", "App", body)(render, () => "app", undefined);
+    new Function("hydrate", "render", "jsx", "App", body)(hydrate, render, () => "app", undefined);
   };
-
-  const settle = () => new Promise(done => setTimeout(done, 10));
 
   it("will render into an empty root", () => {
     document.body.innerHTML = `<div id="root"></div>`;
@@ -86,56 +84,16 @@ describe("bootstrap", () => {
     expect(() => boot(vi.fn())).toThrow("Missing #root element");
   });
 
-  it("will keep a prerendered root until the app shows the same text", async () => {
-    document.head.innerHTML = `<meta charset="utf-8"><!--prerender--><title>Page</title><!--/prerender--><title>Shell</title><!--prerender--><style></style><!--/prerender--><style data-expressive="dom"></style>`;
-    document.body.innerHTML = `<div id="root" class="app"><p>Hi</p></div>`;
-    const prerendered = document.getElementById("root")!;
-    let target!: HTMLElement;
-
-    boot((_, el) => {
-      target = el;
-      el.textContent = "Loading";
-    });
-
-    await settle();
-    expect(document.getElementById("root")).toBe(prerendered);
-    expect(target.hidden).toBe(true);
-
-    target.innerHTML = "<p>Hi</p>";
-    await settle();
-
-    expect(document.querySelectorAll("#root")).toHaveLength(1);
-    expect(document.getElementById("root")).toBe(target);
-    expect(target.className).toBe("app");
-    expect(target.hidden).toBe(false);
-    expect(document.head.innerHTML).toBe(`<meta charset="utf-8"><title>Shell</title><style data-expressive="dom"></style>`);
-  });
-
-  it("will swap a prerendered root after a second regardless", () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  it("will hydrate a prerendered root and drop the prerendered head elements", () => {
+    document.head.innerHTML = `<meta charset="utf-8"><!--prerender--><title>Page</title><meta name="description"><!--/prerender--><title>Shell</title><style data-expressive="prerender"></style>`;
     document.body.innerHTML = `<div id="root"><p>Hi</p></div>`;
-    let target!: HTMLElement;
+    const render = vi.fn();
+    const hydrate = vi.fn();
 
-    boot((_, el) => {
-      target = el;
-      el.textContent = "Other";
-    });
+    boot(render, hydrate);
 
-    vi.advanceTimersByTime(1000);
-
-    expect(document.getElementById("root")).toBe(target);
-    vi.useRealTimers();
-  });
-
-  it("will swap at once when the app renders the same text in its first pass", () => {
-    document.body.innerHTML = `<div id="root"><p>Hi</p></div>`;
-    let target!: HTMLElement;
-
-    boot((_, el) => {
-      target = el;
-      el.innerHTML = "<p>Hi</p>";
-    });
-
-    expect(document.getElementById("root")).toBe(target);
+    expect(render).not.toHaveBeenCalled();
+    expect(hydrate).toHaveBeenCalledWith("app", document.getElementById("root"));
+    expect(document.head.innerHTML).toBe(`<meta charset="utf-8"><title>Shell</title><style data-expressive="prerender"></style>`);
   });
 });

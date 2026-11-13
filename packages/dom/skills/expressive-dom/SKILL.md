@@ -22,7 +22,7 @@ A tested browser renderer, pre-1.0 - not an LTS contract. Use it for application
 
 ```tsx
 import { Model, Component, pending } from '@expressive/mvc';
-import { Portal, render } from '@expressive/dom';
+import { Portal, hydrate, render } from '@expressive/dom';
 ```
 
 ## Render
@@ -351,7 +351,11 @@ const { html, css } = await renderToString(<App />);
 - Portals and event handlers render nothing. `value`, `checked` and `selected` become attributes; textarea `value` becomes its text.
 - Numbers in `css` take `px` from a fixed table of unitless properties instead of the CSSOM, and values are not normalized - rule text can differ from the browser's while class names match.
 
-There is no hydration: mounting with `render()` replaces the markup.
+`hydrate(node, container)` mounts over that markup instead of replacing it: nodes are adopted in place, and the returned unmount works like `render()`'s.
+
+- Text the parser merged is split back; markup that differs is replaced where it differs, and leftovers are removed.
+- A subtree that suspends keeps its server markup - no fallback - and is adopted once it renders.
+- The page's rules come from `css` until the client emits its own - keep that `<style>`; their class names match.
 
 ## Hot reload (Vite)
 
@@ -368,4 +372,4 @@ A top-level function component (`function View()`, `const View = () => …`, Pas
 
 ## Boundaries
 
-The renderer targets the browser, with `renderToString` for servers: no native target, streaming, or hydration. It has no general hook API, memo wrapper, synthetic events, or devtools ownership. Build-time expressive-jsx extraction is not included.
+The renderer targets the browser, with `renderToString` for servers: no native target or streaming. It has no general hook API, memo wrapper, synthetic events, or devtools ownership. Build-time expressive-jsx extraction is not included.

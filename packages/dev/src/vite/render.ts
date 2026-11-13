@@ -44,7 +44,7 @@ export async function launch(root: string): Promise<Renderer> {
       if (!ROOT.test(shell)) throw new Error("The shell has no empty #root element.");
 
       const { html, css, head, path: at } = await page(path);
-      const style = mark(css && `<style>${css}</style>`);
+      const style = css && `<style data-expressive="prerender">${css}</style>`;
 
       return {
         path: at,

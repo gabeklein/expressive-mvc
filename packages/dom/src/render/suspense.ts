@@ -1,5 +1,6 @@
 import { fragment } from './commits';
 import { move, moveRange, range } from './fiber';
+import { keep } from './hydrate';
 import type { Boundary, Fiber } from './fiber';
 import { unmountFiber } from './mount';
 import { reconcile } from './reconcile';
@@ -124,14 +125,17 @@ function suspend(fiber: Fiber, thrown: unknown, passive: boolean, empty: boolean
   const boundary = fiber.boundary;
 
   if (isThenable(thrown)) {
-    if (!boundary) throw thrown;
+    const kept = !fiber.children.length && keep(fiber.start, fiber.end);
+
+    if (kept) fiber.dehydrated = true;
+    else if (!boundary) throw thrown;
     if (passive && empty && depth > 1) {
       if (holding?.thrown !== thrown) holding = { thrown };
       throw thrown;
     }
 
     holding = undefined;
-    if (!passive) wait(fiber, boundary);
+    if (!passive && !kept) wait(fiber, boundary!);
 
     const scope = fiber.scope!;
     let held = scope.holds;

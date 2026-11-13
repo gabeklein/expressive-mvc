@@ -3,6 +3,7 @@ import { Component, Context } from '@expressive/mvc';
 import type { Key, Node as RenderNode } from '../node/vnode';
 import type { Appearance, Claim } from '../style/claim';
 import type { Scope } from './adapter';
+import { adoptRange } from './hydrate';
 
 type Container = Element | DocumentFragment;
 
@@ -55,14 +56,11 @@ interface Fiber {
   appearance?: Appearance;
   consumed?: boolean;
   claimed?: Claim;
+  dehydrated?: boolean;
 }
 
 function range(kind: Kind, parent: globalThis.Node, before: globalThis.Node | null, context: Context): Fiber {
-  const start = document.createComment(kind);
-  const end = document.createComment(`/${kind}`);
-
-  parent.insertBefore(start, before);
-  parent.insertBefore(end, before);
+  const [start, end] = adoptRange(parent, before, kind);
 
   return { kind, context, start, end, children: [] };
 }
