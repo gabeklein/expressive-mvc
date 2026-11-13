@@ -46,8 +46,7 @@ function mount(value: RenderNode, parent: globalThis.Node, before: globalThis.No
   if (value.type === Fragment) return mountFragment(value, parent, before, context, boundary, appearance);
   if (value.type === PORTAL) return mountPortal(value, parent, before, context, boundary, appearance);
   if (typeof value.type == 'string') return mountElement(value, parent, before, context, boundary, appearance);
-  if (typeof value.type != 'function')
-    throw new Error(`Cannot render element type ${String(value.type)}.`);
+  if (typeof value.type != 'function') throw unrenderable(value.type, true);
 
   if (value.type === Component || value.type.prototype instanceof Component)
     return mountOwnedComponent(value, parent, before, context, boundary, appearance);
@@ -101,13 +100,14 @@ function unmountFiber(fiber: Fiber) {
   removeRange(fiber.start, fiber.end);
 }
 
-function unrenderable(value: unknown) {
+function unrenderable(value: unknown, type?: boolean) {
   const owner = rendering ? ` in ${nameOf(rendering.type)}` : '';
   let what: string;
   let hint = '';
 
   if (typeof value == 'function') what = `function ${nameOf(value)}`;
   else if (typeof value != 'object') what = String(value);
+  else if (isVNode(value)) what = 'an element';
   else {
     const type = Object.getPrototypeOf(value)?.constructor;
 
@@ -119,7 +119,7 @@ function unrenderable(value: unknown) {
     }
   }
 
-  return new TypeError(`Cannot render ${what}${owner}.${hint}`);
+  return new TypeError(type ? `Cannot use ${what} as an element type${owner}.` : `Cannot render ${what}${owner}.${hint}`);
 }
 
 function nameOf(type: unknown) {

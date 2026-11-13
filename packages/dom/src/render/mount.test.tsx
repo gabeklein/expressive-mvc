@@ -50,7 +50,8 @@ describe('mount', () => {
 
     expect(() => render({} as never, root)).toThrow('Cannot render plain object.');
     expect(() => render(Symbol('loose') as never, root)).toThrow('Cannot render Symbol(loose).');
-    expect(() => render(vnode(Symbol('unknown'), {}), root)).toThrow('Cannot render element type Symbol(unknown).');
+    expect(() => render(vnode(Symbol('unknown'), {}), root)).toThrow('Cannot use Symbol(unknown) as an element type.');
+    expect(() => render(vnode(<div /> as never, {}), root)).toThrow('Cannot use an element as an element type.');
     expect(root.textContent).toBe('');
   });
 
