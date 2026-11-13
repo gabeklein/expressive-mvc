@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, sep } from "node:path";
 
+import { segmentOf } from "@expressive/rpc/vite";
+
 import { importRel } from "./project";
 
 const ROUTE_EXT = new Set([".tsx", ".jsx", ".ts", ".js"]);
@@ -143,25 +145,17 @@ interface Tag {
   label: string;
 }
 
+/** A page's file or folder name as its route segment - read as `api/`'s are, by `@expressive/rpc`'s `segmentOf`. */
 export function classify(raw: string, bareIsRoute: boolean): Tag | null {
   if (raw === "index") return { kind: "index", segment: "", label: "" };
+  if (!bareIsRoute && !/^[[(]/.test(raw)) return null;
 
-  const paren = /^\((.+)\)$/.exec(raw);
-  if (paren)
-    return { kind: "static", segment: paren[1], label: pascal(paren[1]) };
+  const segment = segmentOf(raw);
 
-  if (raw === "[...]")
-    return { kind: "splat", segment: "*", label: "Catchall" };
+  if (segment === "*") return { kind: "splat", segment, label: "Catchall" };
+  if (segment.startsWith(":")) return { kind: "param", segment, label: pascal(segment.slice(1)) };
 
-  const square = /^\[(.+)\]$/.exec(raw);
-  if (square)
-    return {
-      kind: "param",
-      segment: ":" + square[1],
-      label: pascal(square[1]),
-    };
-
-  return bareIsRoute ? { kind: "static", segment: raw, label: pascal(raw) } : null;
+  return { kind: "static", segment, label: pascal(segment) };
 }
 
 function assignAliases(node: RouteNode, used: Set<string>): void {

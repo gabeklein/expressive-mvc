@@ -1,14 +1,15 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join, relative, resolve as resolvePath } from "node:path";
+import { basename, extname, join, relative, resolve as resolvePath } from "node:path";
 import type { Plugin, RunnableDevEnvironment } from "vite";
 
-import type { Endpoint, Seats } from "../call";
+import type { Node } from "../http/tree";
+import { METHODS } from "../segments";
 import { toNode } from "../http/node";
 import { guardScript } from "./guard";
-import { Manifest, locate, type Exposed, type Located } from "./manifest";
-import { scanModule } from "./scan";
+import { INDEX, Manifest, SCRIPT, isAddress, isDynamic, locate, pathOf, type Exposed, type Located, type Route } from "./manifest";
+import { moduleOf, scanModule } from "./scan";
 
 export interface Options {
   dir?: string;
@@ -21,6 +22,11 @@ export interface Options {
   entry?: string;
   /** Bindings the entry's `fetch` gets as `env` in dev - say, wrangler's `getPlatformProxy().env`. */
   env?: () => object | Promise<object>;
+  /**
+   * The path `dir` is served under: with `"/api"`, `api/todos.ts` answers at `/api/todos`, and the
+   * client's calls go there. Anything outside it is the entry's, or the assets'.
+   */
+  base?: string;
 }
 
 interface Entry {
@@ -30,7 +36,7 @@ interface Entry {
 type Resolve = (spec: string, importer: string) => Promise<string | undefined>;
 
 interface Runtime {
-  handler: typeof import("../http/call").handler;
+  router: typeof import("../http/tree").router;
   scoped: typeof import("../http/call").scoped;
   verify: typeof import("../call").verify;
 }
@@ -42,9 +48,8 @@ const RUNTIME = "\0@expressive/rpc/runtime";
 const CALLS = "@expressive/rpc/calls#dev";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const NEXT = "x-expressive-next";
-const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
 
-export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): Plugin {
+export function rpc({ dir = "api", opaque = true, entry, env, base = "" }: Options = {}): Plugin {
   let root = "";
   let folder = "";
   let main: string | undefined;
@@ -54,29 +59,44 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
   const located = (file: string) => locate(folder, file);
 
   async function scanned(at: Located, resolve: Resolve) {
-    const { calls, errors, gate, problems } = await scanModule(at.file, readFileSync(at.file, "utf8"), { resolve, read: file => readFileSync(file, "utf8") }, file => !!located(file));
+    const { calls, methods, errors, gate, problems } = await scanModule(at.file, readFileSync(at.file, "utf8"), { resolve, read: file => readFileSync(file, "utf8") }, file => !!located(file));
+    const param = [...at.pattern, at.leaf ?? ""].find(isDynamic);
 
+    if (methods.length && !isAddress(at)) {
+      const name = basename(at.file).replace(SCRIPT, "");
+      const instead = at.module ? `(${name})${extname(at.file)} or ${name}/(index)${extname(at.file)}` : `(index)${extname(at.file)}`;
+      problems.push(`${methods.join(", ")} would make this a route, and only [name], [...] and (name) modules are - move ${methods.length > 1 ? "them" : "it"} to ${instead}.`);
+    }
+    if (calls.length && param) problems.push(`Calls answer at their folder's path, which the client has no ${param} to fill - export them from a static folder, or answer here with GET, POST...`);
     if (problems.length) throw new Error(`${relative(root, at.file)}: ${problems.join(" ")}`);
 
-    return { calls, errors, gate };
+    return { calls, methods, errors, gate };
   }
 
-  async function gateAt(pattern: string[], resolve: Resolve): Promise<Located | undefined> {
-    const file = INDEX.map(name => join(folder, ...pattern, name)).find(existsSync);
-    const at = file && located(file);
+  /** The folder's gates, and its route modules - those exporting `GET`, `POST`... */
+  async function survey(resolve: Resolve): Promise<{ gates: Located[]; routes: Route[] }> {
+    const scripts = existsSync(folder)
+      ? readdirSync(folder, { recursive: true, withFileTypes: true }).filter(item => item.isFile()).map(item => located(join(item.parentPath, item.name)))
+      : [];
+    const gates: Located[] = [];
+    const routes: Route[] = [];
 
-    if (at && (await scanned(at, resolve)).gate) return at;
-  }
+    for (const at of scripts) {
+      if (!at) continue;
 
-  async function gates(resolve: Resolve): Promise<Located[]> {
-    const patterns = new Map<string, string[]>();
+      const source = readFileSync(at.file, "utf8");
+      const exports = [...moduleOf(at.file, source).exports.keys()];
+      const index = INDEX.test(basename(at.file));
 
-    for (const { pattern } of manifest.modules.values())
-      for (let i = 0; i <= pattern.length; i++) patterns.set(pattern.slice(0, i).join("/"), pattern.slice(0, i));
+      if (!(index && exports.includes("default")) && !exports.some(name => METHODS.includes(name))) continue;
 
-    const found = await Promise.all([...patterns.values()].map(pattern => gateAt(pattern, resolve)));
+      const { gate, methods } = await scanned(at, resolve);
 
-    return found.filter(gate => gate !== undefined);
+      if (gate) gates.push(at);
+      if (methods.length) routes.push({ ...at, methods });
+    }
+
+    return { gates, routes };
   }
 
   return {
@@ -151,7 +171,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
         return `import app from ${from};\nimport { scoped } from "@expressive/rpc/http";\n\nexport * from ${from};\nexport default scoped(app);\n`;
       }
       if (id === ENTRY) return `import { handle } from "@expressive/rpc/calls";\n\nexport default { async fetch(request, env) { return (await handle(request)) ?? env?.ASSETS?.fetch(request) ?? new Response("Not found.", { status: 404 }); } };\n`;
-      if (id === RUNTIME) return `export { handler, scoped } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
+      if (id === RUNTIME) return `export { router, scoped } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
       const at = located(id.split("?")[0]);
@@ -162,7 +182,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
       manifest.modules.set(at.file, exposed);
 
-      return manifest.stub(exposed, located);
+      return manifest.stub(exposed, located, { at: base.replace(/\/+$/, "") + pathOf(exposed) });
     },
 
     async transform(code, id) {
@@ -170,7 +190,8 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
       if (this.environment.name === ENV && this.environment.mode === "build" && code.includes(CALLS)) {
         const resolve: Resolve = async (spec, importer) => (await this.resolve(spec, importer, { skipSelf: true }))?.id;
-        return { code: manifest.calls(await gates(resolve)), map: null };
+        const { gates, routes } = await survey(resolve);
+        return { code: manifest.tree(gates, routes, { base }), map: null };
       }
 
       const problem = this.environment.config.consumer === "client" && (await guardScript(code, file));
@@ -185,35 +206,36 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
       let installed: unknown;
 
       const runtime = async (): Promise<Runtime> => {
-        const { handler, install, scoped, verify } = await runner.import(RUNTIME);
+        const { router, install, scoped, verify } = await runner.import(RUNTIME);
 
         if (installed !== install) {
           installed = install;
           install();
         }
 
-        return { handler, scoped, verify };
+        return { router, scoped, verify };
       };
 
-      const endpoints = ({ verify }: Runtime): Endpoint[] =>
-        manifest.byPattern().map(group => ({
-          pattern: group[0].pattern,
-          exports: () => manifest.exports(group, file => runner.import(file), (file, exports) => verify(relative(root, file), exports)),
-        }));
+      const tree = async ({ verify }: Runtime): Promise<Node> => {
+        const { gates, routes } = await survey(resolve);
 
-      const seats: Seats = async pattern => {
-        const gate = await gateAt(pattern, resolve);
-        return gate && (await runner.import(gate.file)).default;
+        return manifest.branches<any>(gates, routes, {
+          calls: group => () => manifest.exports(group, file => runner.import(file), (file, exports) => verify(relative(root, file), exports)),
+          gate: gate => async () => (await runner.import(gate.file)).default,
+          route: route => () => runner.import(route.file),
+        });
       };
 
       const handle = async (request: Request) => {
         const loaded = await runtime();
-        return loaded.handler(endpoints(loaded), { dev: true, seats })(request);
+        return loaded.router(() => tree(loaded), { dev: true, base })(request);
       };
 
-      Object.assign(globalThis, { [Symbol.for(CALLS)]: handle });
+      const calls = { handle };
+
+      Object.assign(globalThis, { [Symbol.for(CALLS)]: calls });
       server.httpServer?.once("close", () => {
-        if (Reflect.get(globalThis, Symbol.for(CALLS)) === handle) Reflect.deleteProperty(globalThis, Symbol.for(CALLS));
+        if (Reflect.get(globalThis, Symbol.for(CALLS)) === calls) Reflect.deleteProperty(globalThis, Symbol.for(CALLS));
       });
 
       if (!main) return void server.middlewares.use(toNode(handle));

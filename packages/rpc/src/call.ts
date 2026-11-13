@@ -1,4 +1,7 @@
 import { within, type Seat } from "./context";
+import { rank } from "./segments";
+
+export { rank };
 
 export interface Exports {
   calls: Record<string, unknown>;
@@ -35,7 +38,6 @@ function match(pattern: string[], at: string[]): string[] | undefined {
   return segments;
 }
 
-const rank = (part: string) => (part === "*" ? 0 : part.startsWith(":") ? 1 : 2);
 const specificity = (pattern: string[]) => pattern.map(rank).join("");
 
 export function resolve<E extends Exports>(endpoints: Endpoint<E>[], at: string[]): Match<E> | undefined {

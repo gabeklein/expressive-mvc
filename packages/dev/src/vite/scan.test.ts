@@ -36,6 +36,12 @@ describe("remote scan", () => {
     });
   });
 
+  it("will refuse a request method, which only rpc's api/ folder routes", async () => {
+    expect((await scan(`export async function GET() { return new Response(); }`)).problems).toEqual([
+      "GET is a request method - a remote module's exports are calls; routes belong to @expressive/rpc's api/ folder.",
+    ]);
+  });
+
   it("will take a default subclass as the seat, however exported", async () => {
     expect((await scan(`${MVC} export default class Tally extends Model {}`)).seat?.name).toBe("Tally");
     expect((await scan(`${MVC} class A extends Model {} export { A as default }`)).seat?.name).toBe("A");

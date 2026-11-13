@@ -4,7 +4,7 @@ import { get, Model } from "@expressive/mvc";
 import { headersOf, install, within } from "./context";
 import { Cookies } from "./cookies";
 
-beforeAll(install);
+beforeAll(() => install());
 
 class Prefs extends Cookies {
   static options = { session: { maxAge: 60.5, domain: "example.com", sameSite: "Strict" as const, partitioned: true }, theme: { httpOnly: false, secure: false, path: "/app" } };

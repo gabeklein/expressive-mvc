@@ -1,3 +1,4 @@
 export * from "./client";
-export { Current } from "./context";
+export { Current, type Params } from "./context";
 export { Cookies, type CookieOptions } from "./cookies";
+export type { Method } from "./http/tree";

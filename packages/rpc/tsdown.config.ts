@@ -14,6 +14,7 @@ export default defineConfig({
     'index.client': 'src/client.ts',
     calls: 'src/calls.ts',
     http: 'src/http.ts',
+    node: 'src/node.ts',
     protocol: 'src/protocol.ts',
     vite: 'src/vite/index.ts'
   },

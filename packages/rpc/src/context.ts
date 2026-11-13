@@ -28,15 +28,21 @@ interface Frame {
   request: Request;
   layer: Layer;
   held: Set<Entry>;
+  params: Params;
 }
+
+/** A route's `[param]` values by name, and what a `[...]` matched as `"*"`. */
+export type Params = Readonly<Record<string, string>>;
 
 type Owned = Model.Type & { ttl?: number };
 
 export type Seat = Owned & { key?(): string | number | undefined };
 
-const TTL = 300;
+/** Seconds a seat outlives its last call unless its class sets `static ttl`; `install()` sets it. */
+let TTL = 0;
 
 const store = new AsyncLocalStorage<Frame>();
+const responses = new WeakMap<Response, Promise<void>>();
 const SEATED = new WeakSet<Owned>();
 let top: Layer | undefined;
 let built: ((instance: Model) => void) | undefined;
@@ -146,10 +152,18 @@ function release(entry: Entry) {
   entry.timer.unref();
 }
 
-export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | undefined)[] = []): Promise<Awaited<T>> {
-  const frame: Frame = { request, layer: root(), held: new Set() };
+export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | undefined)[] = [], params: Params = {}): Promise<Awaited<T>> {
+  const frame: Frame = { request, layer: root(), held: new Set(), params };
 
   return await store.run(frame, async (): Promise<Awaited<T>> => {
+    let active = false;
+    let deferred = false;
+    const cleanup = () => {
+      if (active) frame.layer.calls--;
+      frame.held.forEach(release);
+      prune(frame.layer);
+    };
+
     try {
       for (const [i, segment] of [undefined, ...segments].entries()) {
         frame.layer = enter(frame.layer, segment, seats[i]);
@@ -157,17 +171,24 @@ export async function within<T>(request: Request, segments: string[], run: () =>
       }
 
       frame.layer.calls++;
+      active = true;
+      const result = await run();
+      const done = result instanceof Response && responses.get(result);
 
-      try {
-        return await run();
-      } finally {
-        frame.layer.calls--;
+      if (done) {
+        deferred = true;
+        void done.then(cleanup);
       }
+
+      return result;
     } finally {
-      frame.held.forEach(release);
-      prune(frame.layer);
+      if (!deferred) cleanup();
     }
   });
+}
+
+export function track(response: Response, done: Promise<void>) {
+  responses.set(response, done);
 }
 
 function create(Type: Owned, layer: Layer): Entry {
@@ -235,7 +256,13 @@ export function onBuild(hook: (instance: Model) => void) {
   built = hook;
 }
 
-export function install() {
+/**
+ * Route server `get()` through the call's layer. `ttl` is how long a seat outlives its last call by
+ * default: rpc's gates derive from each request, so 0 - dev's seats hold state, so it passes 300.
+ */
+export function install({ ttl = 0 }: { ttl?: number } = {}) {
+  TTL = ttl;
+
   const previous = resolver((Type, compute) => {
     if (!Type && !store.getStore()) return previous(Type, compute);
     return compute(scope(frame().layer));
@@ -303,6 +330,14 @@ export class Current extends Model {
     return new URL(this.request.url);
   }
   set url(_: URL) {
+    readOnly();
+  }
+
+  /** The `[param]` values of the route in progress - `{}` for a call, whose folders are static. */
+  get params(): Params {
+    return frame().params;
+  }
+  set params(_: Params) {
     readOnly();
   }
 

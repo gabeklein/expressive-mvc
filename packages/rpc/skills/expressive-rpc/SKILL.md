@@ -1,6 +1,6 @@
 ---
 name: expressive-rpc
-description: Typed server calls for Vite apps (@expressive/rpc) - modules in api/ run on the server, the client imports them as stubs. Use when adding or debugging server calls - module rules, values, http errors, gates and Current, client configure, server entry, Worker/Node deploy.
+description: Typed server calls for Vite apps (@expressive/rpc) - modules in api/ run on the server, the client imports them as stubs, and the folder is the server's router. Use when adding or debugging server calls or routes - module rules, GET/POST route modules, [param] folders, values, http errors, gates and Current, client configure, base, server entry, Worker/Node deploy.
 ---
 
 # @expressive/rpc
@@ -12,7 +12,7 @@ Typed server calls for any Vite client build. Modules in one folder (`api/` by d
 import { defineConfig } from "vite";
 import rpc from "@expressive/rpc/vite";
 
-export default defineConfig({ plugins: [rpc()] });   // rpc({ dir: "api", opaque: true })
+export default defineConfig({ plugins: [rpc()] });   // rpc({ dir: "api", opaque: true, base: "" })
 ```
 
 ```ts
@@ -42,6 +42,7 @@ try { await done(id) } catch (error) { if (error instanceof ProOnly) upsell() }
 A module under `dir` may export:
 
 - `async` functions - the calls.
+- Functions named for a request method - `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` - which make it a [route](#routes), answered on the server only. Only a module named `[name]`, `[...]` or `(name)` may export them.
 - `Error` subclasses - rebuilt on the client when thrown, so `instanceof` holds; message and own fields cross.
 - In an `index.ts` only, a default `Model` subclass - the folder's gate.
 
@@ -53,7 +54,58 @@ Only calls the client build imports are served. Helpers belong outside `dir` (`s
 
 ## Addressing
 
-Folders are layers, static names only (`[param]` folders throw). A module posts to its folder's path - `api/todos.ts` → `POST /`, `api/admin/users.ts` → `POST /admin` - with `x-expressive-call: <module>:<export>` (an index's export alone). Ids are readable in dev and salted hashes in build, so a client from an older deploy fails instead of calling changed code. `opaque: false` keeps readable ids for clients that outlive a deploy (installed PWAs, native shells).
+The folder is the server's router: each folder is a path segment, its `index.ts` gate covers everything under it, and each module is a leaf. A call's module posts to its folder's path - `api/todos.ts` → `POST /`, `api/admin/users.ts` → `POST /admin` - with `x-expressive-call: <module>:<export>` (an index's export alone). Ids are readable in dev and salted hashes in build, so a client from an older deploy fails instead of calling changed code. `opaque: false` keeps readable ids for clients that outlive a deploy (installed PWAs, native shells).
+
+Names are path segments as `@expressive/dev`'s pages read them: `[id]` takes one segment as the param `id`, `[...]` takes the rest of the path (as the param `"*"`, none included, and only as a file), and `(name)` is `name` taken literally. A path matches a static name before a `[param]`, and a `[param]` before a `[...]`, backing off a branch that ends short. Calls live in static folders - the client has no value to fill a `[param]` with, so a call under one fails the build; pass it as an argument, or answer that path with a route.
+
+`rpc({ base: "/api" })` serves the folder under `/api` - `api/todos.ts` posts to `/api`, a route at `api/files/[id].ts` answers `/api/files/7` - and the client's stubs send there. Anything outside the base is the entry's or the assets'.
+
+## Routes
+
+A module exporting functions named for request methods is a route at its path. Its name says so: only `[name]`, `[...]` and `(name)` modules are addresses, so a plain-named module - a helper, or one of calls - never answers a URL of its own, and exporting `GET` from one fails the build.
+
+- `api/jobs/[id]/(events).ts` answers `/jobs/7/events`; `api/files/[id].ts` answers `/files/7`.
+- `api/files/(index).ts` answers `/files` itself - `index.ts` is the folder's gate, never a route.
+- `api/files/[...].ts` answers everything under `/files` nothing nearer claims, `/files` too unless `(index).ts` does. The rest is the param `"*"`, `""` at the folder.
+- Each URL has one owner: `(files).ts` beside a `files/` folder fails the build - move it in, as `files/(index).ts`. So a route runs behind exactly the gates of the folders on its path.
+
+```ts
+// api/account/jobs/[id]/(events).ts
+import Account from "../../index";
+
+export async function GET(request: Request, { id }: { id: string }) {
+  const job = jobs.find(id);
+  if (job?.owner !== Account.get().id) return new Response("Unknown job.", { status: 404 });
+  return new Response(job.events(), { headers: { "content-type": "text/event-stream" } });
+}
+```
+
+- Each takes the request and the route's params, and returns a `Response` - streamed, binary or multipart, as the body allows.
+- It runs behind the gates of the folders along its path, as a call there would: each is seated and its `new()` awaited, so `Account.get()` works inside. `(events).ts` runs behind its folder's gates; `files/(index).ts` behind `files/`'s as well. A gate keyed by a param reads it from `Current.get().params`.
+- A refusal, or any error, answers as a call's would: its status and `{ error, message }` as JSON. A gate that should answer differently - 404 rather than 401, say - throws that from its own `key()` or `new()`.
+- A method the module does not export answers 405 with `Allow`; `HEAD` falls back to `GET`.
+- What `Cookies` and `Current.setHeader` set joins the response.
+- The client's stub never has them: a route module is the server's, served whether or not the client imports it. A module may hold calls and methods both, in a static folder.
+- The `[param]`s of one folder need one name, or the build fails.
+- A method is usually a function written in place. One made by a call - `fromNode(app)`, Hono's `app.fetch` - is checked when it runs; a literal, object or class fails the build.
+
+### Node handlers
+
+`fromNode(handler)` from `@expressive/rpc/node` makes an Express app, Connect middleware or bare `(req, res, next)` a route's method - for code already written against Node:
+
+```ts
+// api/admin/email/[...].ts
+import express from "express";
+import { fromNode } from "@expressive/rpc/node";
+import { emailRoutes } from "../../email/routes"; // an express.Router()
+
+export const GET = fromNode(express().use(emailRoutes));
+```
+
+- It sees the path below the route - under `[...].ts` the rest, `/attorney/7/scheduled` - with `req.originalUrl` the whole path. Mount a `Router()` in an app as above: Express adds `res.send`, `res.json`... only inside one.
+- It runs in the request's scope, behind the folder's gates: `Staff.get()`, `Current` and `Cookies` work in its handlers, and what they set joins the response.
+- What it writes streams out as written. `next()` answers 404; `next(error)` and a throw fail as a route's would.
+- Node only - `node:http` is not in a Worker. A method taking three parameters that returns nothing fails with a hint to wrap it.
 
 ## Values
 
@@ -81,7 +133,7 @@ export default class Session extends Model {
 }
 ```
 
-Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call.
+Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate runs per request: its instance ends with the last call holding it. `static ttl = 60` keeps it per key that many seconds after - an optimization, so derive its state from the request, never from an earlier call - and `Session.get().set(null)` ends a cached one at once (say, in `logout()`).
 
 ### Cookies
 
@@ -143,9 +195,19 @@ configure({
 
 `client(options)` builds a separate one. Without a `location`, a relative `base` throws - pass an absolute one.
 
+`withOptions` applies a `signal` or a `timeout` (ms) to the calls a function starts - synchronously, so not one made after an `await` inside it:
+
+```ts
+import { withOptions } from "@expressive/rpc";
+
+const todos = await withOptions({ signal: controller.signal, timeout: 10_000 }, () => list());
+```
+
+An abort rejects with the signal's reason; a timeout with a `TimeoutError`. Nested, the inner options extend the outer.
+
 ## Server entry
 
-To put routes beside the calls - cookies, uploads, downloads, streams, a `scheduled` handler or Durable Object classes - write the server yourself and name it:
+For what lives outside the folder - a path beside the base, a `scheduled` handler, Durable Object classes, a fallback to `ASSETS` - write the server yourself and name it:
 
 ```ts
 // vite.config.ts
@@ -170,16 +232,16 @@ export default {
 export { Room } from "./room";   // a Durable Object, say
 ```
 
-- `handle(request)` answers a call and gives anything else `undefined`.
+- `handle(request)` answers a call or a [route](#routes) of the folder and gives anything else `undefined`. A route that needs a folder's gates belongs in the folder.
 - The entry and the calls share one copy of every module, in dev and in the build.
-- The entry's `fetch` runs in the request's scope, as a call does: `Current.get()` is the request and a `Cookies` subclass reads and sets cookies in any route, what it sets joining the route's response. A folder's gate is the calls' - a route checks its own access.
+- The entry's `fetch` runs in the request's scope, as a call does: `Current.get()` is the request and a `Cookies` subclass reads and sets cookies in any route, what it sets joining the route's response.
 - `vite build` bundles the entry as `dist/server/index.js`, its other exports included.
 - In dev the entry's `fetch` runs on every request before Vite, with `ctx.waitUntil` logging a rejection. `env` is `rpc({ env })`'s result (say, wrangler's `getPlatformProxy().env`) plus an `ASSETS` that hands the request back to Vite.
 - `@expressive/rpc/calls` is the server's: a client import fails the build, and a call to `handle` outside a server the plugin builds or runs throws. One rpc dev server per process serves it.
 
 ## Build and deploy
 
-`vite build` emits `dist/client` and `dist/server/index.js`, a self-contained bundle holding only the calls the client imported - the app's entry, or by default `export default { fetch(request, env) }`, which hands non-call requests to `env.ASSETS` when bound, else 404. `cloudflare:` imports stay external.
+`vite build` emits `dist/client` and `dist/server/index.js`, a self-contained bundle holding the calls the client imported and every route module - the app's entry, or by default `export default { fetch(request, env) }`, which hands non-call requests to `env.ASSETS` when bound, else 404. `cloudflare:` imports stay external.
 
 - **Cloudflare Workers:** `main: "dist/server/index.js"`, `compatibility_flags: ["nodejs_compat"]` (required), `no_bundle: true`, `assets: { directory: "dist/client", binding: "ASSETS", run_worker_first: true }`.
 - **Node:** `toNode(server.fetch)` from `@expressive/rpc/http` is a `(req, res, next?)` handler - `next` gets what the server answers `undefined`; serve static files yourself.
@@ -197,7 +259,7 @@ Use `vite build` or `createBuilder().buildApp()` - the legacy `build()` API buil
 
 ## Limits
 
-- Binary goes base64 inside the JSON body - fine for documents and images, not for large uploads; take those through a [server entry](#server-entry). No `Blob`, `File` or streams as arguments.
-- Worker bindings (`env`) and `ctx` do not reach calls - import `env` and `waitUntil` from `cloudflare:workers`, or handle the request in the entry.
+- Binary goes base64 inside the JSON body - fine for documents and images, not for large uploads. No `Blob`, `File` or streams as arguments; take them through a [route](#routes).
+- Worker bindings (`env`) and `ctx` do not reach calls or routes - import `env` and `waitUntil` from `cloudflare:workers`, or handle the request in the entry.
 - Module state lives per isolate or process - keep shared state in a store.
 - An error class extending a package's export (`extends ZodError`) is not followed; the server checks it is an `Error` at startup.

@@ -309,9 +309,14 @@ const ENTRY = {
     export async function tick() { return bump(); }
     export async function dark() { Prefs.set({ theme: "dark" }); }
   `,
+  "api/admin/(whoami).ts": `
+    import Admin from "./index";
+    export async function GET() { return new Response(String(Admin.get() instanceof Admin)); }
+  `,
   "server.ts": `
     import { Current } from "@expressive/rpc";
     import { handle } from "@expressive/rpc/calls";
+    import Admin from "./api/admin";
     import { count } from "./lib/count";
     import { Prefs } from "./lib/prefs";
 
@@ -482,6 +487,12 @@ describe("build", () => {
     expect(await post("/", "ping")).toEqual({ status: 200, body: { value: "pong" } });
   });
 
+  it("will build a server with no folder of calls", async () => {
+    const { server } = await build(project(), { dir: "none" });
+
+    expect((await server.fetch(new Request("http://localhost/"))).status).toBe(404);
+  });
+
   it("will bundle the entry as the server, sharing its modules with the calls", async () => {
     const root = project(ENTRY);
     const { server, post } = await build(root, { entry: "server.ts", opaque: false });
@@ -498,6 +509,12 @@ describe("build", () => {
     expect(await theme.json()).toEqual({ was: "dark", at: "/theme" });
     expect(theme.headers.getSetCookie()).toEqual(["theme=light; Path=/; HttpOnly; SameSite=Lax"]);
     expect(bundled.Room).toBeTypeOf("function");
+
+    const admin = (token?: string) => server.fetch(new Request("http://localhost/admin/whoami", { headers: token ? { authorization: `Bearer ${token}` } : {} }));
+
+    expect(await (await admin("admin")).text()).toBe("true");
+    expect((await admin("ada")).status).toBe(403);
+    expect(await (await server.fetch(new Request("http://localhost/admin/nowhere"))).text()).toBe("Not here.");
     expect(code).toContain(`import("cloudflare:workers")`);
     expect(code).not.toMatch(/(?:from|import)\s*"@expressive\/rpc\/calls"/);
   });
@@ -573,6 +590,127 @@ describe("a folder beside the root", () => {
   });
 });
 
+const ROUTES = {
+  "api/admin/jobs/[id]/(events).ts": `
+    import { Current } from "@expressive/rpc";
+    import Admin from "../../index";
+    export async function GET(request: Request, { id }: { id: string }) {
+      return Response.json({ id, admin: Admin.get() instanceof Admin, at: Current.get().params, method: request.method });
+    }
+  `,
+  "api/files/[name].ts": `export function GET(_: Request, params: Record<string, string>) { return Response.json(params); }`,
+  "api/files/[...].ts": `export const DELETE = async (_: Request, params: Record<string, string>) => new Response(params["*"]);`,
+  "api/files/(index).ts": `export async function POST(request: Request) { return new Response(await request.text(), { status: 201 }); }`,
+};
+
+describe("routes", () => {
+  it("will apply a folder gate from index.tsx", async () => {
+    const root = project({
+      "api/admin/index.ts": "",
+      "api/admin/index.tsx": GATE(`token !== "Bearer admin"`, "Forbidden"),
+      "api/admin/(secret).ts": `export function GET() { return new Response("secret"); }`,
+    });
+    const { server } = await listen(root);
+    const url = new URL("/admin/secret", server.resolvedUrls!.local[0]);
+
+    expect((await fetch(url, { headers: { authorization: "Bearer a" } })).status).toBe(403);
+    expect(await (await fetch(url, { headers: { authorization: "Bearer admin" } })).text()).toBe("secret");
+
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc()], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const built = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+    const at = (token: string) => built.fetch(new Request("http://localhost/admin/secret", { headers: { authorization: `Bearer ${token}` } }));
+
+    expect((await at("a")).status).toBe(403);
+    expect(await (await at("admin")).text()).toBe("secret");
+  });
+
+  const send = (at: (path: string, init?: RequestInit) => Promise<Response>) => ({
+    events: (id: string, token?: string) => at(`/admin/jobs/${id}/events`, { headers: token ? { authorization: `Bearer ${token}` } : {} }),
+    named: (name: string, token = "a") => at(`/files/${name}`, { headers: { authorization: `Bearer ${token}` } }),
+    rest: (rest: string) => at(`/files/${rest}`, { method: "DELETE", headers: { authorization: "Bearer a" } }),
+    upload: (body: string) => at("/files", { method: "POST", body, headers: { authorization: "Bearer a" } }),
+  });
+
+  async function check(at: (path: string, init?: RequestInit) => Promise<Response>) {
+    const { events, named, rest, upload } = send(at);
+
+    expect(await (await events("7", "admin")).json()).toEqual({ id: "7", admin: true, at: { id: "7" }, method: "GET" });
+    expect((await events("7", "ada")).status).toBe(403);
+    expect((await events("7")).status).toBe(401);
+    expect(await (await named("a.pdf")).json()).toEqual({ name: "a.pdf" });
+    expect((await at("/files/a.pdf")).status).toBe(401);
+    expect(await (await rest("a/b")).text()).toBe("a/b");
+    expect((await rest("a.pdf")).status).toBe(405);
+    expect(await (await upload("bytes")).text()).toBe("bytes");
+  }
+
+  it("will answer a route module in dev behind its folders' gates, imported by the client or not", async () => {
+    const { server } = await listen(project(ROUTES));
+
+    await check((path, init) => fetch(new URL(path, server.resolvedUrls!.local[0]), init));
+  });
+
+  it("will build each route module into the server's tree", async () => {
+    const root = project(ROUTES);
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc()], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const server = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+
+    await check((path, init) => server.fetch(new Request(new URL(path, "http://localhost"), init)));
+  });
+
+  it("will serve the tree and send the client's calls under a base", async () => {
+    const root = project(ROUTES);
+    const { server, post } = await listen(root, { plugins: [rpc({ base: "/api/" })] });
+    const stub = (await server.transformRequest("/api/admin/stats.ts"))!.code;
+
+    expect(stub).toContain(`const at = "/api/admin";`);
+    expect(await post("/api/admin", "stats:stats", [], "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+    expect(await post("/admin", "stats:stats", [], "admin")).toMatchObject({ status: 404 });
+    expect(await (await fetch(new URL("/api/files/a.pdf", server.resolvedUrls!.local[0]), { headers: { authorization: "Bearer a" } })).json()).toEqual({ name: "a.pdf" });
+
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc({ base: "/api", opaque: false })], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const built = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+
+    expect(await (await built.fetch(new Request("http://localhost/api/files/a.pdf", { headers: { authorization: "Bearer a" } }))).json()).toEqual({ name: "a.pdf" });
+    expect((await built.fetch(new Request("http://localhost/files/a.pdf"))).status).toBe(404);
+  });
+
+  it("will keep a route's methods out of the client's stub", async () => {
+    const { server } = await listen(project({ ...ROUTES, "api/files/[name].ts": `export async function GET() { return new Response(); } export async function size() { return 1; }` }));
+
+    await expect(server.transformRequest("/api/files/[name].ts")).rejects.toThrow("Calls answer at their folder's path, which the client has no :name to fill");
+
+    const stub = (await server.transformRequest("/api/files/(index).ts"))!.code;
+
+    expect(stub).not.toContain("POST");
+  });
+
+  it("will throw for a method export that is not a function", async () => {
+    const { server } = await listen(project({ "api/(odd).ts": `export const GET = 1;` }));
+
+    await expect(server.transformRequest("/api/(odd).ts")).rejects.toThrow("GET is not a function - a route answers GET requests with one.");
+  });
+
+  it("will throw for a method export in a module whose name is not an address", async () => {
+    const { server } = await listen(project({
+      "api/files.ts": `export async function GET() { return new Response(); } export async function POST() { return new Response(); }`,
+      "api/admin/index.ts": `export async function GET() { return new Response(); }`,
+    }));
+
+    await expect(server.transformRequest("/api/files.ts")).rejects.toThrow("api/files.ts: GET, POST would make this a route, and only [name], [...] and (name) modules are - move them to (files).ts or files/(index).ts.");
+    await expect(server.transformRequest("/api/admin/index.ts")).rejects.toThrow("move it to (index).ts.");
+  });
+});
+
 describe("entry", () => {
   const get = (server: ViteDevServer, path: string) => fetch(new URL(path, server.resolvedUrls!.local[0]));
 
@@ -585,6 +723,16 @@ describe("entry", () => {
     expect(await post("/", "tally:tick")).toMatchObject({ status: 401 });
     expect(await (await get(server, "/count")).json()).toEqual({ count: 1, name: "dev" });
     expect(await (await get(server, "/")).text()).toContain(`<script type="module"`);
+  });
+
+  it("will run a route module behind its folder's gates, beside the entry's own routes", async () => {
+    const { server } = await listen(project(ENTRY), { plugins: [rpc({ entry: "server.ts" })] });
+    const admin = (token?: string) => fetch(new URL("/admin/whoami", server.resolvedUrls!.local[0]), { headers: token ? { authorization: `Bearer ${token}` } : {} });
+
+    expect(await (await admin("admin")).text()).toBe("true");
+    expect((await admin("ada")).status).toBe(403);
+    expect((await admin()).status).toBe(401);
+    expect(await (await get(server, "/admin/nowhere")).text()).toContain(`<script type="module"`);
   });
 
   it("will run the entry's routes in the request's scope, with what Cookies set on the response", async () => {

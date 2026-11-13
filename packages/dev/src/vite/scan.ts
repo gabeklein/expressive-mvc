@@ -55,7 +55,7 @@ export async function scanRemote(remote: Remote, source: string, sources: Source
     return !!other && (remote.folder + sep).startsWith(other.folder + sep);
   };
 
-  const { calls, errors, problems } = await scanModule(remote.file, source, sources, owned, {
+  const { calls, methods, errors, problems } = await scanModule(remote.file, source, sources, owned, {
     async claim(name) {
       const scan = await scanTwin(source, remote.file, sources, name);
 
@@ -74,6 +74,8 @@ export async function scanRemote(remote: Remote, source: string, sources: Source
       return scan.problems;
     },
   });
+
+  for (const name of methods) problems.push(`${name} is a request method - a remote module's exports are calls; routes belong to @expressive/rpc's api/ folder.`);
 
   return { calls, errors, pooled, seat, problems };
 }
