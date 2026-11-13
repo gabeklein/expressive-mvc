@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { locate, Manifest, type Exposed } from "./manifest";
+import type { Leaf, Tree } from "./trunk";
 
 const DIR = "/app/api";
 const at = (file: string) => locate(DIR, file);
@@ -151,5 +152,24 @@ describe("calls", () => {
     expect(entry).toContain(`const e1 = { calls: { "users:list": m2.list }, classes: {  } };\nverify("/admin", e1);`);
     expect(entry).toContain(`const gates = new Map([["", m1.default], ["admin", m3.default]]);`);
     expect(entry).toContain(`export const handle = handler([{ pattern: [], exports: async () => e0 }, { pattern: ["admin"], exports: async () => e1 }]`);
+  });
+});
+
+describe("trunk", () => {
+  it("will build the trunk's object from the stubs of the modules defining its leaves", () => {
+    const search = { file: "/app/api/claim/search.ts", name: "search" };
+    const tree = new Map<string, Tree | Leaf>([
+      ["claim", new Map([["search", search], ["create", { file: "/app/api/claim/search.ts", name: "create" }]])],
+      ["attorney", new Map([["search", { file: "/app/api/attorney/search.ts", name: "search" }]])],
+      ["find-all", search],
+      ["empty", new Map()],
+    ]);
+
+    expect(new Manifest().trunk("/app/api/trunk.ts", tree)).toBe([
+      `import { search as t0, create as t1 } from "./claim/search.ts";`,
+      `import { search as t2 } from "./attorney/search.ts";`,
+      `export default { "claim": { "search": t0, "create": t1 }, "attorney": { "search": t2 }, "find-all": t0, "empty": {} };`,
+      "",
+    ].join("\n"));
   });
 });

@@ -289,3 +289,50 @@ describe("extension", () => {
     expect(seen).toEqual([true, false]);
   });
 });
+
+describe("trunk leaves", () => {
+  const only = (source: string, names: string[], file?: string, others?: Record<string, string>) => {
+    const sources: Sources = { resolve: async spec => (spec.endsWith("base") ? "/app/api/base.ts" : undefined), read: () => `export class Base extends Error {}` };
+    return scanModule(file ?? "/app/api/todos.ts", source, sources, file => file.startsWith("/app/api/"), {}, new Set(names));
+  };
+
+  it("will take only the trunk's leaves as calls, leaving the rest unchecked on the server", async () => {
+    const found = await only(`${MVC}
+      import { helper } from "./helper";
+      export async function list() {}
+      export async function internal() {}
+      export function sync() {}
+      export const count = 1;
+      export enum Kind { A }
+      export { helper };
+      export * from "./more";
+      export { other } from "./other";
+      export class Store extends Model {}
+      export default async function () {}
+    `, ["list"]);
+
+    expect(found).toEqual({ calls: ["list"], errors: [], gate: false, problems: [] });
+  });
+
+  it("will still take every Error class, leaf or not, under its parent", async () => {
+    const found = await only(`${HTTP}
+      import { Base } from "./base";
+      export class Over extends HttpError {}
+      export class Late extends Base {}
+      export class Odd extends Undeclared {}
+    `, ["Over"]);
+
+    expect(found).toEqual({ calls: [], errors: [{ name: "Over", parent: { id: "http:HttpError" } }, { name: "Late", parent: { file: "/app/api/base.ts", name: "Base" } }], gate: false, problems: [] });
+  });
+
+  it("will still refuse a leaf the client could not call", async () => {
+    const { problems } = await only(`export function sync() {} export const count = 1; export async function fine() {}`, ["sync", "count"]);
+
+    expect(problems).toEqual(["sync() is not async - every call to it crosses the wire.", "count is neither an async function nor an Error subclass - the client could not use it."]);
+  });
+
+  it("will still take an index's default as its gate", async () => {
+    expect(await only(`${MVC} export default class Gate extends Model {} export { a } from "./a";`, [], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: true, problems: [] });
+    expect((await only(`export default 1;`, [], "/app/api/index.ts")).problems).toEqual(["An index's default is its folder's gate - a Model subclass whose static key() admits each call."]);
+  });
+});

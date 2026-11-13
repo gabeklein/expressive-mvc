@@ -3,6 +3,7 @@ import { dirname, relative, sep } from "node:path";
 
 import type { Exports } from "../call";
 import type { ErrorClass, Parent } from "./scan";
+import type { Tree } from "./trunk";
 
 export const SCRIPT = /\.[cm]?[jt]sx?$/;
 
@@ -88,6 +89,34 @@ export class Manifest<E extends Exposed = Exposed> {
         return `export const ${name} = define(${args.join(", ")});`;
       }),
       ...lines,
+      "",
+    ].join("\n");
+  }
+
+  /** The trunk as the client gets it: its object, each leaf imported from the stub of the module defining it. */
+  trunk(file: string, tree: Tree): string {
+    const json = JSON.stringify;
+    const imports = new Map<string, Map<string, string>>();
+    let count = 0;
+
+    const object = (tree: Tree): string => {
+      const entries = [...tree].map(([key, value]) => {
+        if (value instanceof Map) return `${json(key)}: ${object(value)}`;
+
+        const names = imports.get(value.file) ?? imports.set(value.file, new Map()).get(value.file)!;
+        const alias = names.get(value.name) ?? names.set(value.name, `t${count++}`).get(value.name)!;
+
+        return `${json(key)}: ${alias}`;
+      });
+
+      return entries.length ? `{ ${entries.join(", ")} }` : "{}";
+    };
+
+    const body = object(tree);
+
+    return [
+      ...[...imports].map(([from, names]) => `import { ${[...names].map(([name, alias]) => `${name} as ${alias}`).join(", ")} } from ${json(importOf(file, from))};`),
+      `export default ${body};`,
       "",
     ].join("\n");
   }

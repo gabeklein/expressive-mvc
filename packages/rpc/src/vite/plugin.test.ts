@@ -689,3 +689,117 @@ describe("entry", () => {
   });
 
 });
+
+describe("trunk", () => {
+  const TRUNK = {
+    "src/main.ts": `import api from "../api/trunk"; import type { Todo } from "../api/todos"; const todo: Todo | undefined = undefined; console.log(api, todo);`,
+    "api/trunk.ts": `
+      import { list, add, Over } from "./todos";
+      import { statistics } from "./admin";
+      export type * as todos from "./todos";
+      export default { todos: { list, add, errors: { Over } }, admin: { stats: statistics } };
+    `,
+    "api/todos.ts": APP["api/todos.ts"] + `
+      export type Todo = { title: string };
+      export const PAGE = 20;
+      export function page() { return PAGE; }
+      export async function internal() { return "secret"; }
+    `,
+    "api/admin/index.ts": APP["api/admin/index.ts"] + `\nexport { stats as statistics } from "./stats";`,
+  };
+
+  it("will serve the trunk as its object, each leaf from the stub of the module defining it", async () => {
+    const server = await serve(project(TRUNK));
+    const trunk = (await server.transformRequest("/api/trunk.ts"))!.code;
+    const todos = (await server.transformRequest("/api/todos.ts"))!.code;
+
+    expect(trunk).toMatch(/import \{ list as t0, add as t1, Over as t2 \} from "\/api\/todos\.ts";/);
+    expect(trunk).toMatch(/import \{ stats as t3 \} from "\/api\/admin\/stats\.ts";/);
+    expect(trunk.replace(/\s+/g, "")).toContain(`exportdefault{"todos":{"list":t0,"add":t1,"errors":{"Over":t2}},"admin":{"stats":t3}};`);
+    expect(todos).toContain('call(at, "todos:list", args)');
+    expect(todos).toContain('call(at, "todos:add", args)');
+    expect(todos).not.toContain("internal");
+    expect(todos).not.toContain("PAGE");
+    expect(todos).toContain('define("/#todos:Late", "Late", "/#errors:Billing")');
+  });
+
+  it("will answer only the trunk's leaves, each through the gates of the folder defining it", async () => {
+    const { server, post } = await listen(project(TRUNK));
+
+    await server.transformRequest("/src/main.ts");
+    await server.transformRequest("/api/trunk.ts");
+    await server.transformRequest("/api/todos.ts");
+    await server.transformRequest("/api/admin/stats.ts");
+
+    expect(await post("/", "todos:list")).toMatchObject({ status: 401 });
+    expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/", "todos:add", ["long"], "a")).toMatchObject({ status: 409, body: { error: "/#todos:Over" } });
+    expect(await post("/", "todos:internal", [], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    expect(await post("/admin", "stats:stats", [], "a")).toMatchObject({ status: 403 });
+    expect(await post("/admin", "stats:stats", [], "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+  });
+
+  it("will stop answering a leaf the trunk drops", async () => {
+    const root = project(TRUNK);
+    const { server, post } = await listen(root);
+
+    await server.transformRequest("/api/todos.ts");
+    await server.transformRequest("/api/errors.ts");
+    expect(await post("/", "todos:add", ["a"], "a")).toEqual({ status: 200, body: { value: "a" } });
+
+    await new Promise(ready => setTimeout(ready, 300));
+    writeFileSync(join(root, "api/trunk.ts"), TRUNK["api/trunk.ts"].replace("list, add, errors", "list, errors"));
+
+    await vi.waitFor(async () => {
+      await server.transformRequest("/api/trunk.ts");
+      expect(await post("/", "todos:add", ["a"], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    }, { timeout: 5000 });
+    expect(await post("/", "todos:list", [], "a")).toMatchObject({ status: 200 });
+  }, 15_000);
+
+  it("will refuse a client import of any module under the folder but the trunk", async () => {
+    const root = project(TRUNK);
+    const server = await serve(root);
+    const main = join(root, "src/main.ts");
+    const resolve = (id: string, importer?: string, options = {}) => server.environments.client.pluginContainer.resolveId(id, importer, options);
+
+    await expect(resolve("../api/todos", main)).rejects.toThrow("src/main.ts imports api/todos.ts - with api/trunk.ts, the client reaches calls through the trunk.");
+    expect(await resolve("../api/trunk", main)).toMatchObject({ id: join(root, "api/trunk.ts") });
+    expect(await resolve("./todos", join(root, "api/trunk.ts"))).toMatchObject({ id: join(root, "api/todos.ts") });
+    expect(await resolve("./missing", `${main}?v=1`)).toBeNull();
+    expect(await resolve("../api/todos", main, { scan: true })).toMatchObject({ external: true });
+    expect(await server.environments.rpc.pluginContainer.resolveId("../api/todos", main)).toMatchObject({ id: join(root, "api/todos.ts") });
+  });
+
+  it("will throw if the trunk is not an object of imported leaves", async () => {
+    const server = await serve(project({ ...TRUNK, "api/trunk.ts": `async function ping() {} export default { ping };` }));
+
+    await expect(server.transformRequest("/api/trunk.ts")).rejects.toThrow(
+      "api/trunk.ts: ping is not an imported name - a leaf is a function or Error class imported by name from the module under the folder that defines it.",
+    );
+  });
+
+  it("will build a server answering only the trunk's leaves, behind their folders' gates", async () => {
+    const root = project(TRUNK);
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc({ opaque: false })], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const server = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+    const post = async (path: string, name: string, token?: string) => {
+      const response: Response = await server.fetch(new Request(new URL(path, "http://localhost"), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-expressive-call": name, ...(token && { authorization: `Bearer ${token}` }) },
+        body: "[]",
+      }));
+
+      return { status: response.status, body: await response.json() };
+    };
+
+    expect(await post("/", "todos:list")).toMatchObject({ status: 401 });
+    expect(await post("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/", "todos:internal", "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    expect(await post("/admin", "stats:stats", "a")).toMatchObject({ status: 403 });
+    expect(await post("/admin", "stats:stats", "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+  });
+});

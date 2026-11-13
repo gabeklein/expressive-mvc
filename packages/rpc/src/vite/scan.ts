@@ -62,14 +62,18 @@ const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFuncti
 export const isClass = (value: Value): value is ESTree.Class =>
   value?.type === "ClassDeclaration" || value?.type === "ClassExpression";
 
-const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? node.name : String(node.value));
+export const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? node.name : String(node.value));
 
-export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}): Promise<Scan> {
+/**
+ * What a module under the folder gives the client. With `only` - a trunk's leaves from this module - the rest of
+ * its exports stay on the server unchecked, save Error classes, which still cross.
+ */
+export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}, only?: ReadonlySet<string>): Promise<Scan> {
   const module = moduleOf(file, source);
   const scan: Scan = { calls: [], errors: [], gate: false, problems: [...module.errors] };
   const found: [ErrorClass, number][] = [];
 
-  for (const node of module.body) {
+  for (const node of only ? [] : module.body) {
     const problem = unsupported(node);
     if (problem) scan.problems.push(problem);
   }
@@ -77,7 +81,14 @@ export async function scanModule(file: string, source: string, sources: Sources,
   for (const [name, value] of module.exports) {
     if (name === "default") {
       if (extension.default) scan.problems.push(...(await extension.default(value)));
-      else await gate(scan, value, module, sources, owned);
+      else if (!only || INDEX.test(basename(file))) await gate(scan, value, module, sources, owned);
+      continue;
+    }
+
+    if (only && !only.has(name)) {
+      const end = isClass(value) ? await endOf({ cls: value, module }, name, sources, owned) : undefined;
+
+      if (end?.kind === "error") found.push([{ name, ...(end.parent && { parent: end.parent }) }, value!.start]);
       continue;
     }
 

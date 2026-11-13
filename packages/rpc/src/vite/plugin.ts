@@ -7,8 +7,9 @@ import type { Plugin, RunnableDevEnvironment } from "vite";
 import type { Endpoint, Seats } from "../call";
 import { toNode } from "../http/node";
 import { guardScript } from "./guard";
-import { Manifest, locate, type Exposed, type Located } from "./manifest";
-import { scanModule } from "./scan";
+import { Manifest, SCRIPT, locate, type Exposed, type Located } from "./manifest";
+import { scanModule, type Sources } from "./scan";
+import { leaves, scanTrunk } from "./trunk";
 
 export interface Options {
   dir?: string;
@@ -42,7 +43,9 @@ const RUNTIME = "\0@expressive/rpc/runtime";
 const CALLS = "@expressive/rpc/calls#dev";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const NEXT = "x-expressive-next";
-const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
+const EXTENSIONS = ["ts", "js", "mts", "mjs"];
+const INDEX = EXTENSIONS.map(ext => `index.${ext}`);
+const TRUNK = EXTENSIONS.map(ext => `trunk.${ext}`);
 
 export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): Plugin {
   let root = "";
@@ -52,20 +55,36 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
 
   const located = (file: string) => locate(folder, file);
+  const owned = (file: string) => !!located(file);
+  const sources = (resolve: Resolve): Sources => ({ resolve, read: file => readFileSync(file, "utf8") });
+  const trunkFile = () => TRUNK.map(name => join(folder, name)).find(existsSync);
 
-  async function scanned(at: Located, resolve: Resolve) {
-    const { calls, errors, gate, problems } = await scanModule(at.file, readFileSync(at.file, "utf8"), { resolve, read: file => readFileSync(file, "utf8") }, file => !!located(file));
+  function fail(file: string, problems: string[]) {
+    if (problems.length) throw new Error(`${relative(root, file)}: ${problems.join(" ")}`);
+  }
 
-    if (problems.length) throw new Error(`${relative(root, at.file)}: ${problems.join(" ")}`);
+  async function scanned(at: Located, resolve: Resolve, only?: ReadonlySet<string>) {
+    const { calls, errors, gate, problems } = await scanModule(at.file, readFileSync(at.file, "utf8"), sources(resolve), owned, {}, only);
+
+    fail(at.file, problems);
 
     return { calls, errors, gate };
+  }
+
+  async function trunked(file: string, resolve: Resolve) {
+    const { tree, problems } = await scanTrunk(file, readFileSync(file, "utf8"), sources(resolve), owned);
+
+    fail(file, problems);
+
+    return { tree, allowed: leaves(tree) };
   }
 
   async function gateAt(pattern: string[], resolve: Resolve): Promise<Located | undefined> {
     const file = INDEX.map(name => join(folder, ...pattern, name)).find(existsSync);
     const at = file && located(file);
+    const only = at && trunkFile() ? new Set(manifest.modules.get(at.file)?.calls) : undefined;
 
-    if (at && (await scanned(at, resolve)).gate) return at;
+    if (at && (await scanned(at, resolve, only)).gate) return at;
   }
 
   async function gates(resolve: Resolve): Promise<Located[]> {
@@ -136,6 +155,19 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
         return { id: createRequire(join(root, "package.json")).resolve(id), external: false };
       }
 
+      const from = importer?.split("?")[0];
+      const trunk = this.environment.config.consumer === "client" && from && SCRIPT.test(from) && !located(from) && trunkFile();
+
+      if (trunk && !("scan" in options && options.scan)) {
+        const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
+        const file = resolved?.id.split("?")[0];
+
+        if (file && file !== trunk && located(file))
+          this.error(`${relative(root, from)} imports ${relative(root, file)} - with ${relative(root, trunk)}, the client reaches calls through the trunk.`);
+
+        return resolved;
+      }
+
       if (!("scan" in options && options.scan) || !/^[./]/.test(id)) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
@@ -158,7 +190,20 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
       if (!at) return;
 
-      const exposed: Exposed = { ...at, ...(await scanned(at, resolve)) };
+      const trunk = trunkFile();
+
+      if (trunk === at.file) {
+        const { tree, allowed } = await trunked(trunk, resolve);
+
+        for (const exposed of manifest.modules.values()) exposed.calls = exposed.calls.filter(name => allowed.get(exposed.file)?.has(name));
+
+        return manifest.trunk(trunk, tree);
+      }
+
+      if (trunk) this.addWatchFile(trunk);
+
+      const only = trunk ? ((await trunked(trunk, resolve)).allowed.get(at.file) ?? new Set<string>()) : undefined;
+      const exposed: Exposed = { ...at, ...(await scanned(at, resolve, only)) };
 
       manifest.modules.set(at.file, exposed);
 
