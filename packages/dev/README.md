@@ -285,8 +285,9 @@ node dist/server/index.js  run the built service (port from index.ts, default 30
 ### Prerendering
 
 `expressive build --prerender` bundles the app for Node after the build, renders each page with
-`renderToString` from `@expressive/dom/server`, and writes it, with the style rules it used, to
-`dist/client/<path>/index.html`. Suspended data is awaited; effects never run, so data loaded in an
+`renderToString` from `@expressive/dom/server`, and writes it to `dist/client/<path>/index.html`
+with the style rules it used and the `<title>`, `<meta>` and `<link>` elements it rendered - a
+page's title goes ahead of the shell's. Suspended data is awaited; effects never run, so data loaded in an
 effect is not in the page.
 
 Only pages that need nothing at request time are rendered. A `[param]` or `[...]` route is skipped

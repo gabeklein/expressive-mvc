@@ -224,6 +224,22 @@ describe('renderToString', () => {
     );
   });
 
+  it('will collect head elements, leaving the marker render() leaves', async () => {
+    const node = () => (
+      <div>
+        <title>{'A & B'}</title>
+        <meta name="description" content="about" />
+        <svg><title>icon</title></svg>
+      </div>
+    );
+
+    const html = await parity(node);
+    const { head } = await serve(node());
+
+    expect(html).toBe('<!--fragment--><div><!--portal--><!--portal--><svg><title>icon</title></svg></div><!--/fragment-->');
+    expect(head).toBe('<title>A &amp; B</title><meta name="description" content="about">');
+  });
+
   it('will await a suspended render and retry it in place', async () => {
     class Data extends Component {
       value = set(async () => 'loaded');

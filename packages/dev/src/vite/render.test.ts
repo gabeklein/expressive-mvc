@@ -16,7 +16,7 @@ const CONFIG = `export default {
   },
 };
 `;
-const SHELL = `<html><head><title>t</title></head><body><div id="root"></div></body></html>`;
+const SHELL = `<html><head><meta charset="utf-8"><title>t</title></head><body><div id="root"></div></body></html>`;
 
 describe("launch", { timeout: 30_000 }, () => {
   const dirs: string[] = [];
@@ -45,7 +45,7 @@ describe("launch", { timeout: 30_000 }, () => {
         export function Layout(props) { return <main>{props.children}</main>; }
         style(Layout, { color: "teal" });
       `,
-      "app/(about).tsx": `export const Page = () => <h2>about</h2>;`,
+      "app/(about).tsx": `export const Page = () => <h2>about<title>About</title></h2>;`,
       "app/blog/[slug].tsx": `
         import { Route } from "@expressive/dev";
         export const Page = () => <h3>{Route.get().match.slug}</h3>;
@@ -61,7 +61,7 @@ describe("launch", { timeout: 30_000 }, () => {
 
     expect(about.path).toBe("/about");
     expect(about.blank).toBe(false);
-    expect(about.html).toMatch(/^<html><head><title>t<\/title><style data-expressive="prerender">\.Layout\{color: teal;\}<\/style>\n<\/head><body><div id="root"><!--fragment-->.*<main class="Layout">.*<h2>about<\/h2>.*<\/main>.*<\/div><\/body><\/html>$/);
+    expect(about.html).toMatch(/^<html><head><meta charset="utf-8"><!--prerender--><title>About<\/title><!--\/prerender--><title>t<\/title><!--prerender--><style>\.Layout\{color: teal;\}<\/style><!--\/prerender--><\/head><body><div id="root"><!--fragment-->.*<main class="Layout">.*<h2>about<!--portal--><\/h2>.*<\/main>.*<\/div><\/body><\/html>$/);
     expect(about.html).not.toContain("<h1>");
 
     renderer.close();

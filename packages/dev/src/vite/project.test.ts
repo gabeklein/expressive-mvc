@@ -87,7 +87,7 @@ describe("bootstrap", () => {
   });
 
   it("will keep a prerendered root until the app shows the same text", async () => {
-    document.head.innerHTML = `<style data-expressive="prerender"></style><style data-expressive="dom"></style>`;
+    document.head.innerHTML = `<meta charset="utf-8"><!--prerender--><title>Page</title><!--/prerender--><title>Shell</title><!--prerender--><style></style><!--/prerender--><style data-expressive="dom"></style>`;
     document.body.innerHTML = `<div id="root" class="app"><p>Hi</p></div>`;
     const prerendered = document.getElementById("root")!;
     let target!: HTMLElement;
@@ -108,7 +108,7 @@ describe("bootstrap", () => {
     expect(document.getElementById("root")).toBe(target);
     expect(target.className).toBe("app");
     expect(target.hidden).toBe(false);
-    expect([...document.querySelectorAll("style")].map(style => style.dataset.expressive)).toEqual(["dom"]);
+    expect(document.head.innerHTML).toBe(`<meta charset="utf-8"><title>Shell</title><style data-expressive="dom"></style>`);
   });
 
   it("will swap a prerendered root after a second regardless", () => {

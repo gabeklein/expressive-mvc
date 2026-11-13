@@ -115,3 +115,68 @@ describe('Portal', () => {
     expect(nextPortal.textContent).toBe('');
   });
 });
+
+describe('head elements', () => {
+  it('will hoist a title ahead of the document title, and restore it on unmount', async () => {
+    const shell = document.createElement('title');
+    shell.textContent = 'Shell';
+    document.head.append(shell);
+
+    class Page extends Component {
+      name = 'One';
+      order = ['a', 'b'];
+
+      render() {
+        return (
+          <main>
+            {this.order.map((key) => <p key={key}>{key}</p>)}
+            <title key="t">{`Page ${this.name}`}</title>
+          </main>
+        );
+      }
+    }
+
+    const [page, root, release] = mount(Page);
+
+    expect(document.title).toBe('Page One');
+    expect(root.innerHTML).toContain('<main><p>a</p><p>b</p><!--portal--></main>');
+
+    page.name = 'Two';
+    page.order = ['b', 'a'];
+    await flushMicrotasks();
+    expect(document.title).toBe('Page Two');
+    expect(root.querySelector('title')).toBeNull();
+
+    release();
+    expect(document.title).toBe('Shell');
+    shell.remove();
+  });
+
+  it('will let the latest title win, and append meta and link', () => {
+    const unmount = render(
+      <div>
+        <title>Outer</title>
+        <section><title>Inner</title></section>
+        <meta name="description" content="about" />
+        <link rel="canonical" href="/x" />
+      </div>,
+      document.body.appendChild(document.createElement('main'))
+    );
+
+    expect(document.title).toBe('Inner');
+    expect(document.head.querySelector('meta[name=description]')!.getAttribute('content')).toBe('about');
+    expect(document.head.lastElementChild!.outerHTML).toBe('<link rel="canonical" href="/x">');
+
+    unmount();
+    expect(document.head.querySelector('meta[name=description], link[rel=canonical], title')).toBeNull();
+  });
+
+  it('will keep an svg title in place, but not one in foreignObject', () => {
+    const root = document.body.appendChild(document.createElement('main'));
+    const unmount = render(<svg><title>icon</title><foreignObject><title>page</title></foreignObject></svg>, root);
+
+    expect(root.querySelector('svg > title')!.textContent).toBe('icon');
+    expect(document.title).toBe('page');
+    unmount();
+  });
+});

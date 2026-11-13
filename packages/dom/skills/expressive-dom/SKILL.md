@@ -323,9 +323,21 @@ await pending(() => {
 return <Portal into={document.body}><Dialog /></Portal>;
 ```
 
+## Head elements
+
+`<title>`, `<meta>` and `<link>` render into `document.head` from anywhere, leaving a `<!--portal-->` marker in place - write them where their data lives. A title goes ahead of the head's existing titles, so the latest mounted wins and unmounting restores the one before. Inside `<svg>` they stay put; inside `<foreignObject>` they hoist.
+
+```tsx
+render() {
+  const { title, summary } = this.post;
+
+  return <article><title>{title}</title><meta name="description" content={summary} />…</article>;
+}
+```
+
 ## Server rendering
 
-`renderToString(node)` from `@expressive/dom/server` renders without a DOM and resolves to `{ html, css }`: the container's markup as `render()` leaves it, range comments included, and the style rules it emitted.
+`renderToString(node)` from `@expressive/dom/server` renders without a DOM and resolves to `{ html, css, head }`: the container's markup as `render()` leaves it, range comments included, the style rules it emitted, and its head elements.
 
 ```tsx
 import { renderToString } from '@expressive/dom/server';
