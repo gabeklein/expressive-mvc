@@ -43,7 +43,7 @@ A module under `dir` may export:
 
 - `async` functions - the calls.
 - `Error` subclasses - rebuilt on the client when thrown, so `instanceof` holds; message and own fields cross.
-- In an `index.ts` only, a default `Model` subclass or function - the folder's gate.
+- In an `index.ts` only, a default `Model` subclass or function - the folder's gate - or a default object, the folder's [trunk](#trunk).
 
 Anything else fails the build: a sync function, a value, a re-export, a non-Error class, a default outside an index. Twin-shaped exports (Model classes) are refused - stateful twins are `@expressive/dev`'s.
 
@@ -53,10 +53,10 @@ Only calls the client build imports are served - or, with a [trunk](#trunk), onl
 
 ## Trunk
 
-A trunk groups calls for the client as an object, and is the folder's allowlist. It is `trunk.ts` at the root of `dir`; its default export is an object whose leaves are async functions and Error classes imported by name from modules under `dir`:
+A trunk groups a folder's calls for the client as one object, and is that folder's allowlist. It is an `index.ts` whose default export is an object - a class default stays the gate. Its leaves are async functions and Error classes imported by name from modules in its folder:
 
 ```ts
-// api/trunk.ts
+// api/index.ts
 import { search as searchClaims, create, Duplicate } from "./claim/search";
 import { search as searchAttorneys } from "./attorney/search";
 
@@ -70,15 +70,17 @@ export default {
 
 ```ts
 // src/main.ts
-import api, { type claim } from "../api/trunk";
+import api, { type claim } from "../api";
 
 const found: claim.Result[] = await api.claim.search(query);
 ```
 
 - Each leaf is followed through re-exports to the module that defines it. Its path, id and gates are that module's, as if imported directly - the trunk only groups.
-- With a trunk, only its leaves are served. A module's other exports stay on the server unchecked - helpers, constants, sync functions, re-exports, Models - and an index may re-export. Its Error classes still cross, so a thrown one rebuilds with its class.
-- Client code may import only the trunk from `dir`; importing any other module there fails the build. `import type` is fine.
-- Keys are written out - no spread, computed key or method. Nesting is free; a nested object may be a local `const`. A leaf is an imported name, never a default export, a namespace member or a function declared in the trunk.
+- Under a trunk, only its leaves are served. A module's other exports stay on the server unchecked - helpers, constants, sync functions, re-exports, Models - and an index may re-export. Its Error classes still cross, so a thrown one rebuilds with its class.
+- Client code may import only the trunk from its folder; importing any other module there fails the build. `import type` is fine.
+- A trunk's folder has no gate of its own - gate a subfolder, or a folder above. Gates above the trunk still run.
+- Folders without a trunk serve as before. Sibling folders may each have one, but trunks do not nest.
+- Keys are written out - no spread, computed key or method. Nesting is free; a nested object may be a local `const`. A leaf is an imported name, never a default export, a namespace member, a function declared in the trunk or a module outside its folder.
 - The trunk exports only its default and types (`export type`, `export type * as ns from`).
 
 ## Addressing
