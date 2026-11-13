@@ -278,8 +278,26 @@ calls can still carry the previous identity's data until the page reloads.
 expressive dev             Vite dev server with HMR; /__inspect relay
 expressive build           dist/client (static app) and dist/server/index.js (node service)
 expressive build --pretty  unminified client, stable filenames
+expressive build --prerender  also writes dist/client/<path>/index.html per static page
 node dist/server/index.js  run the built service (port from index.ts, default 3000)
 ```
+
+### Prerendering
+
+`expressive build --prerender` loads each page in headless Chrome after the build and writes the
+settled document, styles included, to `dist/client/<path>/index.html`. It needs `playwright-core`
+installed beside `@expressive/dev` and Chrome; `CHROME` names a binary.
+
+Only pages that need nothing at request time are rendered: `[param]` and `[...]` routes are
+skipped, and so is every folder with a `remote.ts` or `remote/` folder, along with everything below
+it. Those pages stay client-rendered, and the build never runs server code. A page that redirects,
+renders nothing or logs an error is skipped with a warning.
+
+The empty shell moves to `dist/client/200.html`. The built service serves `<path>/index.html`, then
+falls back to the shell; a static host needs its fallback pointed at `200.html` (Cloudflare Pages:
+`/* /200.html 200` in `_redirects`). On load, the client renders into a hidden copy of the root and
+swaps it in once it matches the static page, or after a second - there is no hydration, so the page
+is not interactive until then.
 
 Nothing is written into the project. The shell, the client entry and the generated router module
 are virtual, addressed under `/.expressive/`. The router module regenerates when files appear or

@@ -77,11 +77,16 @@
         "@expressive/mvc": "workspace:^",
         "@playwright/test": "^1.63.0",
         "@types/node": "^25.2.0",
+        "playwright-core": "^1.63.0",
         "tsdown": "^0.20.1",
       },
       "peerDependencies": {
         "@expressive/mvc": "^0.94.3",
+        "playwright-core": "^1.50.0",
       },
+      "optionalPeers": [
+        "playwright-core",
+      ],
     },
     "packages/dom": {
       "name": "@expressive/dom",
