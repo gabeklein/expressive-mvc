@@ -40,11 +40,7 @@ type Marked = `__${Extract<keyof Parts | keyof HTMLElementTagNameMap, string>}`;
  *
  * Each key types a `__name` attribute on host elements and a `__name` key in `style()` maps.
  * Tag names are always valid keys.
- *
- * @example
- * declare module '@expressive/dom' {
- *   interface Parts { input: true; option: true }
- * }
+ * Augment with `declare module '@expressive/dom' { interface Parts { input: true } }`.
  */
 interface Parts {}
 

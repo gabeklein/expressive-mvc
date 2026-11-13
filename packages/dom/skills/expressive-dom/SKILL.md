@@ -93,7 +93,7 @@ style(Button, {
 - A rule applies when `_name` is truthy on an element, or when the element's host tag is `name`. `0` and `''` do not activate - a rule is on or off, while a macro still treats `0` as a value. Each applied rule is one class named after its source, such as `Button_active`. Nested inside a rule body, `_name` opens a descendant scope.
 - A rule named for a tag (`_label`, `_small`, `_time`) also styles every such element the component renders - pick another name for a flag-only rule.
 - Bare keys at the top of a map form a **base rule** applied to each of the component's host roots - `padding` above styles every root `Button` renders, through fragments.
-- A map never reaches inside a child component, placed as an element or an instance. Rules, base declarations, tag matches and descendant scopes apply only to elements the component's own JSX writes - a `_rule` on a child component element styles that child's root, never its internals. JSX resolves in the scope that wrote it: `children` passed to a wrapper keep the author's rules - including rules nested in a `_rule` on the wrapper element - and the wrapper's rules do not reach them; its base declarations still apply where they are its roots. Only the class chain inherits - `Derived` sees `Base`'s rules.
+- A map never reaches inside a child component, placed as an element or an instance, except through [parts](#parts). Rules, base declarations, tag matches and descendant scopes apply only to elements the component's own JSX writes - a `_rule` on a child component element styles that child's root, never its internals. JSX resolves in the scope that wrote it: `children` passed to a wrapper keep the author's rules - including rules nested in a `_rule` on the wrapper element - and the wrapper's rules do not reach them; its base declarations still apply where they are its roots. Only the class chain inherits - `Derived` sees `Base`'s rules.
 - A map styles `render()` output only, not subcomponents (`expressive-mvc/component.md#subcomponents`). `_` plus a capital letter addresses one by key: its body is that subcomponent's own map - base declarations for its roots, rules and tag matches for its output - resolved through the owner's class wherever it renders. A `_Title` body belongs to the class whose prototype defines `Title()` - a subclass inheriting `Title` gets the definer's body, one overriding it starts unstyled with only its own. `style(Fancy, { _Title })` throws unless `Fancy` defines `Title()`; to restyle an inherited piece, override it, or put a rule on it from the owner (`<this.Title _title />`, styled `_title`). A PascalCase field holding a function is not a subcomponent - it styles itself with `style(fn, …)` and reads its owner with `Card.get()`. `_Title` nested in a rule, or as an attribute on any element, throws. To share rules, pass one map to both: `style(Card, shared, { _Title: shared })`.
 
 ```tsx
@@ -135,6 +135,37 @@ _bar: [tabs, { [wide]: { _button: { height: '30px' } } }]
 Within a scope, base declarations come first, then rules by base class, derived class, and registration order. A rule first named inside a descendant scope (`_list: { _item: … }`) sorts after every rule of the enclosing scope, wherever it is written; a top-level rule meant to override it belongs in the same scope. A component's registrations close at *its* first render - a lazily loaded module may still call `style()` later for a component that has not rendered.
 
 Inline style always beats classes. Among classes, a caller's rule beats the callee's: a `_rule` on a component element travels as a token through `style`, and each component `style` prop crossed - forwarded or handed on explicitly - adds a door. More doors wins, independent of render or emission order. Blocks emitted past the first door carry a `-dN` suffix. Generated classes are not a selector contract - code and tests find elements by `data-*`, `id` or role.
+
+### Parts
+
+A `__name` attribute marks a host element as a public **part** - a hook for components that do not own it. A `__name` key in a map styles marked parts, and `name` tag elements, anywhere below the component's roots, at any depth:
+
+```tsx
+// library: mark leaves, expose state as aria-* / data-*
+const Input = () => <input __input _field aria-invalid={invalid} />;
+
+// app
+style(Page, {
+  __input: { borderRadius: 6, ':is([aria-invalid="true"])': { borderColor: 'red' } },
+  _year: { __control: { textAlign: 'center' } },
+  $mobile: { __input: { padding: 4 } },
+  __a: { color: 'green' }
+});
+```
+
+- A marked element takes class `__name`; the attribute never reaches the DOM. A falsy mark is absent.
+- A part rule beats the owner's own rules on a marked element; on an unmarked tag it is a default the owner's rules override. Inline style beats both.
+- The nearest ancestor wins between two components styling one part (CSS `@scope` proximity). Nested under a flag (`_year: { __control }`), a part rule anchors on that element and reaches only its subtree, the element included. Pack parts (`use({ __day: … })`) style the whole document, below every component's.
+- A part body takes declarations, macros, conditions and nested parts - in `__menu: { ':is([open])': { __option: … } }` the state is the menu's. A `_rule` inside throws: a part rule cannot name the owner's flags, so libraries expose state as `aria-*`/`data-*`. A nested part under a pseudo-element, a class string, and `__Name` throw.
+- Portalled roots carry their logical ancestors' anchors, so part rules follow ownership into a portal. There ancestors are equally near - ties fall to registration order.
+- Libraries style their own internals with `_rule`s - a component's own `__name` is nearest and beats its callers'.
+- Names type-check against tags and an augmentable `Parts` interface; a library declares its own:
+
+```ts
+declare module '@expressive/dom' {
+  interface Parts { input: true; option: true }
+}
+```
 
 ### Conditions
 
@@ -221,7 +252,7 @@ Without the pack the terminal never guesses: a rule needs `padding: '8px'`, and 
 
 ### Typing
 
-Maps are typed by the pack: a bare key must be a CSS property or a method of the pack, `_name` opens a rule, a `:` or `@` key holds a condition's map, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
+Maps are typed by the pack: a bare key must be a CSS property or a method of the pack, `_name` opens a rule (a letter or digit after the `_`), `__name` a [part](#parts), a `:` or `@` key holds a condition's map, and anything else is rejected - `colr` reports *Did you mean 'color'?* rather than throwing at the terminal. A bare key never takes an object, which is what separates `margin: '0 8px'` from `_margin: { ... }`.
 
 A macro's first parameter types its value; an optional one also takes `true` (`row: true` calls it with none), and a macro with none is a flag taking only `true`. The pack's `style` is `style.Apply<App>`, and `style.Map<App>` types a shared map for it. Plain `style.Map` calls no macros - CSS properties, rules and `--variables` work as they are.
 
@@ -322,6 +353,8 @@ await pending(() => {
 ```tsx
 return <Portal into={document.body}><Dialog /></Portal>;
 ```
+
+Its roots carry the part anchors of their logical ancestors ([Parts](#parts)).
 
 ## Hot reload (Vite)
 
