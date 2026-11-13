@@ -692,91 +692,106 @@ describe("entry", () => {
 
 describe("trunk", () => {
   const TRUNK = {
-    "src/main.ts": `import api from "../api/trunk"; import type { Todo } from "../api/todos"; const todo: Todo | undefined = undefined; console.log(api, todo);`,
-    "api/trunk.ts": `
-      import { list, add, Over } from "./todos";
+    "src/main.ts": `import shop from "../api/shop"; import { list } from "../api/todos"; import type { Item } from "../api/shop/cart"; const item: Item | undefined = undefined; console.log(shop, list, item);`,
+    "api/shop/index.ts": `
+      import { list, add, Over } from "./cart";
       import { statistics } from "./admin";
-      export type * as todos from "./todos";
-      export default { todos: { list, add, errors: { Over } }, admin: { stats: statistics } };
+      export type * as cart from "./cart";
+      export default { cart: { list, add, errors: { Over } }, admin: { stats: statistics } };
     `,
-    "api/todos.ts": APP["api/todos.ts"] + `
-      export type Todo = { title: string };
+    "api/shop/errors.ts": APP["api/errors.ts"],
+    "api/shop/cart.ts": APP["api/todos.ts"] + `
+      export type Item = { title: string };
       export const PAGE = 20;
       export function page() { return PAGE; }
       export async function internal() { return "secret"; }
     `,
-    "api/admin/index.ts": APP["api/admin/index.ts"] + `\nexport { stats as statistics } from "./stats";`,
+    "api/shop/admin/index.ts": APP["api/admin/index.ts"].replace("../../lib", "../../../lib") + `\nexport { stats as statistics } from "./stats";`,
+    "api/shop/admin/stats.ts": APP["api/admin/stats.ts"],
   };
 
-  it("will serve the trunk as its object, each leaf from the stub of the module defining it", async () => {
+  it("will serve a folder's trunk as its object, each leaf from the stub of the module defining it", async () => {
     const server = await serve(project(TRUNK));
-    const trunk = (await server.transformRequest("/api/trunk.ts"))!.code;
-    const todos = (await server.transformRequest("/api/todos.ts"))!.code;
+    const trunk = (await server.transformRequest("/api/shop/index.ts"))!.code;
+    const cart = (await server.transformRequest("/api/shop/cart.ts"))!.code;
 
-    expect(trunk).toMatch(/import \{ list as t0, add as t1, Over as t2 \} from "\/api\/todos\.ts";/);
-    expect(trunk).toMatch(/import \{ stats as t3 \} from "\/api\/admin\/stats\.ts";/);
-    expect(trunk.replace(/\s+/g, "")).toContain(`exportdefault{"todos":{"list":t0,"add":t1,"errors":{"Over":t2}},"admin":{"stats":t3}};`);
-    expect(todos).toContain('call(at, "todos:list", args)');
-    expect(todos).toContain('call(at, "todos:add", args)');
-    expect(todos).not.toContain("internal");
-    expect(todos).not.toContain("PAGE");
-    expect(todos).toContain('define("/#todos:Late", "Late", "/#errors:Billing")');
+    expect(trunk).toMatch(/import \{ list as t0, add as t1, Over as t2 \} from "\/api\/shop\/cart\.ts";/);
+    expect(trunk).toMatch(/import \{ stats as t3 \} from "\/api\/shop\/admin\/stats\.ts";/);
+    expect(trunk.replace(/\s+/g, "")).toContain(`exportdefault{"cart":{"list":t0,"add":t1,"errors":{"Over":t2}},"admin":{"stats":t3}};`);
+    expect(cart).toContain('const at = "/shop"');
+    expect(cart).toContain('call(at, "cart:list", args)');
+    expect(cart).toContain('call(at, "cart:add", args)');
+    expect(cart).not.toContain("internal");
+    expect(cart).not.toContain("PAGE");
+    expect(cart).toContain('define("/shop#cart:Late", "Late", "/shop#errors:Billing")');
   });
 
-  it("will answer only the trunk's leaves, each through the gates of the folder defining it", async () => {
+  it("will answer only the trunk's leaves, each through the gates along the folder defining it", async () => {
     const { server, post } = await listen(project(TRUNK));
 
     await server.transformRequest("/src/main.ts");
-    await server.transformRequest("/api/trunk.ts");
+    await server.transformRequest("/api/shop/index.ts");
+    await server.transformRequest("/api/shop/cart.ts");
+    await server.transformRequest("/api/shop/admin/stats.ts");
     await server.transformRequest("/api/todos.ts");
-    await server.transformRequest("/api/admin/stats.ts");
 
-    expect(await post("/", "todos:list")).toMatchObject({ status: 401 });
+    expect(await post("/shop", "cart:list")).toMatchObject({ status: 401 });
+    expect(await post("/shop", "cart:list", [], "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/shop", "cart:add", ["long"], "a")).toMatchObject({ status: 409, body: { error: "/shop#cart:Over" } });
+    expect(await post("/shop", "cart:internal", [], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    expect(await post("/shop/admin", "stats:stats", [], "a")).toMatchObject({ status: 403 });
+    expect(await post("/shop/admin", "stats:stats", [], "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
     expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["one"] } });
-    expect(await post("/", "todos:add", ["long"], "a")).toMatchObject({ status: 409, body: { error: "/#todos:Over" } });
-    expect(await post("/", "todos:internal", [], "a")).toEqual({ status: 404, body: { message: "Not found." } });
-    expect(await post("/admin", "stats:stats", [], "a")).toMatchObject({ status: 403 });
-    expect(await post("/admin", "stats:stats", [], "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
   });
 
-  it("will stop answering a leaf the trunk drops", async () => {
+  it("will stop answering a leaf the trunk drops, leaving modules outside its folder alone", async () => {
     const root = project(TRUNK);
     const { server, post } = await listen(root);
 
+    await server.transformRequest("/api/shop/cart.ts");
+    await server.transformRequest("/api/shop/errors.ts");
     await server.transformRequest("/api/todos.ts");
-    await server.transformRequest("/api/errors.ts");
-    expect(await post("/", "todos:add", ["a"], "a")).toEqual({ status: 200, body: { value: "a" } });
+    expect(await post("/shop", "cart:add", ["a"], "a")).toEqual({ status: 200, body: { value: "a" } });
 
     await new Promise(ready => setTimeout(ready, 300));
-    writeFileSync(join(root, "api/trunk.ts"), TRUNK["api/trunk.ts"].replace("list, add, errors", "list, errors"));
+    writeFileSync(join(root, "api/shop/index.ts"), TRUNK["api/shop/index.ts"].replace("list, add, errors", "list, errors"));
 
     await vi.waitFor(async () => {
-      await server.transformRequest("/api/trunk.ts");
-      expect(await post("/", "todos:add", ["a"], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+      await server.transformRequest("/api/shop/index.ts");
+      expect(await post("/shop", "cart:add", ["a"], "a")).toEqual({ status: 404, body: { message: "Not found." } });
     }, { timeout: 5000 });
-    expect(await post("/", "todos:list", [], "a")).toMatchObject({ status: 200 });
+    expect(await post("/shop", "cart:list", [], "a")).toMatchObject({ status: 200 });
+    expect(await post("/", "todos:add", ["a"], "a")).toEqual({ status: 200, body: { value: "a" } });
   }, 15_000);
 
-  it("will refuse a client import of any module under the folder but the trunk", async () => {
+  it("will refuse a client import of a module under a trunk's folder but the trunk", async () => {
     const root = project(TRUNK);
     const server = await serve(root);
     const main = join(root, "src/main.ts");
     const resolve = (id: string, importer?: string, options = {}) => server.environments.client.pluginContainer.resolveId(id, importer, options);
 
-    await expect(resolve("../api/todos", main)).rejects.toThrow("src/main.ts imports api/todos.ts - with api/trunk.ts, the client reaches calls through the trunk.");
-    expect(await resolve("../api/trunk", main)).toMatchObject({ id: join(root, "api/trunk.ts") });
-    expect(await resolve("./todos", join(root, "api/trunk.ts"))).toMatchObject({ id: join(root, "api/todos.ts") });
+    await expect(resolve("../api/shop/cart", main)).rejects.toThrow("src/main.ts imports api/shop/cart.ts - under api/shop/index.ts, the client reaches calls through the trunk.");
+    expect(await resolve("../api/shop", main)).toMatchObject({ id: join(root, "api/shop/index.ts") });
+    expect(await resolve("../api/todos", main)).toMatchObject({ id: join(root, "api/todos.ts") });
+    expect(await resolve("./cart", join(root, "api/shop/index.ts"))).toMatchObject({ id: join(root, "api/shop/cart.ts") });
     expect(await resolve("./missing", `${main}?v=1`)).toBeNull();
-    expect(await resolve("../api/todos", main, { scan: true })).toMatchObject({ external: true });
-    expect(await server.environments.rpc.pluginContainer.resolveId("../api/todos", main)).toMatchObject({ id: join(root, "api/todos.ts") });
+    expect(await resolve("../api/shop/cart", main, { scan: true })).toMatchObject({ external: true });
+    expect(await server.environments.rpc.pluginContainer.resolveId("../api/shop/cart", main)).toMatchObject({ id: join(root, "api/shop/cart.ts") });
   });
 
-  it("will throw if the trunk is not an object of imported leaves", async () => {
-    const server = await serve(project({ ...TRUNK, "api/trunk.ts": `async function ping() {} export default { ping };` }));
+  it("will throw if a trunk is not an object of leaves from its folder", async () => {
+    const server = await serve(project({ ...TRUNK, "api/shop/index.ts": `import { list } from "../todos"; async function ping() {} export default { ping, list };` }));
 
-    await expect(server.transformRequest("/api/trunk.ts")).rejects.toThrow(
-      "api/trunk.ts: ping is not an imported name - a leaf is a function or Error class imported by name from the module under the folder that defines it.",
+    await expect(server.transformRequest("/api/shop/index.ts")).rejects.toThrow(
+      "api/shop/index.ts: ping is not an imported name - a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it. " +
+        `list is defined outside the trunk's folder, in ${join(server.config.root, "api/todos.ts")}`,
     );
+  });
+
+  it("will throw for a trunk inside another trunk's folder", async () => {
+    const server = await serve(project({ ...TRUNK, "api/shop/inner/index.ts": `import { stats } from "./stats"; export default { stats };`, "api/shop/inner/stats.ts": APP["api/admin/stats.ts"] }));
+
+    await expect(server.transformRequest("/api/shop/inner/index.ts")).rejects.toThrow("api/shop/inner/index.ts is a trunk inside api/shop - trunks do not nest.");
   });
 
   it("will build a server answering only the trunk's leaves, behind their folders' gates", async () => {
@@ -796,10 +811,11 @@ describe("trunk", () => {
       return { status: response.status, body: await response.json() };
     };
 
-    expect(await post("/", "todos:list")).toMatchObject({ status: 401 });
+    expect(await post("/shop", "cart:list")).toMatchObject({ status: 401 });
+    expect(await post("/shop", "cart:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/shop", "cart:internal", "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    expect(await post("/shop/admin", "stats:stats", "a")).toMatchObject({ status: 403 });
+    expect(await post("/shop/admin", "stats:stats", "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
     expect(await post("/", "todos:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
-    expect(await post("/", "todos:internal", "a")).toEqual({ status: 404, body: { message: "Not found." } });
-    expect(await post("/admin", "stats:stats", "a")).toMatchObject({ status: 403 });
-    expect(await post("/admin", "stats:stats", "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
   });
 });

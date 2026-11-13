@@ -14,7 +14,7 @@ export interface Trunk {
   problems: string[];
 }
 
-const NAMED = "a leaf is a function or Error class imported by name from the module under the folder that defines it.";
+const NAMED = "a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it.";
 
 export async function scanTrunk(file: string, source: string, sources: Sources, owned: (file: string) => boolean): Promise<Trunk> {
   const module = moduleOf(file, source);
@@ -23,12 +23,17 @@ export async function scanTrunk(file: string, source: string, sources: Sources, 
 
   for (const node of module.body) if (!allowed(node)) problems.push("A trunk exports its default object and types only.");
 
-  const root = objectOf(module.exports.get("default"), module);
+  const root = trunkOf(module);
 
   if (!root) problems.push("A trunk's default is an object - its leaves are the calls the client gets.");
   else await branch(root, [], tree, module, sources, owned, problems);
 
   return { tree, problems };
+}
+
+/** A module's default as a trunk object - an index whose default is one is its folder's trunk. */
+export function trunkOf(module: Module): ESTree.ObjectExpression | undefined {
+  return objectOf(module.exports.get("default"), module);
 }
 
 export function leaves(tree: Tree, into = new Map<string, Set<string>>()): Map<string, Set<string>> {
@@ -94,7 +99,7 @@ async function branch(object: ESTree.ObjectExpression, path: string[], tree: Tre
     const leaf = from ? await definition(from, imported.name, sources) : undefined;
 
     if (!leaf) problems.push(`${where} is ${imported.name} from "${imported.from}", which does not export it.`);
-    else if (!owned(leaf.file)) problems.push(`${where} is defined outside the calls folder, in ${leaf.file} - ${NAMED}`);
+    else if (!owned(leaf.file)) problems.push(`${where} is defined outside the trunk's folder, in ${leaf.file} - ${NAMED}`);
     else if (leaf.name === "default") problems.push(`${where} is a default export - ${NAMED}`);
     else tree.set(key, leaf);
   }

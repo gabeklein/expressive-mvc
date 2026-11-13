@@ -1,15 +1,15 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join, relative, resolve as resolvePath } from "node:path";
+import { dirname, join, relative, resolve as resolvePath, sep } from "node:path";
 import type { Plugin, RunnableDevEnvironment } from "vite";
 
 import type { Endpoint, Seats } from "../call";
 import { toNode } from "../http/node";
 import { guardScript } from "./guard";
 import { Manifest, SCRIPT, locate, type Exposed, type Located } from "./manifest";
-import { scanModule, type Sources } from "./scan";
-import { leaves, scanTrunk } from "./trunk";
+import { moduleOf, scanModule, type Sources } from "./scan";
+import { leaves, scanTrunk, trunkOf } from "./trunk";
 
 export interface Options {
   dir?: string;
@@ -43,9 +43,7 @@ const RUNTIME = "\0@expressive/rpc/runtime";
 const CALLS = "@expressive/rpc/calls#dev";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const NEXT = "x-expressive-next";
-const EXTENSIONS = ["ts", "js", "mts", "mjs"];
-const INDEX = EXTENSIONS.map(ext => `index.${ext}`);
-const TRUNK = EXTENSIONS.map(ext => `trunk.${ext}`);
+const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
 
 export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): Plugin {
   let root = "";
@@ -57,7 +55,23 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
   const located = (file: string) => locate(folder, file);
   const owned = (file: string) => !!located(file);
   const sources = (resolve: Resolve): Sources => ({ resolve, read: file => readFileSync(file, "utf8") });
-  const trunkFile = () => TRUNK.map(name => join(folder, name)).find(existsSync);
+  const indexAt = (pattern: string[]) => INDEX.map(name => join(folder, ...pattern, name)).find(existsSync);
+  const under = (trunk: string) => (file: string) => file.startsWith(dirname(trunk) + sep);
+
+  /** The trunk whose folder holds `file` - an index on its path whose default is an object. */
+  function trunkFor(file: string): string | undefined {
+    const { pattern } = located(file)!;
+    const trunks: string[] = [];
+
+    for (let i = 0; i <= pattern.length; i++) {
+      const index = indexAt(pattern.slice(0, i));
+      if (index && trunkOf(moduleOf(index, readFileSync(index, "utf8")))) trunks.push(index);
+    }
+
+    if (trunks.length > 1) throw new Error(`${relative(root, trunks[1])} is a trunk inside ${relative(root, dirname(trunks[0]))} - trunks do not nest.`);
+
+    return trunks[0];
+  }
 
   function fail(file: string, problems: string[]) {
     if (problems.length) throw new Error(`${relative(root, file)}: ${problems.join(" ")}`);
@@ -72,7 +86,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
   }
 
   async function trunked(file: string, resolve: Resolve) {
-    const { tree, problems } = await scanTrunk(file, readFileSync(file, "utf8"), sources(resolve), owned);
+    const { tree, problems } = await scanTrunk(file, readFileSync(file, "utf8"), sources(resolve), other => owned(other) && under(file)(other));
 
     fail(file, problems);
 
@@ -80,11 +94,12 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
   }
 
   async function gateAt(pattern: string[], resolve: Resolve): Promise<Located | undefined> {
-    const file = INDEX.map(name => join(folder, ...pattern, name)).find(existsSync);
+    const file = indexAt(pattern);
     const at = file && located(file);
-    const only = at && trunkFile() ? new Set(manifest.modules.get(at.file)?.calls) : undefined;
+    const trunk = at && trunkFor(at.file);
 
-    if (at && (await scanned(at, resolve, only)).gate) return at;
+    if (!at || trunk === at.file) return;
+    if ((await scanned(at, resolve, trunk ? new Set(manifest.modules.get(at.file)?.calls) : undefined)).gate) return at;
   }
 
   async function gates(resolve: Resolve): Promise<Located[]> {
@@ -156,14 +171,15 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
       }
 
       const from = importer?.split("?")[0];
-      const trunk = this.environment.config.consumer === "client" && from && SCRIPT.test(from) && !located(from) && trunkFile();
+      const outside = this.environment.config.consumer === "client" && from && SCRIPT.test(from) && !located(from);
 
-      if (trunk && !("scan" in options && options.scan)) {
+      if (outside && !("scan" in options && options.scan)) {
         const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
         const file = resolved?.id.split("?")[0];
+        const trunk = file && located(file) && trunkFor(file);
 
-        if (file && file !== trunk && located(file))
-          this.error(`${relative(root, from)} imports ${relative(root, file)} - with ${relative(root, trunk)}, the client reaches calls through the trunk.`);
+        if (trunk && file !== trunk)
+          this.error(`${relative(root, from)} imports ${relative(root, file)} - under ${relative(root, trunk)}, the client reaches calls through the trunk.`);
 
         return resolved;
       }
@@ -190,12 +206,13 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
 
       if (!at) return;
 
-      const trunk = trunkFile();
+      const trunk = trunkFor(at.file);
 
       if (trunk === at.file) {
         const { tree, allowed } = await trunked(trunk, resolve);
 
-        for (const exposed of manifest.modules.values()) exposed.calls = exposed.calls.filter(name => allowed.get(exposed.file)?.has(name));
+        for (const exposed of manifest.modules.values())
+          if (under(trunk)(exposed.file)) exposed.calls = exposed.calls.filter(name => allowed.get(exposed.file)?.has(name));
 
         return manifest.trunk(trunk, tree);
       }

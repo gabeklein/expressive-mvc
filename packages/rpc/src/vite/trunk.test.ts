@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Sources } from "./scan";
 import { definition, leaves, scanTrunk, type Tree } from "./trunk";
 
-const FILE = "/app/api/trunk.ts";
+const FILE = "/app/api/index.ts";
 
 const MODULES: Record<string, string> = {
   "/app/api/claim/search.ts": `export async function search() {} export async function create() {} export class Missing extends Error {}`,
@@ -132,7 +132,7 @@ describe("problems", () => {
   });
 
   it("will refuse a leaf that is not a value imported by name", async () => {
-    const named = "a leaf is a function or Error class imported by name from the module under the folder that defines it.";
+    const named = "a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it.";
     const { problems } = await scan(`
       import * as claim from "./claim/search";
       import type { search } from "./claim/search";
@@ -163,7 +163,7 @@ describe("problems", () => {
       `gone is gone from "./claim/search", which does not export it.`,
       `search is search from "./nowhere", which does not export it.`,
       `a is a from "./loop", which does not export it.`,
-      "help is defined outside the calls folder, in /app/lib/helper.ts - a leaf is a function or Error class imported by name from the module under the folder that defines it.",
+      "help is defined outside the trunk's folder, in /app/lib/helper.ts - a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it.",
     ]);
   });
 
