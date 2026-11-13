@@ -12,7 +12,7 @@ set(): Model.Updated<this>
 
 Returns a promise-like array of keys updated in the current batch, resolving when the flush completes - an empty array if no update is outstanding. Also activates an instance created with `new` (not `Model.new()`).
 
-While the instance is not ready - async setup pending, or a parent's hold ([lifecycle.md](lifecycle.md#the-new-hook)) - it waits for ready, then resolves the batch pending then. It rejects if the instance is destroyed first, with the error its setup rejected when that destroyed it - so `await Session.new().set()` surfaces a failed `async new()`.
+While the instance is not ready - async setup pending, or a parent's hold ([lifecycle.md](lifecycle.md#the-new-hook)) - it waits for ready, then resolves the batch pending then. It rejects if the instance is destroyed first, with the error its setup rejected when that destroyed it - so `await Session.new().set()` surfaces a failed `async new()`. Inside its own `new()` it never resolves - don't await it there.
 
 This is one instance's next flush. To wait on the whole cascade a write sets off - every subscriber, including readers of other instances - use `pending(work)` ([state.md](state.md#presentation-transitions)).
 

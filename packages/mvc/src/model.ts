@@ -453,8 +453,8 @@ abstract class Model {
    * Keys updated in the pending batch - await for the full list once it flushes; empty if none.
    *
    * Activates an instance built with bare `new`. While async setup is pending, awaiting waits for ready,
-   * then the batch - rejects with setup's error, or if destroyed first. Waits on this instance only -
-   * `pending(work)` waits out the cascade a write sets off.
+   * then the batch - rejects with setup's error, or if destroyed first; never resolves awaited in its own
+   * `new()`. Waits on this instance only - `pending(work)` waits out the cascade a write sets off.
    *
    * @example
    * const keys = await this.set();
