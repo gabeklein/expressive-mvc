@@ -1,6 +1,6 @@
 # Parts: style across component boundaries (proposal)
 
-Scope and shape for `__` part selectors in `@expressive/dom`. Proposal for sign-off - nothing is built; this file is dropped before the branch merges.
+Scope and shape for `__` part selectors in `@expressive/dom`. Signed off and built on this branch - [As built](#as-built) records where the build departs from the proposal. This file is dropped before the branch merges.
 
 ## Problem
 
@@ -80,3 +80,17 @@ Each control marks its leaves (`__input`, `__control`, `__menu`, `__option`, `__
 - `@scope` support: Chrome 118+, Safari 17.4+; confirm Firefox's shipping version before relying on proximity. Fallback without `@scope`: `:where(.Page) .__input` (order instead of proximity for ancestor ties).
 - happy-dom does not implement the cascade faithfully; verify with `bun .github/scripts/cascade-probe.ts` in real Chrome (proximity, part-over-owner, tag-under-owner, portal anchors).
 - A part name shared by two libraries is one name - intended (`Parts` merges them), but a theme rule hits both.
+
+## As built
+
+- **`@scope`, no fallback.** Firefox shipped `@scope` in 146 (Dec 2025), completing Baseline; proximity is relied on. Selectors carry an explicit `:where(:scope, :scope *)` on their first compound - Chrome otherwise prefixes an implied `:scope` descendant, which excludes the anchor itself and breaks an outer ancestor condition (`:where(.Page-group:hover) …` inside a nested anchor).
+- **Anchor class** is the existing group block (`Page-group`, `Page_year-group`), shared with `:state` ancestor hoisting - no separate label class.
+- **The anchor element is in scope.** `_year: { __control }` matches a marked `<Select _year>` root, and a portal root marked `__menu` matches. The proposal's descendant-only selector would miss both.
+- **Pack parts** emit as `@scope (:root)`, not unscoped: unscoped would lose to the owner's own rules at equal specificity, contradicting "parts beat the owner". `:root` proximity loses to every component anchor. Consequence: once emitted, a pack's part rules reach the whole document, not only components styled through that `use()` scope.
+- **Portal anchors** come from the DOM: at reconcile, the portal walks its marker's element ancestors and carries every anchor class onto its roots (nested portals compose through the outer portal's roots). On a portal root every carried anchor is equally near, so ancestor ties fall to emission order there - flag-nested and later-registered rules still win.
+- **Nested-part states.** A `:` condition inside a part body that holds a nested part applies to the enclosing part (`__menu: { ':is([open])': { __option } }` - open menu), emitted as `:where(:is(.__menu, menu):is([open])) .__option`. `@` conditions wrap as usual. A nested part under a pseudo-element throws, as does a class string in a part body.
+- **Errors throw at first render**, like every other map error - `style()` itself only registers maps. A `__Name` attribute also throws.
+- **A component's own `__name` beats its callers'** (nearest anchor). Documented: libraries style their own internals with `_rule`s.
+- **Typing:** `_` attributes and keys narrow to `` `_${letter | digit}${string}` `` - a template index signature cannot exclude a second underscore otherwise. `__` attributes are `boolean`.
+- **Bundle** (gzip, size harness): `dom: renderer` 18.93 → 19.08 kB (+0.15), `dom: styling` 23.67 → 24.44 kB (+0.77). Both now exceed the pre-release budgets; budgets are re-set at release.
+- **Verified** in Chrome by `cascade-probe`: part over owner, owner declarations kept, pack part over owner, page part over pack, tag default under owner and on unowned tags, nearest scope, flag-nested over top level, flag-nested reaching the child root and skipping siblings, anchor state, outer state before a nested anchor, portal anchors, recreation after the stylesheet is removed.
