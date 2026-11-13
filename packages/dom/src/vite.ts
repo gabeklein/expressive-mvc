@@ -162,6 +162,9 @@ export default function expressive(): Plugin {
     name: '@expressive/dom:hot',
     apply: 'serve',
     enforce: 'post',
+    config() {
+      return { optimizeDeps: { include: ['@expressive/mvc/hot'] } };
+    },
     configResolved(config) {
       root = config.root;
     },
