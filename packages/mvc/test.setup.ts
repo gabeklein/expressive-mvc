@@ -1,6 +1,6 @@
 import { afterAll, afterEach, expect, vi, type MockInstance } from 'vitest';
 import { Context, Model } from './src';
-import { listener, watch } from './src/observable';
+import { listener, queued, watch } from './src/observable';
 
 interface CustomMatchers<R = unknown> {
   /** Flush pending updates, optionally asserting specific keys were updated. */
@@ -98,7 +98,7 @@ async function toHaveUpdated(
   });
 
   // Check if already pending.
-  let didUpdate = await received.set();
+  let didUpdate: readonly unknown[] = await queued(received.is);
 
   // If nothing was pending, wait for microtask queue to drain fully.
   if (!didUpdate.length && !didFlush)
