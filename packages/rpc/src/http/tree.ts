@@ -140,26 +140,31 @@ export function router(root: Node | (() => Node | Promise<Node>), { dev = false,
 }
 
 async function answer(request: Request, { trail, pattern, segments, load }: Found, list: Endpoint[], dev: boolean): Promise<Response> {
-  const module = await load();
-  const exported = METHODS.filter(name => module[name] !== undefined);
-  const name = request.method === "HEAD" && !exported.includes("HEAD") ? "GET" : request.method;
-
-  if (!exported.includes(name)) return new Response(null, { status: 405, headers: { allow: exported.join(", ") } });
-
-  const method = module[name] as Method;
   const params = paramsOf(pattern, segments);
-  const route = `${name} /${pattern.join("/")}`;
 
   try {
-    if (typeof method != "function") throw new Error(`${route} is ${typeof method}, not a function - a route answers ${name} requests with one.`);
-
     const seats = await Promise.all(trail.map(node => node.gate?.()));
-    const response = await within(request, segments.slice(0, trail.length - 1), () => method(request, params), seats, params);
+    const response = await within(request, segments.slice(0, trail.length - 1), async () => {
+      const module = await load();
+      const exported = METHODS.filter(name => module[name] !== undefined);
+      const name = request.method === "HEAD" && !exported.includes("HEAD") ? "GET" : request.method;
 
-    if (!(response instanceof Response)) {
-      const node = method.length > 2 ? ` It takes (req, res, next) - a Node handler? Wrap it in fromNode(handler), of @expressive/rpc/node.` : "";
-      throw new Error(`${route} returned ${response} - a route answers with a Response.${node}`);
-    }
+      if (!exported.includes(name)) return new Response(null, { status: 405, headers: { allow: exported.join(", ") } });
+
+      const method = module[name] as Method;
+      const route = `${name} /${pattern.join("/")}`;
+
+      if (typeof method != "function") throw new Error(`${route} is ${typeof method}, not a function - a route answers ${name} requests with one.`);
+
+      const answer = await method(request, params);
+
+      if (!(answer instanceof Response)) {
+        const node = method.length > 2 ? ` It takes (req, res, next) - a Node handler? Wrap it in fromNode(handler), of @expressive/rpc/node.` : "";
+        throw new Error(`${route} returned ${answer} - a route answers with a Response.${node}`);
+      }
+
+      return answer;
+    }, seats, params);
 
     return withHeaders(response, headersOf(request));
   } catch (error) {

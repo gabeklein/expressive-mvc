@@ -14,6 +14,8 @@ describe("locate", () => {
     expect(at("/app/api/todos.ts")).toEqual({ file: "/app/api/todos.ts", pattern: [], module: "todos", leaf: "todos" });
     expect(at("/app/api/admin/users.tsx")).toEqual({ file: "/app/api/admin/users.tsx", pattern: ["admin"], module: "users", leaf: "users" });
     expect(at("/app/api/admin/index.js")).toEqual({ file: "/app/api/admin/index.js", pattern: ["admin"], module: "" });
+    for (const ext of ["ts", "tsx", "js", "jsx", "mts", "cts", "mjs", "cjs"])
+      expect(at(`/app/api/admin/index.${ext}`)).toEqual({ file: `/app/api/admin/index.${ext}`, pattern: ["admin"], module: "" });
   });
 
   it("will not place a module outside the folder, or a file that is not a script", () => {

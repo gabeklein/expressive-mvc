@@ -8,7 +8,7 @@ import type { Node } from "../http/tree";
 import { METHODS } from "../segments";
 import { toNode } from "../http/node";
 import { guardScript } from "./guard";
-import { Manifest, SCRIPT, isAddress, isDynamic, locate, pathOf, type Exposed, type Located, type Route } from "./manifest";
+import { INDEX, Manifest, SCRIPT, isAddress, isDynamic, locate, pathOf, type Exposed, type Located, type Route } from "./manifest";
 import { moduleOf, scanModule } from "./scan";
 
 export interface Options {
@@ -48,7 +48,6 @@ const RUNTIME = "\0@expressive/rpc/runtime";
 const CALLS = "@expressive/rpc/calls#dev";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const NEXT = "x-expressive-next";
-const INDEX = /^index\.[cm]?[jt]s$/;
 
 export function rpc({ dir = "api", opaque = true, entry, env, base = "" }: Options = {}): Plugin {
   let root = "";

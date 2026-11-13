@@ -42,6 +42,7 @@ export type Seat = Owned & { key?(): string | number | undefined };
 let TTL = 0;
 
 const store = new AsyncLocalStorage<Frame>();
+const responses = new WeakMap<Response, Promise<void>>();
 const SEATED = new WeakSet<Owned>();
 let top: Layer | undefined;
 let built: ((instance: Model) => void) | undefined;
@@ -155,6 +156,14 @@ export async function within<T>(request: Request, segments: string[], run: () =>
   const frame: Frame = { request, layer: root(), held: new Set(), params };
 
   return await store.run(frame, async (): Promise<Awaited<T>> => {
+    let active = false;
+    let deferred = false;
+    const cleanup = () => {
+      if (active) frame.layer.calls--;
+      frame.held.forEach(release);
+      prune(frame.layer);
+    };
+
     try {
       for (const [i, segment] of [undefined, ...segments].entries()) {
         frame.layer = enter(frame.layer, segment, seats[i]);
@@ -162,17 +171,24 @@ export async function within<T>(request: Request, segments: string[], run: () =>
       }
 
       frame.layer.calls++;
+      active = true;
+      const result = await run();
+      const done = result instanceof Response && responses.get(result);
 
-      try {
-        return await run();
-      } finally {
-        frame.layer.calls--;
+      if (done) {
+        deferred = true;
+        void done.then(cleanup);
       }
+
+      return result;
     } finally {
-      frame.held.forEach(release);
-      prune(frame.layer);
+      if (!deferred) cleanup();
     }
   });
+}
+
+export function track(response: Response, done: Promise<void>) {
+  responses.set(response, done);
 }
 
 function create(Type: Owned, layer: Layer): Entry {

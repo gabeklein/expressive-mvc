@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from "node:http";
 import { Duplex } from "node:stream";
 
-import type { Params } from "../context";
+import { track, type Params } from "../context";
 import { NotFound } from "../errors";
 
 /** A Node handler - an Express app or `Router()`, Connect middleware, or a bare `(req, res)`. */
@@ -23,6 +23,8 @@ export function fromNode(handler: NodeHandler): (request: Request, params?: Para
     const url = new URL(request.url);
     let started = false;
     let body: ReadableStreamDefaultController<Uint8Array> | undefined;
+    let complete!: () => void;
+    const finished = new Promise<void>(resolve => (complete = resolve));
 
     // What `res` writes: its status line and headers - whole, in the first write - which become the Response, then the body.
     // Readable too, or `on-finished` (body parsers) takes the request for done before it is read.
@@ -65,10 +67,15 @@ export function fromNode(handler: NodeHandler): (request: Request, params?: Para
       const empty = EMPTY.has(res.statusCode) || request.method === "HEAD";
       const stream = empty ? null : new ReadableStream<Uint8Array>({ start: controller => void (body = controller), cancel: () => void res.destroy() });
 
-      resolve(new Response(stream, { status: res.statusCode, statusText: res.statusMessage, headers }));
+      const response = new Response(stream, { status: res.statusCode, statusText: res.statusMessage, headers });
+      track(response, finished);
+      resolve(response);
     }
 
-    res.on("finish", () => body?.close());
+    res.on("finish", () => {
+      body?.close();
+      complete();
+    });
     res.on("close", () => {
       if (res.writableFinished) return;
 
@@ -76,6 +83,7 @@ export function fromNode(handler: NodeHandler): (request: Request, params?: Para
 
       body?.error(error);
       reject(error);
+      complete();
     });
     request.signal.addEventListener("abort", () => res.destroy());
 

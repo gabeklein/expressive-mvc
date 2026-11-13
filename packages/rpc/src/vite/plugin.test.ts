@@ -604,6 +604,29 @@ const ROUTES = {
 };
 
 describe("routes", () => {
+  it("will apply a folder gate from index.tsx", async () => {
+    const root = project({
+      "api/admin/index.ts": "",
+      "api/admin/index.tsx": GATE(`token !== "Bearer admin"`, "Forbidden"),
+      "api/admin/(secret).ts": `export function GET() { return new Response("secret"); }`,
+    });
+    const { server } = await listen(root);
+    const url = new URL("/admin/secret", server.resolvedUrls!.local[0]);
+
+    expect((await fetch(url, { headers: { authorization: "Bearer a" } })).status).toBe(403);
+    expect(await (await fetch(url, { headers: { authorization: "Bearer admin" } })).text()).toBe("secret");
+
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc()], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const built = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+    const at = (token: string) => built.fetch(new Request("http://localhost/admin/secret", { headers: { authorization: `Bearer ${token}` } }));
+
+    expect((await at("a")).status).toBe(403);
+    expect(await (await at("admin")).text()).toBe("secret");
+  });
+
   const send = (at: (path: string, init?: RequestInit) => Promise<Response>) => ({
     events: (id: string, token?: string) => at(`/admin/jobs/${id}/events`, { headers: token ? { authorization: `Bearer ${token}` } : {} }),
     named: (name: string, token = "a") => at(`/files/${name}`, { headers: { authorization: `Bearer ${token}` } }),

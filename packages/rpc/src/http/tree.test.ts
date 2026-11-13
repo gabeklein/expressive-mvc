@@ -157,6 +157,22 @@ describe("router", () => {
     expect(head.status).toBe(200);
   });
 
+  it("will refuse an unsupported method before revealing the route's methods", async () => {
+    const response = (await get("/account/me", { method: "PUT" }))!;
+
+    expect(response.status).toBe(401);
+    expect(response.headers.has("allow")).toBe(false);
+    expect((await response.json()).message).toBe("Sign in.");
+  });
+
+  it("will return a JSON failure when a route module cannot load", async () => {
+    const broken = router({ children: { broken: { file: async () => { throw new Error("Import failed."); } } } }, { dev: true });
+    const response = (await broken(new Request("http://localhost/broken")))!;
+
+    expect(response.status).toBe(500);
+    expect((await response.json()).message).toBe("Import failed.");
+  });
+
   it("will add what a route set to its response", async () => {
     const response = (await get("/account/theme", { method: "PUT", headers: { cookie: "user=ada" } }))!;
 

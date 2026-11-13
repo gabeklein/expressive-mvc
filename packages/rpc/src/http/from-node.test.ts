@@ -122,6 +122,25 @@ describe("fromNode", () => {
     expect((await reader.read()).done).toBe(true);
   });
 
+  it("will keep the gate through a later stream chunk", async () => {
+    let later: () => void = () => {};
+    const resume = new Promise<void>(resolve => (later = resolve));
+    const streaming = router({
+      gate: async () => Staff,
+      children: { stream: { file: async () => ({ GET: fromNode((_, res) => {
+        res.write(Staff.get().name);
+        void resume.then(() => res.end(Staff.get().name));
+      }) }) } },
+    });
+    const response = (await streaming(new Request("http://localhost/stream", { headers: { authorization: "staff" } })))!;
+    const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
+
+    expect((await reader.read()).value).toBe("Dana");
+    later();
+    expect((await reader.read()).value).toBe("Dana");
+    expect((await reader.read()).done).toBe(true);
+  });
+
   it("will answer next() with 404 and next(error) as a throw", async () => {
     const missing = await at("/admin/email/nowhere");
     const refused = await at("/admin/email/refuse");

@@ -3,6 +3,7 @@ import { parseSync, type ESTree } from "vite";
 
 import { ERRORS } from "../errors";
 import { METHODS } from "../segments";
+import { INDEX } from "./manifest";
 
 export interface Sources {
   resolve(spec: string, importer: string): Promise<string | undefined>;
@@ -57,7 +58,6 @@ type End = { kind: "error"; parent?: Parent } | { kind: "model" | "plain" } | { 
 
 const ROOT = "@expressive/rpc";
 const LIBRARY = /^@expressive\//;
-const INDEX = /^index\.[cm]?[jt]sx?$/;
 
 const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
   value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";

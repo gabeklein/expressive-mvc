@@ -5,7 +5,8 @@ import type { Exports } from "../call";
 import { rank as rankOf } from "../segments";
 import type { ErrorClass, Parent } from "./scan";
 
-export const SCRIPT = /\.[cm]?[jt]sx?$/;
+export const SCRIPT = /\.(?:[jt]sx?|[cm][jt]s)$/;
+export const INDEX = new RegExp("^index" + SCRIPT.source);
 
 export interface Located {
   file: string;
@@ -56,21 +57,23 @@ export function locate(dir: string, file: string): Located | undefined {
   if (!file.startsWith(dir + sep) || !SCRIPT.test(file)) return;
 
   const parts = relative(dir, file).split(sep);
-  const name = parts.pop()!.replace(SCRIPT, "");
+  const filename = parts.pop()!;
+  const name = filename.replace(SCRIPT, "");
+  const index = INDEX.test(filename);
   const named = (problem: string) => new Error(`${relative(dirname(dir), file)}: ${problem}`);
   let pattern: string[];
   let leaf: string | undefined;
 
   try {
     pattern = parts.map(segmentOf);
-    leaf = name === "index" || name === "(index)" ? undefined : segmentOf(name);
+    leaf = index || name === "(index)" ? undefined : segmentOf(name);
   } catch (error) {
     throw named((error as Error).message);
   }
 
   if (pattern.includes("*")) throw named("[...] takes the rest of the path - nothing is under it, so it is a file: [...].ts.");
 
-  return { file, pattern, module: name === "index" ? "" : name, ...(leaf !== undefined && { leaf }) };
+  return { file, pattern, module: index ? "" : name, ...(leaf !== undefined && { leaf }) };
 }
 
 /** Whether a module's name makes it an address - `[name]`, `[...]` or `(name)` - so it may answer requests by method. */
