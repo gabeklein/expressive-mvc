@@ -643,6 +643,24 @@ describe("vite host", () => {
     expect(html).not.toContain(".expressive/main.tsx");
   });
 
+  it("builds from a project's own index.html", async () => {
+    const root = project({ "app.tsx": "export default () => <h1>hi</h1>", "index.html": "<html><head><title>Mine</title></head><body></body></html>" });
+    const out = await build({
+      root,
+      configFile: false,
+      logLevel: "silent",
+      plugins: [expressive()],
+      resolve: SOURCES,
+      build: { write: false, outDir: "dist/client" },
+    });
+    const { output } = Array.isArray(out) ? out[0] : (out as { output: any[] });
+    const html = output.find((o: any) => o.fileName === "index.html")?.source as string;
+
+    expect(html).toContain("<title>Mine</title>");
+    expect(html).toContain('<div id="root"></div>');
+    expect(html).toMatch(/<script type="module" crossorigin src="\/assets\/index-[^"]+\.js"><\/script>/);
+  });
+
   it("will throw if config is read before the dev server runs", async () => {
     await expect(expressive().api!.config()).rejects.toThrow("The dev server is not running.");
   });
