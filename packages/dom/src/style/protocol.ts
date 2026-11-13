@@ -27,12 +27,22 @@ interface AppearanceContext {
 }
 
 type EnterAppearance = (parent?: AppearanceContext, key?: string, defines?: boolean) => AppearanceContext | undefined;
-type Emit = (block: Block, depth: number, document: Document) => string;
+interface Sink {
+  insert(rule: string, index: number): void;
+  root(key: object, css: string): void;
+  serialize(declarations: Declaration): string;
+  unitless(property: string): boolean;
+}
+
+type Target = Document | Sink;
+
+type Emit = (block: Block, depth: number, target: Target) => string;
 
 const SUBCOMPONENT = /^_[A-Z]/;
 const registrations = new WeakMap<object, EnterAppearance>();
 const tokens = new WeakMap<object, ResolvedAppearance>();
 let emitter: Emit | undefined;
+let active: Sink | undefined;
 
 function registerAppearance(type: object, enter: EnterAppearance) {
   registrations.set(type, enter);
@@ -42,8 +52,27 @@ function registerEmitter(emit: Emit) {
   emitter = emit;
 }
 
-function emitClass(block: Block, depth: number, document: Document) {
-  return emitter!(block, depth, document);
+function emitClass(block: Block, depth: number, target: Target) {
+  return emitter!(block, depth, target);
+}
+
+function isSink(target: Target): target is Sink {
+  return 'insert' in target;
+}
+
+function serving<T>(sink: Sink, run: () => T): T {
+  const previous = active;
+  active = sink;
+
+  try {
+    return run();
+  } finally {
+    active = previous;
+  }
+}
+
+function sinking() {
+  return active;
 }
 
 function enterAppearance(type: Function, key?: string) {
@@ -82,6 +111,9 @@ function appearanceToken(value: unknown) {
 
 export {
   appearanceToken,
+  isSink,
+  serving,
+  sinking,
   createAppearanceToken,
   emitClass,
   enterAppearance,
@@ -91,4 +123,4 @@ export {
   SUBCOMPONENT
 };
 
-export type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearance };
+export type { AppearanceContext, Block, Condition, Declaration, ResolvedAppearance, Sink, Target };

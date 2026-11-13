@@ -1,6 +1,6 @@
 import { applyDeclarations } from './declarations';
 import { appearanceToken, createAppearanceToken, emitClass, reserved } from './protocol';
-import type { AppearanceContext, ResolvedAppearance } from './protocol';
+import type { AppearanceContext, ResolvedAppearance, Target } from './protocol';
 
 type Style = string | Record<string, unknown> | false | null | undefined | readonly Style[];
 
@@ -81,7 +81,7 @@ function door(value: Style) {
 }
 
 function claim(
-  element: Element,
+  target: Target,
   appearance: Appearance | undefined,
   resolved: ResolvedAppearance | undefined,
   className: unknown,
@@ -99,7 +99,7 @@ function claim(
 
   for (const { appearance, doors } of collected.tokens) {
     for (const block of appearance.blocks || [])
-      collected.classes.push(emitClass(block, doors, element.ownerDocument));
+      collected.classes.push(emitClass(block, doors, target));
     if (appearance.classes) collected.classes.push(...appearance.classes);
   }
 

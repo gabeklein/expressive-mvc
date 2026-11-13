@@ -1,5 +1,7 @@
 import { serialize } from './declarations';
 import type { Declaration } from './declarations';
+import { isSink } from './protocol';
+import type { Target } from './protocol';
 
 interface Root {
   declarations: Declaration;
@@ -10,32 +12,36 @@ const groups = new Map<object, readonly Root[]>();
 const documents = new Set<Document>();
 const elements = new WeakMap<Document, Map<object, HTMLStyleElement>>();
 
-function rule(document: Document, { declarations, when }: Root) {
+function rule(target: Target, { declarations, when }: Root) {
   const states = when.filter((condition) => condition[0] == ':').map((state) => `:is(${state})`).join('');
   const selector = `:where(:root${states})`;
 
   return when
     .filter((condition) => condition[0] == '@')
-    .reduceRight((css, condition) => `${condition}{${css}}`, `${selector}{${serialize(document, declarations)}}`);
+    .reduceRight((css, condition) => `${condition}{${css}}`, `${selector}{${serialize(target, declarations)}}`);
 }
 
-function write(document: Document, key: object) {
-  let known = elements.get(document);
-  if (!known) elements.set(document, (known = new Map()));
+function write(target: Target, key: object) {
+  const css = groups.get(key)!
+    .filter((root) => Object.keys(root.declarations).length)
+    .map((root) => rule(target, root))
+    .join('\n');
+
+  if (isSink(target)) return target.root(key, css);
+
+  let known = elements.get(target);
+  if (!known) elements.set(target, (known = new Map()));
 
   let element = known.get(key);
 
   if (!element?.isConnected) {
-    element = document.createElement('style');
+    element = target.createElement('style');
     element.dataset.expressive = 'root';
-    document.head.append(element);
+    target.head.append(element);
     known.set(key, element);
   }
 
-  element.textContent = groups.get(key)!
-    .filter((root) => Object.keys(root.declarations).length)
-    .map((root) => rule(document, root))
-    .join('\n');
+  element.textContent = css;
 }
 
 function setRoot(key: object, roots: readonly Root[]) {
@@ -44,10 +50,10 @@ function setRoot(key: object, roots: readonly Root[]) {
   for (const document of documents) write(document, key);
 }
 
-function attachRoots(document: Document) {
-  documents.add(document);
+function attachRoots(target: Target) {
+  if (!isSink(target)) documents.add(target);
 
-  for (const key of groups.keys()) write(document, key);
+  for (const key of groups.keys()) write(target, key);
 }
 
 export { attachRoots, setRoot };

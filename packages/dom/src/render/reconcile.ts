@@ -134,4 +134,4 @@ function keyOf(value: RenderNode): Key {
   return isVNode(value) ? value.key : undefined;
 }
 
-export { reconcile, reconcileChildren };
+export { reconcile, reconcileChildren, source };
