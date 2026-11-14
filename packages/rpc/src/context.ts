@@ -38,7 +38,7 @@ export type Seat = Owned & { key?(): string | number | undefined };
 
 export type Gate = () => unknown;
 
-const TTL = 300;
+let TTL = 0;
 
 const store = new AsyncLocalStorage<Frame>();
 const SEATED = new WeakSet<Owned>();
@@ -316,7 +316,12 @@ function watch() {
   });
 }
 
-export function install() {
+/**
+ * Route server `get()` through the call's layer. `ttl` is how long a seat outlives its last call by
+ * default: rpc's gates derive from each request, so 0 - dev's seats hold state, so it passes 300.
+ */
+export function install({ ttl = 0 }: { ttl?: number } = {}) {
+  TTL = ttl;
   watch();
 
   const previous = resolver((Type, compute) => {
