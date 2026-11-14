@@ -2227,6 +2227,103 @@ describe('set method', () => {
       expect(await test.set()).toEqual(['foo']);
     });
 
+    it('will wait for an async new() to resolve', async () => {
+      const done = mockPromise();
+      const ready = vi.fn();
+
+      class Test extends Model {
+        protected async new() {
+          await done;
+        }
+      }
+
+      Test.on({ ready });
+
+      const settled = vi.fn();
+
+      Test.new().set().then(settled);
+
+      await flushMicrotasks();
+      expect(settled).not.toBeCalled();
+
+      done.resolve();
+      await flushMicrotasks();
+      expect(ready).toBeCalled();
+      expect(settled).toBeCalledWith([]);
+    });
+
+    it('will activate and wait when created with new', async () => {
+      const done = mockPromise();
+
+      const ready = vi.fn();
+
+      class Test extends Model {
+        protected async new() {
+          await done;
+        }
+      }
+
+      Test.on({ ready });
+
+      const settled = vi.fn();
+
+      new Test().set().then(settled);
+
+      await flushMicrotasks();
+      expect(settled).not.toBeCalled();
+
+      done.resolve();
+      await flushMicrotasks();
+      expect(ready).toBeCalled();
+      expect(settled).toBeCalledWith([]);
+    });
+
+    it('will reject with the error an async new() rejects', async () => {
+      class Test extends Model {
+        protected async new() {
+          throw new Error('expired');
+        }
+      }
+
+      Test.on({ catch: () => {} });
+
+      const test = Test.new();
+
+      await expect(test.set()).rejects.toThrow('expired');
+      expect(test.get(null)).toBe(true);
+    });
+
+    it('will reject if destroyed before an async new() resolves', async () => {
+      const done = mockPromise();
+
+      class Test extends Model {
+        protected async new() {
+          await done;
+        }
+      }
+
+      const test = Test.new();
+      const settled = test.set();
+
+      test.set(null);
+      done.resolve();
+
+      await expect(settled).rejects.toThrow(`${test} is destroyed.`);
+    });
+
+    it('will not reject unless awaited', async () => {
+      class Test extends Model {
+        protected async new() {
+          throw new Error('expired');
+        }
+      }
+
+      Test.on({ catch: () => {} });
+      Test.new().set();
+
+      await flushMicrotasks();
+    });
+
     it('will initialize from set({}) when created with new', () => {
       const didSetFoo = vi.fn();
 

@@ -452,8 +452,9 @@ abstract class Model {
   /**
    * Keys updated in the pending batch - await for the full list once it flushes; empty if none.
    *
-   * Activates an instance built with bare `new`. Waits on this instance only - `pending(work)` waits out
-   * the cascade a write sets off.
+   * Activates an instance built with bare `new`. While async setup is pending, awaiting waits for ready,
+   * then the batch - rejects with setup's error, or if destroyed first; never resolves awaited in its own
+   * `new()`. Waits on this instance only - `pending(work)` waits out the cascade a write sets off.
    *
    * @example
    * const keys = await this.set();
@@ -554,7 +555,9 @@ abstract class Model {
     else if (arg2) apply(self, arg1 as string, arg2);
     else event(self, arg1);
 
-    return queued(self) as Model.Updated<this>;
+    const wait = arg1 === undefined && observer(self)!.wait;
+
+    return (wait ? ready(self, wait) : queued(self)) as Model.Updated<this>;
   }
 
   /** Iterate `[key, value]` over managed properties - stored values, not exported. */
@@ -770,6 +773,23 @@ function init(state: Model, ...args: Model.Args) {
   }
 
   PENDING.add(state);
+}
+
+function ready(state: Model, wait: Set<() => void>) {
+  const promise = new Promise((resolve, reject) => {
+    const destroyed = listener(state, () => {
+      reject(CAUSE.has(state) ? CAUSE.get(state) : new Error(`${state} is destroyed.`));
+    }, null);
+
+    wait.add(() => {
+      destroyed();
+      resolve(queued(state));
+    });
+  });
+
+  promise.catch(() => {});
+
+  return Object.assign([], { then: promise.then.bind(promise) });
 }
 
 /**
