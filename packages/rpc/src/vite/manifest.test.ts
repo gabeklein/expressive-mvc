@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { locate, Manifest, type Exposed } from "./manifest";
+import { groupLines, locate, Manifest, type Exposed } from "./manifest";
 import type { Leaf, Tree } from "./surface";
 
 const DIR = "/app/api";
@@ -164,7 +164,7 @@ describe("groups", () => {
       ["findAll", search],
     ]);
 
-    expect(new Manifest().groups("/app/api/index.ts", tree)).toEqual([
+    expect(groupLines("/app/api/index.ts", tree)).toEqual([
       `import { search as t0, create as t1 } from "./claim/search.ts";`,
       `import { search as t2 } from "./attorney/search.ts";`,
       `const g0 = { "search": t0, "create": t1, "empty": {} };`,
