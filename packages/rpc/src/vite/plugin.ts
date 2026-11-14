@@ -1,17 +1,25 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join, relative, resolve as resolvePath } from "node:path";
-import type { Plugin, RunnableDevEnvironment } from "vite";
+import { join, relative, resolve as resolvePath, sep } from "node:path";
+import type { Plugin, RunnableDevEnvironment, ViteDevServer } from "vite";
 
 import type { Endpoint, Seats } from "../call";
 import { toNode } from "../http/node";
 import { guardScript } from "./guard";
-import { Manifest, locate, type Exposed, type Located } from "./manifest";
-import { scanModule } from "./scan";
+import { Manifest, SCRIPT, groupLines, locate, type Exposed, type Located } from "./manifest";
+import { scanModule, type Sources } from "./scan";
+import { leaves, scanSurface } from "./surface";
 
 export interface Options {
   dir?: string;
+  /**
+   * Which modules under `dir` are server modules, by their path from it. Defaults to every script.
+   *
+   * Say, `/(^|\/)index\.ts$/` for indexes only. The rest stay plain modules: the client stubs one only where a server module's groups or re-exports reach it, and
+   * serves only those calls. A folder's gate is the default of its index only when the index is a server module.
+   */
+  test?: RegExp | ((path: string) => boolean);
   opaque?: boolean;
   /**
    * The app's own server module, Worker-shaped: `export default { fetch(request, env, ctx) }`.
@@ -43,29 +51,89 @@ const CALLS = "@expressive/rpc/calls#dev";
 const SHARED = ["@expressive/mvc", "@expressive/rpc"];
 const NEXT = "x-expressive-next";
 const INDEX = ["ts", "js", "mts", "mjs"].map(ext => `index.${ext}`);
+const REACHED = "rpc";
 
-export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): Plugin {
+export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = {}): Plugin {
   let root = "";
   let folder = "";
   let main: string | undefined;
   let manifest = new Manifest();
-
+  const reach = new Map<string, Map<string, Set<string>>>();
+  const surveyed = new Map<string, number>();
+  let dev: ViteDevServer | undefined;
 
   const located = (file: string) => locate(folder, file);
+  const owned = (file: string) => !!located(file);
+  const sources = (resolve: Resolve): Sources => ({ resolve, read: file => readFileSync(file, "utf8") });
+  const indexAt = (pattern: string[]) => INDEX.map(name => join(folder, ...pattern, name)).find(existsSync);
 
-  async function scanned(at: Located, resolve: Resolve) {
-    const { calls, errors, gate, problems } = await scanModule(at.file, readFileSync(at.file, "utf8"), { resolve, read: file => readFileSync(file, "utf8") }, file => !!located(file));
+  function selected(file: string): boolean {
+    if (!located(file)) return false;
 
-    if (problems.length) throw new Error(`${relative(root, at.file)}: ${problems.join(" ")}`);
+    const path = relative(folder, file).split(sep).join("/");
+
+    return typeof test == "function" ? test(path) : test ? path.search(test) >= 0 : true;
+  }
+
+  const reached = (id: string) => new URLSearchParams(id.split("?")[1]).has(REACHED);
+
+  function allowed(file: string): Set<string> {
+    return new Set([...reach.values()].flatMap(leaves => [...(leaves.get(file) ?? [])]));
+  }
+
+  function fail(file: string, problems: string[]) {
+    if (problems.length) throw new Error(`${relative(root, file)}: ${problems.join(" ")}`);
+  }
+
+  async function scanned(at: Located, resolve: Resolve, only: ReadonlySet<string>) {
+    const { calls, errors, gate, problems } = await scanModule(at.file, readFileSync(at.file, "utf8"), sources(resolve), owned, {}, only);
+
+    fail(at.file, problems);
 
     return { calls, errors, gate };
   }
 
-  async function gateAt(pattern: string[], resolve: Resolve): Promise<Located | undefined> {
-    const file = INDEX.map(name => join(folder, ...pattern, name)).find(existsSync);
-    const at = file && located(file);
+  async function surfaced(at: Located, resolve: Resolve) {
+    const { tree, own, problems } = await scanSurface(at.file, readFileSync(at.file, "utf8"), sources(resolve), owned);
 
-    if (at && (await scanned(at, resolve)).gate) return at;
+    fail(at.file, problems);
+
+    return { tree, exposed: { ...at, ...(await scanned(at, resolve, new Set([...own, "default"]))) } };
+  }
+
+  async function gateAt(pattern: string[], resolve: Resolve): Promise<Located | undefined> {
+    const file = indexAt(pattern);
+    const at = file && selected(file) && located(file);
+
+    if (at && (await scanned(at, resolve, new Set(["default"]))).gate) return at;
+  }
+
+  async function survey(resolve: Resolve) {
+    const files = (readdirSync(folder, { recursive: true }) as string[])
+      .filter(path => SCRIPT.test(path) && !path.split(sep).includes("node_modules"))
+      .map(path => join(folder, path))
+      .filter(selected);
+
+    for (const file of reach.keys()) if (!files.includes(file)) reach.delete(file);
+
+    for (const file of files) {
+      const { mtimeMs } = statSync(file);
+
+      if (surveyed.get(file) === mtimeMs) continue;
+
+      surveyed.set(file, mtimeMs);
+      reach.set(file, leaves((await scanSurface(file, readFileSync(file, "utf8"), sources(resolve), owned)).tree));
+    }
+  }
+
+  function refresh(files: Iterable<string>) {
+    const graph = dev?.environments.client.moduleGraph;
+
+    for (const file of files) {
+      const stub = graph?.getModuleById(`${file}?${REACHED}`);
+
+      if (stub) graph!.invalidateModule(stub, new Set(), Date.now(), true);
+    }
   }
 
   async function gates(resolve: Resolve): Promise<Located[]> {
@@ -115,8 +183,11 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
     },
 
     buildStart() {
-      if (this.environment.name === "client" && this.environment.mode === "build")
-        manifest = new Manifest(opaque ? randomBytes(16).toString("base64url") : undefined);
+      if (this.environment.name !== "client" || this.environment.mode !== "build") return;
+
+      manifest = new Manifest(opaque ? randomBytes(16).toString("base64url") : undefined);
+      reach.clear();
+      surveyed.clear();
     },
 
     async buildApp(builder) {
@@ -136,11 +207,19 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
         return { id: createRequire(join(root, "package.json")).resolve(id), external: false };
       }
 
-      if (!("scan" in options && options.scan) || !/^[./]/.test(id)) return;
+      if (!/^[./]/.test(id)) return;
+
+      const scan = "scan" in options && options.scan;
+      const stub = !scan && importer && this.environment.config.consumer === "client" && (selected(importer.split("?")[0]) || reached(importer));
+
+      if (!scan && !stub) return;
 
       const resolved = await this.resolve(id, importer, { ...options, skipSelf: true });
 
-      return resolved && located(resolved.id) ? { id: `\0${resolved.id}`, external: true } : resolved;
+      if (!resolved) return resolved;
+      if (scan) return selected(resolved.id) ? { id: `\0${resolved.id}`, external: true } : resolved;
+
+      return located(resolved.id) && !selected(resolved.id) ? { ...resolved, id: `${resolved.id}?${REACHED}` } : resolved;
     },
 
     async load(id) {
@@ -154,13 +233,40 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
       if (id === RUNTIME) return `export { handler, scoped } from "@expressive/rpc/http";\nexport { install, verify } from "@expressive/rpc/protocol";\n`;
       if (this.environment.config.consumer !== "client") return;
 
-      const at = located(id.split("?")[0]);
+      const file = id.split("?")[0];
+      const at = located(file);
 
       if (!at) return;
 
-      const exposed: Exposed = { ...at, ...(await scanned(at, resolve)) };
+      if (selected(file)) {
+        const { tree, exposed } = await surfaced(at, resolve);
+        const before = reach.get(file)?.keys() ?? [];
+        const after = leaves(tree);
 
-      manifest.modules.set(at.file, exposed);
+        reach.set(file, after);
+        surveyed.set(file, statSync(file).mtimeMs);
+        refresh(new Set([...before, ...after.keys()]));
+
+        for (const other of manifest.modules.values()) {
+          const names = allowed(other.file);
+
+          if (!selected(other.file)) other.calls = other.calls.filter(name => names.has(name));
+        }
+
+        manifest.modules.set(file, exposed);
+
+        return manifest.stub(exposed, located, { lines: tree.size ? groupLines(file, tree) : [] });
+      }
+
+      if (!reached(id)) return;
+
+      await survey(resolve);
+
+      for (const [from, leaves] of reach) if (leaves.has(file)) this.addWatchFile(from);
+
+      const exposed: Exposed = { ...at, ...(await scanned(at, resolve, allowed(file))) };
+
+      manifest.modules.set(file, exposed);
 
       return manifest.stub(exposed, located);
     },
@@ -179,6 +285,7 @@ export function rpc({ dir = "api", opaque = true, entry, env }: Options = {}): P
     },
 
     configureServer(server) {
+      dev = server;
       const environment = server.environments[ENV] as RunnableDevEnvironment;
       const { runner } = environment;
       const resolve: Resolve = async (spec, importer) => (await environment.pluginContainer.resolveId(spec, importer))?.id;

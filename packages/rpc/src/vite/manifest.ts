@@ -3,6 +3,7 @@ import { dirname, relative, sep } from "node:path";
 
 import type { Exports } from "../call";
 import type { ErrorClass, Parent } from "./scan";
+import type { Leaf, Tree } from "./surface";
 
 export const SCRIPT = /\.[cm]?[jt]sx?$/;
 
@@ -155,4 +156,31 @@ export class Manifest<E extends Exposed = Exposed> {
 function importOf(from: string, file: string): string {
   const rel = relative(dirname(from), file).replaceAll("\\", "/");
   return rel.startsWith(".") ? rel : "./" + rel;
+}
+
+export function groupLines(file: string, tree: Tree): string[] {
+  const json = JSON.stringify;
+  const imports = new Map<string, Map<string, string>>();
+  const groups: string[] = [];
+  let count = 0;
+
+  const render = (node: Tree | Leaf): string => {
+    if (node instanceof Map) return node.size ? `{ ${[...node].map(([key, child]) => `${json(key)}: ${render(child)}`).join(", ")} }` : "{}";
+
+    const names = imports.get(node.file) ?? imports.set(node.file, new Map()).get(node.file)!;
+    return names.get(node.name) ?? names.set(node.name, `t${count++}`).get(node.name)!;
+  };
+
+  const exports = [...tree].map(([key, entry]) => {
+    if (!(entry instanceof Map)) return `${render(entry)} as ${json(key)}`;
+
+    groups.push(`const g${groups.length} = ${render(entry)};`);
+    return `g${groups.length - 1} as ${json(key)}`;
+  });
+
+  return [
+    ...[...imports].map(([from, names]) => `import { ${[...names].map(([name, alias]) => `${name} as ${alias}`).join(", ")} } from ${json(importOf(file, from))};`),
+    ...groups,
+    `export { ${exports.join(", ")} };`,
+  ];
 }

@@ -56,20 +56,26 @@ const ROOT = "@expressive/rpc";
 const LIBRARY = /^@expressive\//;
 const INDEX = /^index\.[cm]?[jt]sx?$/;
 
+export const DECLARED = "An index declares its gate itself - `export default () => guard()`, or a class extending an imported one.";
+
 const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
   value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
 
 export const isClass = (value: Value): value is ESTree.Class =>
   value?.type === "ClassDeclaration" || value?.type === "ClassExpression";
 
-const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? node.name : String(node.value));
+export const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? node.name : String(node.value));
 
-export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}): Promise<Scan> {
+/**
+ * What a module under the folder gives the client. With `only`, the rest of its exports stay on the server
+ * unchecked, save Error classes, which still cross; its default is a gate only if `only` names it.
+ */
+export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}, only?: ReadonlySet<string>): Promise<Scan> {
   const module = moduleOf(file, source);
   const scan: Scan = { calls: [], errors: [], gate: false, problems: [...module.errors] };
   const found: [ErrorClass, number][] = [];
 
-  for (const node of module.body) {
+  for (const node of only ? [] : module.body) {
     const problem = unsupported(node);
     if (problem) scan.problems.push(problem);
   }
@@ -77,7 +83,14 @@ export async function scanModule(file: string, source: string, sources: Sources,
   for (const [name, value] of module.exports) {
     if (name === "default") {
       if (extension.default) scan.problems.push(...(await extension.default(value)));
-      else await gate(scan, value, module, sources, owned);
+      else if (!only || only.has("default")) await gate(scan, value, module, sources, owned);
+      continue;
+    }
+
+    if (only && !only.has(name)) {
+      const end = isClass(value) ? await endOf({ cls: value, module }, name, sources, owned) : undefined;
+
+      if (end?.kind === "error") found.push([{ name, ...(end.parent && { parent: end.parent }) }, value!.start]);
       continue;
     }
 
@@ -122,6 +135,9 @@ async function gate(scan: Scan, value: Value, module: Module, sources: Sources, 
     return void scan.problems.push("Only a folder's index may export a default - its gate.");
 
   if (isFunction(value)) return void (scan.gate = true);
+
+  if (module.body.some(node => node.type === "ExportDefaultDeclaration" && node.declaration.type === "Identifier" && module.imports.has(node.declaration.name)))
+    return void scan.problems.push(DECLARED);
 
   const end = isClass(value) ? await endOf({ cls: value, module }, "default", sources, owned) : undefined;
 

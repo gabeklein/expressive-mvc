@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { locate, Manifest, type Exposed } from "./manifest";
+import { groupLines, locate, Manifest, type Exposed } from "./manifest";
+import type { Leaf, Tree } from "./surface";
 
 const DIR = "/app/api";
 const at = (file: string) => locate(DIR, file);
@@ -151,5 +152,24 @@ describe("calls", () => {
     expect(entry).toContain(`const e1 = { calls: { "users:list": m2.list }, classes: {  } };\nverify("/admin", e1);`);
     expect(entry).toContain(`const gates = new Map([["", m1.default], ["admin", m3.default]]);`);
     expect(entry).toContain(`export const handle = handler([{ pattern: [], exports: async () => e0 }, { pattern: ["admin"], exports: async () => e1 }]`);
+  });
+});
+
+describe("groups", () => {
+  it("will add each group as an object and each leaf as an export, from the stubs of the modules defining them", () => {
+    const search = { file: "/app/api/claim/search.ts", name: "search" };
+    const tree = new Map<string, Tree | Leaf>([
+      ["claim", new Map<string, Tree | Leaf>([["search", search], ["create", { file: "/app/api/claim/search.ts", name: "create" }], ["empty", new Map()]])],
+      ["attorney", new Map([["search", { file: "/app/api/attorney/search.ts", name: "search" }]])],
+      ["findAll", search],
+    ]);
+
+    expect(groupLines("/app/api/index.ts", tree)).toEqual([
+      `import { search as t0, create as t1 } from "./claim/search.ts";`,
+      `import { search as t2 } from "./attorney/search.ts";`,
+      `const g0 = { "search": t0, "create": t1, "empty": {} };`,
+      `const g1 = { "search": t2 };`,
+      `export { g0 as "claim", g1 as "attorney", t0 as "findAll" };`,
+    ]);
   });
 });

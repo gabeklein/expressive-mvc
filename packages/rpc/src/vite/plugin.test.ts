@@ -689,3 +689,234 @@ describe("entry", () => {
   });
 
 });
+
+describe("groups", () => {
+  const GROUPS = {
+    "src/main.ts": `import * as shop from "../api/shop"; import { list } from "../api/todos"; import type { Item } from "../api/shop/cart"; const item: Item | undefined = undefined; console.log(shop, list, item);`,
+    "api/shop/index.ts": `
+      import { Model } from "@expressive/mvc";
+      import { Current, Forbidden } from "@expressive/rpc";
+      import { list, add, Over } from "./cart";
+      import { statistics } from "./admin";
+      export type * as types from "./cart";
+      export default class Shop extends Model {
+        static key() { if (Current.get().request.headers.get("x-closed")) throw new Forbidden("Closed."); }
+      }
+      export async function hours() { return "9-5"; }
+      export const cart = { list, add, errors: { Over } };
+      export { statistics as stats };
+    `,
+    "api/shop/errors.ts": APP["api/errors.ts"],
+    "api/shop/cart.ts": APP["api/todos.ts"] + `
+      export type Item = { title: string };
+      export const PAGE = 20;
+      export function page() { return PAGE; }
+      export async function internal() { return "secret"; }
+    `,
+    "api/shop/admin/index.ts": APP["api/admin/index.ts"].replace("../../lib", "../../../lib") + `\nexport { stats as statistics } from "./stats";`,
+    "api/shop/admin/stats.ts": APP["api/admin/stats.ts"],
+  };
+
+  const INDEXES = (): InlineConfig => ({ plugins: [rpc({ test: /(^|\/)index\.ts$/ })] });
+
+  it("will serve a module's groups and leaves from the stubs of the modules defining them, beside its own calls", async () => {
+    const server = await serve(project(GROUPS), INDEXES());
+    const shop = (await server.transformRequest("/api/shop/index.ts"))!.code;
+    const cart = (await server.transformRequest("/api/shop/cart.ts?rpc"))!.code;
+
+    expect(shop).toMatch(/import \{ list as t0, add as t1, Over as t2 \} from "\/api\/shop\/cart\.ts\?rpc";/);
+    expect(shop).toMatch(/import \{ stats as t3 \} from "\/api\/shop\/admin\/stats\.ts\?rpc";/);
+    expect(shop).toContain('call(at, "hours", args)');
+    expect(shop).not.toContain("Closed.");
+    expect(shop.replace(/\s+/g, "")).toContain(`constg0={"list":t0,"add":t1,"errors":{"Over":t2}};export{g0as"cart",t3as"stats"};`);
+    expect(cart).toContain('const at = "/shop"');
+    expect(cart).toContain('call(at, "cart:list", args)');
+    expect(cart).toContain('call(at, "cart:add", args)');
+    expect(cart).toMatch(/import "\/api\/shop\/errors\.ts\?rpc";/);
+    expect(cart).not.toContain("internal");
+    expect(cart).not.toContain("PAGE");
+    expect(cart).toContain('define("/shop#cart:Late", "Late", "/shop#errors:Billing")');
+  });
+
+  it("will leave a module the test does not select plain, unless a server module reaches it", async () => {
+    const server = await serve(project(GROUPS), INDEXES());
+
+    expect((await server.transformRequest("/api/shop/cart.ts"))!.code).toContain("secret");
+    expect((await server.transformRequest("/api/todos.ts"))!.code).toContain('"one"');
+  });
+
+  it("will group calls in any server module, every module a server module by default", async () => {
+    const server = await serve(project({ ...GROUPS, "api/shop/cart.ts": APP["api/todos.ts"] + "export async function internal() {}" }));
+    const shop = (await server.transformRequest("/api/shop/index.ts"))!.code;
+    const cart = (await server.transformRequest("/api/shop/cart.ts"))!.code;
+
+    expect(shop).toMatch(/import \{ list as t0, add as t1, Over as t2 \} from "\/api\/shop\/cart\.ts";/);
+    expect(cart).toContain('call(at, "cart:internal", args)');
+  });
+
+  it("will answer only reached leaves, each through the gates of selected indexes along its folder", async () => {
+    const { server, post } = await listen(project(GROUPS), INDEXES());
+
+    await server.transformRequest("/src/main.ts");
+    await server.transformRequest("/api/shop/index.ts");
+    await server.transformRequest("/api/shop/cart.ts?rpc");
+    await server.transformRequest("/api/shop/admin/stats.ts?rpc");
+
+    const closed = await fetch(new URL("/shop", server.resolvedUrls!.local[0]), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-expressive-call": "cart:list", authorization: "Bearer a", "x-closed": "1" },
+      body: "[]",
+    });
+
+    expect(closed.status).toBe(403);
+    expect(await post("/shop", "cart:list")).toMatchObject({ status: 401 });
+    expect(await post("/shop", "cart:list", [], "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/shop", "hours", [], "a")).toEqual({ status: 200, body: { value: "9-5" } });
+    expect(await post("/shop", "cart:add", ["long"], "a")).toMatchObject({ status: 409, body: { error: "/shop#cart:Over" } });
+    expect(await post("/shop", "cart:internal", [], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    expect(await post("/shop/admin", "stats:stats", [], "a")).toMatchObject({ status: 403 });
+    expect(await post("/shop/admin", "stats:stats", [], "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+    expect(await post("/", "todos:list", [], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+  });
+
+  it("will take a folder's gate only from an index the test selects", async () => {
+    const { server, post } = await listen(project(GROUPS), { plugins: [rpc({ test: path => path === "shop/index.ts" })] });
+
+    await server.transformRequest("/api/shop/index.ts");
+    await server.transformRequest("/api/shop/cart.ts?rpc");
+
+    expect(await post("/shop", "cart:list")).toEqual({ status: 200, body: { value: ["one"] } });
+  });
+
+  const REACH = {
+    "api/lib/p.ts": `export async function x() { return "x"; } export async function y() { return "y"; } export async function z() { return "z"; }`,
+    "api/a/index.ts": `import { x } from "../lib/p"; export const a = { x };`,
+    "api/b/index.ts": `import { y } from "../lib/p"; export const b = { y };`,
+    "api/node_modules/dep/index.ts": `export const dep = 1;`,
+  };
+
+  it("will stub a plain module for every server module reaching it, whichever loads first", async () => {
+    const root = project({ ...REACH, "api/c/index.ts": `export const c = {};` });
+    const skip = new Set<string>();
+    const { server, post } = await listen(root, { plugins: [rpc({ test: path => /(^|\/)index\.ts$/.test(path) && !skip.has(path) })] });
+    const stub = async () => (await server.transformRequest("/api/lib/p.ts?rpc"))!.code;
+
+    await server.transformRequest("/api/a/index.ts");
+    expect(await stub()).toContain('call(at, "p:y", args)');
+    expect(await stub()).not.toContain('"p:z"');
+
+    await server.transformRequest("/api/b/index.ts");
+    expect(await post("/lib", "p:y", [], "a")).toEqual({ status: 200, body: { value: "y" } });
+
+    await new Promise(ready => setTimeout(ready, 300));
+    writeFileSync(join(root, "api/c/index.ts"), `import { z } from "../lib/p"; export const c = { z };`);
+
+    await vi.waitFor(async () => {
+      await server.transformRequest("/api/c/index.ts");
+      expect(await stub()).toContain('call(at, "p:z", args)');
+    }, { timeout: 5000 });
+
+    skip.add("b/index.ts");
+    server.environments.client.moduleGraph.invalidateAll();
+    expect(await stub()).not.toContain('"p:y"');
+  }, 15_000);
+
+  it("will build a plain module's stub with every server module's leaves, however late one is found", async () => {
+    const root = project({
+      ...REACH,
+      "src/main.ts": `import { a } from "../api/a"; import { deep } from "./deep"; console.log(a, deep);`,
+      "src/deep.ts": `export { deeper as deep } from "./deeper";`,
+      "src/deeper.ts": `import { b } from "../api/b"; export const deeper = b;`,
+    });
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc({ opaque: false, test: /(^|\/)index\.ts$/g })], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const server = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+    const post = async (name: string) => {
+      const response: Response = await server.fetch(new Request("http://localhost/lib", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-expressive-call": name, authorization: "Bearer a" },
+        body: "[]",
+      }));
+
+      return response.status;
+    };
+
+    expect([await post("p:x"), await post("p:y"), await post("p:z")]).toEqual([200, 200, 404]);
+  });
+
+  it("will stop answering a leaf its module drops", async () => {
+    const root = project(GROUPS);
+    const { server, post } = await listen(root, INDEXES());
+
+    await server.transformRequest("/api/shop/index.ts");
+    await server.transformRequest("/api/shop/cart.ts?rpc");
+    expect(await post("/shop", "cart:add", ["a"], "a")).toEqual({ status: 200, body: { value: "a" } });
+
+    await new Promise(ready => setTimeout(ready, 300));
+    writeFileSync(join(root, "api/shop/index.ts"), GROUPS["api/shop/index.ts"].replace("list, add, Over }", "list, Over }").replace("list, add, errors", "list, errors"));
+
+    await vi.waitFor(async () => {
+      await server.transformRequest("/api/shop/index.ts");
+      expect(await post("/shop", "cart:add", ["a"], "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    }, { timeout: 5000 });
+    expect(await post("/shop", "cart:list", [], "a")).toMatchObject({ status: 200 });
+  }, 15_000);
+
+  it("will resolve a stub's import of a plain module in the folder to that module's stub", async () => {
+    const root = project(GROUPS);
+    const server = await serve(root, INDEXES());
+    const main = join(root, "src/main.ts");
+    const shop = join(root, "api/shop/index.ts");
+    const resolve = (id: string, importer?: string, options = {}) => server.environments.client.pluginContainer.resolveId(id, importer, options);
+
+    expect(await resolve("./cart", shop)).toMatchObject({ id: `${join(root, "api/shop/cart.ts")}?rpc` });
+    expect(await resolve("./errors", `${join(root, "api/shop/cart.ts")}?rpc`)).toMatchObject({ id: `${join(root, "api/shop/errors.ts")}?rpc` });
+    expect(await resolve("./admin", shop)).toMatchObject({ id: join(root, "api/shop/admin/index.ts") });
+    expect(await resolve("./missing", shop)).toBeNull();
+    expect(await resolve("../api/shop/cart", main)).toMatchObject({ id: join(root, "api/shop/cart.ts") });
+    expect(await resolve("../api/shop", main, { scan: true })).toMatchObject({ external: true });
+    expect(await resolve("../api/shop/cart", main, { scan: true })).toMatchObject({ id: join(root, "api/shop/cart.ts") });
+    expect(await server.environments.rpc.pluginContainer.resolveId("./cart", shop)).toMatchObject({ id: join(root, "api/shop/cart.ts") });
+  });
+
+  it("will throw if a group is not an object of leaves from the folder", async () => {
+    const server = await serve(project({ ...GROUPS, "api/shop/index.ts": `import { list } from "../../lib/list"; async function ping() {} export const api = { ping, list };`, "lib/list.ts": APP["api/admin/stats.ts"].replace("stats", "list") }));
+
+    await expect(server.transformRequest("/api/shop/index.ts")).rejects.toThrow(
+      "api/shop/index.ts: api.ping is not an imported name - a leaf is a function or Error class imported by name from the module under the folder that defines it. " +
+        `api.list is defined outside the folder, in ${join(server.config.root, "lib/list.ts")}`,
+    );
+
+    const own = await serve(project({ ...GROUPS, "api/shop/index.ts": `import { list } from "./cart"; export const api = { list }; export const count = 1;` }));
+
+    await expect(own.transformRequest("/api/shop/index.ts")).rejects.toThrow("api/shop/index.ts: count is neither an async function nor an Error subclass");
+  });
+
+  it("will build a server answering only reached leaves, behind their folders' gates", async () => {
+    const root = project(GROUPS);
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc({ opaque: false, test: /(^|\/)index\.ts$/ })], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const server = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+    const post = async (path: string, name: string, token?: string) => {
+      const response: Response = await server.fetch(new Request(new URL(path, "http://localhost"), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-expressive-call": name, ...(token && { authorization: `Bearer ${token}` }) },
+        body: "[]",
+      }));
+
+      return { status: response.status, body: await response.json() };
+    };
+
+    expect(await post("/shop", "cart:list")).toMatchObject({ status: 401 });
+    expect(await post("/shop", "cart:list", "a")).toEqual({ status: 200, body: { value: ["one"] } });
+    expect(await post("/shop", "cart:internal", "a")).toEqual({ status: 404, body: { message: "Not found." } });
+    expect(await post("/shop", "hours", "a")).toEqual({ status: 200, body: { value: "9-5" } });
+    expect(await post("/shop/admin", "stats:stats", "a")).toMatchObject({ status: 403 });
+    expect(await post("/shop/admin", "stats:stats", "admin")).toEqual({ status: 200, body: { value: { total: 1 } } });
+    expect(await post("/", "todos:list", "a")).toEqual({ status: 404, body: { message: "Not found." } });
+  });
+});
