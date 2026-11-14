@@ -1,6 +1,6 @@
 {
   "name": "@expressive/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Commands from Models: argv onto fields, one dispatcher for every expressive command.",
   "keywords": [
     "expressive",
@@ -54,7 +54,7 @@
     "tsdown": "^0.20.1"
   },
   "peerDependencies": {
-    "@expressive/mvc": "^0.94.4"
+    "@expressive/mvc": "^0.94.5"
   },
   "peerDependenciesMeta": {
     "@expressive/mvc": {
