@@ -97,8 +97,9 @@ export default () => {
 ```
 
 - A failed `new()` refuses with its own error and status, and is not reported elsewhere.
-- A Model counts when it activates during the gate, after an `await` too - `X.new()`, or `new X()` then `.set()`.
-- Nothing is cached across calls - keep a costly check (verifying a token) behind a long-lived service.
+- A Model counts when it activates during the gate or while one it activated settles, after an `await` too - `X.new()`, or `new X()` then `.set()`.
+- Nothing is cached across calls - keep a costly check (verifying a token) behind a long-lived service, built at module scope: one first built inside a gate is the call's, and destroyed with it.
+- A class gate below a function gate is per call too - its `key()` and `ttl` cache nothing.
 - The gate returns nothing - a returned Model is not handed on.
 
 ### Cookies

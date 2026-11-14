@@ -381,6 +381,63 @@ describe("gates", () => {
     expect(failed).not.toHaveBeenCalled();
   });
 
+  it("will refuse with the error of a Model that fails before the gate returns", async () => {
+    class Session extends Model {
+      protected async new() {
+        throw new Denied("Expired.");
+      }
+    }
+    const run = vi.fn();
+
+    await expect(walk(request(), [], [async () => {
+      Session.new();
+      await tick();
+    }], run)).rejects.toThrow("Expired.");
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("will take a Model activated in a captured Model's async new() as the call's own", async () => {
+    class Profile extends Model { name = "ada"; }
+    class Session extends Model {
+      protected async new() {
+        await tick();
+        Profile.new();
+      }
+    }
+
+    const profile = await walk(request(), [], [() => void Session.new()], () => Profile.get());
+
+    expect(profile.name).toBe("ada");
+    expect(profile.get(null)).toBe(true);
+  });
+
+  it("will not refuse a call for a Model its gate destroys", async () => {
+    class Temp extends Model {}
+
+    expect(await walk(request(), [], [() => void Temp.new().set(null)], () => "ok")).toBe("ok");
+  });
+
+  it("will drop a gated folder's layer once no call holds it", async () => {
+    class Session extends Model { user = "ada"; }
+    const gate = () => void Session.new();
+    const pop = vi.spyOn(Context.prototype, "pop");
+    let release!: () => void;
+    const held = new Promise<void>(resolve => (release = resolve));
+
+    try {
+      const slow = walk(request(), ["app"], [undefined, gate], async () => (await held, Session.get().user));
+
+      await walk(request(), ["app"], [undefined, gate], () => {});
+      const quick = pop.mock.calls.length;
+
+      release();
+      expect(await slow).toBe("ada");
+      expect([quick, pop.mock.calls.length]).toEqual([1, 3]);
+    } finally {
+      pop.mockRestore();
+    }
+  });
+
   it("will report a Model's failed new() outside a gate as usual", async () => {
     class Late extends Model {
       protected async new() {

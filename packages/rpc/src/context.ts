@@ -36,7 +36,6 @@ type Owned = Model.Type & { ttl?: number };
 
 export type Seat = Owned & { key?(): string | number | undefined };
 
-/** A folder's gate as a function: it refuses by throwing, or by a Model it activates whose `new()` fails. */
 export type Gate = () => unknown;
 
 const TTL = 300;
@@ -44,6 +43,7 @@ const TTL = 300;
 const store = new AsyncLocalStorage<Frame>();
 const SEATED = new WeakSet<Owned>();
 const GATED = new WeakSet<Model>();
+const FAILED = new WeakMap<Model, unknown>();
 let top: Layer | undefined;
 let built: ((instance: Model) => void) | undefined;
 
@@ -154,27 +154,44 @@ function release(entry: Entry) {
 
 const isSeat = (guard: Seat | Gate): guard is Seat => guard.prototype instanceof Model;
 
-/** Run a function gate in a layer of this request's own, which holds the Models it activates. */
 async function gate(frame: Frame, fn: Gate) {
   const built: Model[] = [];
 
+  frame.layer.calls++;
   frame.layer = newLayer(frame.layer.prefix, frame.layer);
   frame.gated.push({ layer: frame.layer, built });
   frame.capture = built;
 
   try {
     await fn();
+
+    for (let done = 0; done < built.length; ) {
+      const batch = built.slice(done);
+
+      done = built.length;
+      await Promise.all(batch.map(settle));
+    }
   } finally {
     frame.capture = undefined;
   }
+}
 
-  await Promise.all(built.map(model => model.set()));
+async function settle(model: Model) {
+  try {
+    await model.set();
+  } catch (error) {
+    if (FAILED.has(model)) throw FAILED.get(model);
+  }
 }
 
 function ungate({ layer, built }: Frame["gated"][number]) {
+  const shared = layer.parent!;
+
   layer.children.forEach(child => evict(child));
   built.forEach(model => model.set(null));
   layer.context.pop();
+  shared.calls--;
+  prune(shared);
 }
 
 export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | Gate | undefined)[] = []): Promise<Awaited<T>> {
@@ -292,7 +309,9 @@ function watch() {
       GATED.add(this);
     },
     catch(error, kind) {
-      return kind == "setup" && GATED.has(this) ? undefined : error;
+      if (kind != "setup" || !GATED.has(this)) return error;
+
+      FAILED.set(this, error);
     },
   });
 }

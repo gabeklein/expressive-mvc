@@ -48,6 +48,23 @@ const APP = {
   "api/admin/stats.ts": `export async function stats() { return { total: 1 }; }`,
 };
 
+const FUNCTION_GATE = {
+  "lib/session.ts": `
+    import { Model } from "@expressive/mvc";
+    import { Current, Unauthorized } from "@expressive/rpc";
+    export class Session extends Model {
+      user = "";
+      protected async new() {
+        const token = Current.get().request.headers.get("authorization");
+        if (!token) throw new Unauthorized("Sign in.");
+        this.user = token.slice(7);
+      }
+    }
+  `,
+  "api/index.ts": `import { Session } from "../lib/session"; export default () => void Session.new();`,
+  "api/whoami.ts": `import { Session } from "../lib/session"; export async function whoami() { return Session.get().user; }`,
+};
+
 const dirs: string[] = [];
 const servers: ViteDevServer[] = [];
 
@@ -283,22 +300,7 @@ describe("dev server", () => {
   }, 30_000);
 
   it("will run a folder's function gate, its Models in reach of the call", async () => {
-    const { server, post } = await listen(project({
-      "lib/session.ts": `
-        import { Model } from "@expressive/mvc";
-        import { Current, Unauthorized } from "@expressive/rpc";
-        export class Session extends Model {
-          user = "";
-          protected async new() {
-            const token = Current.get().request.headers.get("authorization");
-            if (!token) throw new Unauthorized("Sign in.");
-            this.user = token.slice(7);
-          }
-        }
-      `,
-      "api/index.ts": `import { Session } from "../lib/session"; export default () => void Session.new();`,
-      "api/whoami.ts": `import { Session } from "../lib/session"; export async function whoami() { return Session.get().user; }`,
-    }));
+    const { server, post } = await listen(project(FUNCTION_GATE));
 
     await server.transformRequest("/api/whoami.ts");
 
@@ -497,6 +499,14 @@ describe("build", () => {
       expect(code).toMatch(/from\s*"shout"/);
       expect(code).not.toMatch(/from\s*"@expressive\/rpc[/"]/);
     }, 30_000);
+  });
+
+  it("will build a function gate, its Models in reach of the call", async () => {
+    const root = project({ ...FUNCTION_GATE, "src/main.ts": `import { whoami } from "../api/whoami"; whoami();` });
+    const { post } = await build(root, { opaque: false });
+
+    expect(await post("/", "whoami:whoami")).toEqual({ status: 401, body: { error: "http:Unauthorized", message: "Sign in.", status: 401 } });
+    expect(await post("/", "whoami:whoami", "ada")).toEqual({ status: 200, body: { value: "ada" } });
   });
 
   it("will build calls with no gate in their folders", async () => {
