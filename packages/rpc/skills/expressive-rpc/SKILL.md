@@ -61,7 +61,7 @@ rpc({ dir: "../api/src", test: /(^|\/)index\.ts$/ })   // indexes only
 rpc({ dir: "app", test: /(^|\/)remote\.ts$/ })        // remote.ts beside client code
 ```
 
-- A module `test` leaves out is plain: the client imports it as it is, and its exports follow no rules.
+- A module `test` leaves out is plain: its exports follow no rules, and a client import of it bundles it as it is - server code and all. Client code reaches calls through server modules only.
 - A plain module a server module groups or re-exports from is stubbed for those leaves alone. Its other exports stay on the server unchecked, save Error classes, which still cross.
 - A folder's gate is the default of its index only when `test` selects the index. A narrow `test` must keep the indexes whose gates guard the calls below them.
 
@@ -145,6 +145,7 @@ export default () => {
 - Nothing is cached across calls - keep a costly check (verifying a token) behind a long-lived service, built at module scope: one first built inside a gate is the call's, and destroyed with it.
 - A class gate below a function gate is per call too - its `key()` and `ttl` cache nothing.
 - The gate returns nothing - a returned Model is not handed on.
+- An index declares its gate itself: share one as `export default () => guard()`, not by exporting the import.
 
 ### Cookies
 
