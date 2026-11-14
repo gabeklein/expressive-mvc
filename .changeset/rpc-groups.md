@@ -2,4 +2,4 @@
 "@expressive/rpc": minor
 ---
 
-Trunks: an `index.ts` that exports objects of calls and Error classes imported from its folder is that folder's trunk. The client imports the index as a namespace of those groups, with stubs at the leaves. Each leaf keeps its own module's path, id and gates, and the index's default stays the folder's gate. Under a trunk, only its leaves and the index's own calls are served, and a module's other exports stay on the server unchecked. Client code that imports any other module in the trunk's folder fails the build.
+A server module may export groups - objects of calls and Error classes imported from elsewhere in `dir` - and re-export them. Each call keeps its defining module's path, id and gates. The new `test` option narrows which modules under `dir` are server modules: the rest stay plain, stubbed only for the calls a server module groups or re-exports, and a folder's gate is the default of its index only when `test` selects it.

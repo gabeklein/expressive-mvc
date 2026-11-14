@@ -1,6 +1,6 @@
 ---
 name: expressive-rpc
-description: Typed server calls for Vite apps (@expressive/rpc) - modules in api/ run on the server, the client imports them as stubs. Use when adding or debugging server calls - module rules, trunk, values, http errors, gates and Current, client configure, server entry, Worker/Node deploy.
+description: Typed server calls for Vite apps (@expressive/rpc) - modules in api/ run on the server, the client imports them as stubs. Use when adding or debugging server calls - module rules, groups and test, values, http errors, gates and Current, client configure, server entry, Worker/Node deploy.
 ---
 
 # @expressive/rpc
@@ -39,21 +39,33 @@ try { await done(id) } catch (error) { if (error instanceof ProOnly) upsell() }
 
 ## Module rules
 
-A module under `dir` may export:
+A server module under `dir` may export:
 
 - `async` functions - the calls.
 - `Error` subclasses - rebuilt on the client when thrown, so `instanceof` holds; message and own fields cross.
-- In an `index.ts` only, a default `Model` subclass or function - the folder's gate - and objects grouping calls, which make it the folder's [trunk](#trunk).
+- [Groups](#groups) - objects of calls and Error classes imported from elsewhere in `dir` - and re-exports of them.
+- In an `index.ts` only, a default `Model` subclass or function - the folder's gate.
 
-Anything else fails the build: a sync function, a value, a re-export, a non-Error class, a default outside an index. Twin-shaped exports (Model classes) are refused - stateful twins are `@expressive/dev`'s.
+Anything else fails the build: a sync function, a value, `export *`, a non-Error class, a default outside an index. Twin-shaped exports (Model classes) are refused - stateful twins are `@expressive/dev`'s.
 
-Only calls the client build imports are served - or, with a [trunk](#trunk), only its leaves. Helpers belong outside `dir` (`server/`, `shared/`) and are imported from it; a type a call's signature names must be importable by the client.
+Only calls the client build imports are served. Helpers belong outside `dir` (`server/`, `shared/`), or in a module `test` leaves plain; a type a call's signature names must be importable by the client.
 
 `dir` is relative to Vite's root and may sit outside it: `rpc({ dir: "../api/src" })` serves calls from a sibling workspace package, imported from the client by relative path. Path aliases in that package's own tsconfig resolve with Vite's `resolve: { tsconfigPaths: true }`.
 
-## Trunk
+### Selecting server modules
 
-A trunk is a folder's `index.ts` with at least one named export that is an object: a group of calls. The index's named exports are then the folder's whole client surface, and also its allowlist. Its default stays the folder's gate.
+Every script under `dir` is a server module unless `test` - a RegExp or function on the path from `dir` - picks fewer:
+
+```ts
+rpc({ dir: "../api/src", test: /(^|\/)index\.ts$/ })   // indexes only
+rpc({ dir: "app", test: /(^|\/)remote\.ts$/ })        // remote.ts beside client code
+```
+
+- A module `test` leaves out is plain: the client imports it as it is, and its exports follow no rules.
+- A plain module a server module groups or re-exports from is stubbed for those leaves alone. Its other exports stay on the server unchecked, save Error classes, which still cross.
+- A folder's gate is the default of its index only when `test` selects the index. A narrow `test` must keep the indexes whose gates guard the calls below them.
+
+## Groups
 
 ```ts
 // api/index.ts
@@ -65,7 +77,7 @@ export type * as types from "./claim/search";        // types ride beside it
 
 export default () => { Session.new(); };           // the gate
 
-export async function hello() { return "hi"; }      // the index's own calls, as before
+export async function hello() { return "hi"; }      // its own calls, as before
 
 export const claim = { search: searchClaims, create, errors: { Duplicate } };
 export const attorney = { search: searchAttorneys };
@@ -74,18 +86,14 @@ export { cleanup } from "./claim/cleanup";           // a single leaf
 
 ```ts
 // src/main.ts
-import * as api from "../api";
+import { claim, type types } from "../api";
 
-const found: api.types.Result[] = await api.claim.search(query);
+const found: types.Result[] = await claim.search(query);
 ```
 
-- A group's leaves are async functions and Error classes imported by name from modules in the trunk's folder. An exported import or a re-export (`export { x } from`) is a leaf too.
-- Each leaf is followed through re-exports to the module that defines it. That module's path, id and gates apply, exactly as if the client imported it directly. The trunk only groups.
-- Under a trunk, only its leaves and the index's own calls are served. A module's other exports stay on the server unchecked: helpers, constants, sync functions, re-exports, Models. Another index in the folder may re-export. Error classes still cross, so a thrown one rebuilds with its class.
-- Client code may import only the trunk from its folder. Importing any other module there fails the build. `import type` is fine.
-- Folders without a trunk serve as before. Sibling folders may each have a trunk, but trunks do not nest.
-- Keys are written out: no spread, computed key or method. Nesting has no limit, and a nested object may be a local `const`. A leaf must be an imported name. It can't be a default export, a namespace member, a function declared in the trunk, or a module outside the trunk's folder.
-- A trunk names every export. `export *` fails the build, and its other value exports follow the module rules.
+- A leaf is an async function or Error class imported by name from a module under `dir`. An exported import or a re-export (`export { x } from`) is a leaf too.
+- Each leaf is followed through re-exports to the module that defines it. That module's path, id and gates apply, exactly as if the client imported it directly. A group only groups.
+- Keys are written out: no spread, computed key or method. Nesting has no limit, and a nested object may be a local `const`. A leaf must be an imported name. It can't be a default export, a namespace member, a function declared in the grouping module, or a module outside `dir`.
 
 ## Addressing
 
