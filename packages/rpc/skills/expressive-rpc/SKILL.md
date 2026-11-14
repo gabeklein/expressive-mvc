@@ -57,13 +57,13 @@ A trunk is a folder's `index.ts` with at least one named export that is an objec
 
 ```ts
 // api/index.ts
-import { Model } from "@expressive/mvc";
+import { Session } from "../lib/session";
 import { search as searchClaims, create, Duplicate } from "./claim/search";
 import { search as searchAttorneys } from "./attorney/search";
 
 export type * as types from "./claim/search";        // types ride beside it
 
-export default class Session extends Model { /* gate */ }
+export default () => { Session.new(); };           // the gate
 
 export async function hello() { return "hi"; }      // the index's own calls, as before
 
