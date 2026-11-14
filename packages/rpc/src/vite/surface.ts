@@ -1,6 +1,6 @@
 import type { ESTree } from "vite";
 
-import { moduleOf, nameOf, type Module, type Sources, type Value } from "./scan";
+import { DECLARED, moduleOf, nameOf, type Module, type Sources, type Value } from "./scan";
 
 export interface Leaf {
   file: string;
@@ -10,9 +10,7 @@ export interface Leaf {
 export type Tree = Map<string, Tree | Leaf>;
 
 export interface Surface {
-  /** The module's groups and the calls it exports from other modules, by export name. */
   tree: Tree;
-  /** Its own named exports - its calls and Error classes. */
   own: string[];
   problems: string[];
 }
@@ -22,7 +20,6 @@ type Context = { module: Module; sources: Sources; owned: (file: string) => bool
 
 const NAMED = "a leaf is a function or Error class imported by name from the module under the folder that defines it.";
 
-/** A server module's exports: its own, and the groups and re-exports reaching calls defined elsewhere in the folder. */
 export async function scanSurface(file: string, source: string, sources: Sources, owned: (file: string) => boolean): Promise<Surface> {
   const module = moduleOf(file, source);
   const context: Context = { module, sources, owned, problems: [...module.errors] };
@@ -51,7 +48,10 @@ export async function scanSurface(file: string, source: string, sources: Sources
       const name = nameOf(spec.exported);
       const local = nameOf(spec.local);
 
-      if (node.source) await leaf(name, { from: node.source.value, name: local }, tree, context);
+      if (name === "default") {
+        if (node.source || module.imports.get(local)) context.problems.push(DECLARED);
+      }
+      else if (node.source) await leaf(name, { from: node.source.value, name: local }, tree, context);
       else await entry(name, module.locals.get(local), module.imports.get(local), tree, own, context);
     }
   }
@@ -85,7 +85,6 @@ function objectOf(value: Value, module: Module, seen = new Set<string>()): ESTre
   if (value?.type === "ObjectExpression") return value;
 }
 
-/** A top-level export: a group, an imported leaf, or the index's own. */
 async function entry(name: string, value: Value, imported: Imported, tree: Tree, own: string[], context: Context) {
   const object = objectOf(value, context.module);
 
@@ -109,6 +108,11 @@ async function branch(object: ESTree.ObjectExpression, path: string[], tree: Tre
 
     const key = prop.key.type === "Identifier" ? prop.key.name : String((prop.key as { value: unknown }).value);
     const at = [...path, key];
+
+    if (key === "__proto__") {
+      problems.push(`${at.join(".")} would set the group's prototype - name the key otherwise.`);
+      continue;
+    }
     const value = unwrap(prop.value);
     const nested = objectOf(value, module);
 
@@ -136,7 +140,6 @@ async function leaf(key: string, imported: { from: string; name: string }, tree:
   else tree.set(key, found);
 }
 
-/** Where `name` is declared, following re-exports and exported imports to the module that defines it. */
 export async function definition(file: string, name: string, sources: Sources, seen = new Set<string>()): Promise<Leaf | undefined> {
   const key = `${file}#${name}`;
 

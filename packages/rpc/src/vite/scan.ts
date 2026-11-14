@@ -56,6 +56,8 @@ const ROOT = "@expressive/rpc";
 const LIBRARY = /^@expressive\//;
 const INDEX = /^index\.[cm]?[jt]sx?$/;
 
+export const DECLARED = "An index declares its gate itself - `export default () => guard()`, or a class extending an imported one.";
+
 const isFunction = (value: Value): value is ESTree.Function | ESTree.ArrowFunctionExpression =>
   value?.type === "FunctionDeclaration" || value?.type === "FunctionExpression" || value?.type === "ArrowFunctionExpression";
 
@@ -133,6 +135,9 @@ async function gate(scan: Scan, value: Value, module: Module, sources: Sources, 
     return void scan.problems.push("Only a folder's index may export a default - its gate.");
 
   if (isFunction(value)) return void (scan.gate = true);
+
+  if (module.body.some(node => node.type === "ExportDefaultDeclaration" && node.declaration.type === "Identifier" && module.imports.has(node.declaration.name)))
+    return void scan.problems.push(DECLARED);
 
   const end = isClass(value) ? await endOf({ cls: value, module }, "default", sources, owned) : undefined;
 

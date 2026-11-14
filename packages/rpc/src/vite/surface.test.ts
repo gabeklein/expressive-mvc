@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Sources } from "./scan";
+import { DECLARED, type Sources } from "./scan";
 import { definition, leaves, scanSurface, type Tree } from "./surface";
 
 const FILE = "/app/api/index.ts";
@@ -138,7 +138,7 @@ describe("problems", () => {
       import { search } from "./claim/search";
       const key = "k";
       const rest = {};
-      export const api = { ...rest, [key]: search, nested: { run() {}, get value() { return 1; } } };
+      export const api = { ...rest, [key]: search, nested: { run() {}, get value() { return 1; } }, "__proto__": search };
     `);
 
     expect(problems).toEqual([
@@ -146,7 +146,16 @@ describe("problems", () => {
       "api has a computed key - a group's keys are written out, each an object or an imported name.",
       "api.nested has a method - a group's keys are written out, each an object or an imported name.",
       "api.nested has a method - a group's keys are written out, each an object or an imported name.",
+      "api.__proto__ would set the group's prototype - name the key otherwise.",
     ]);
+  });
+
+  it("will refuse a default re-exported or imported, leaving one declared to the module rules", async () => {
+    const declared = await scan(`const gate = () => {}; export { gate as default };`);
+    const imported = await scan(`import { search } from "./claim/search"; export { search as default };`);
+    const reexported = await scan(`export { search as default } from "./claim/search";`);
+
+    expect([declared.problems, declared.own, imported.problems, reexported.problems]).toEqual([[], [], [DECLARED], [DECLARED]]);
   });
 
   it("will refuse a leaf that is not a value imported by name", async () => {

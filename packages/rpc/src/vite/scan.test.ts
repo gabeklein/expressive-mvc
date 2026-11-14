@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isClass, scanModule, type Extension, type Sources } from "./scan";
+import { DECLARED, isClass, scanModule, type Extension, type Sources } from "./scan";
 
 const HTTP = `import { Current, HttpError, NotFound } from "@expressive/rpc";`;
 const MVC = `import { Model } from "@expressive/mvc";`;
@@ -256,6 +256,10 @@ describe("gates", () => {
     expect((await scan(`export default 1;`, "/app/api/index.ts")).problems).toEqual([problem]);
     expect((await scan(`export default class Oops extends Error {}`, "/app/api/index.ts")).problems).toEqual([problem]);
     expect((await scan(`export default class extends Undeclared {}`, "/app/api/index.ts")).problems).toEqual(["default extends Undeclared, which is neither declared nor imported."]);
+  });
+
+  it("will refuse an imported default, which it cannot check", async () => {
+    expect((await scan(`import { guard } from "../lib/guard"; export default guard;`, "/app/api/index.ts")).problems).toEqual([DECLARED]);
   });
 });
 
