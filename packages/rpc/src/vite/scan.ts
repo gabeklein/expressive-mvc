@@ -65,8 +65,8 @@ export const isClass = (value: Value): value is ESTree.Class =>
 export const nameOf = (node: ESTree.ModuleExportName) => (node.type === "Identifier" ? node.name : String(node.value));
 
 /**
- * What a module under the folder gives the client. With `only` - a trunk's leaves from this module - the rest of
- * its exports stay on the server unchecked, save Error classes, which still cross.
+ * What a module under the folder gives the client. With `only`, the rest of its exports stay on the server
+ * unchecked, save Error classes, which still cross; its default is a gate only if `only` names it.
  */
 export async function scanModule(file: string, source: string, sources: Sources, owned: (file: string) => boolean, extension: Extension = {}, only?: ReadonlySet<string>): Promise<Scan> {
   const module = moduleOf(file, source);
@@ -81,7 +81,7 @@ export async function scanModule(file: string, source: string, sources: Sources,
   for (const [name, value] of module.exports) {
     if (name === "default") {
       if (extension.default) scan.problems.push(...(await extension.default(value)));
-      else if (!only || INDEX.test(basename(file))) await gate(scan, value, module, sources, owned);
+      else if (!only || only.has("default")) await gate(scan, value, module, sources, owned);
       continue;
     }
 

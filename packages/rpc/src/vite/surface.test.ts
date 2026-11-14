@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { moduleOf, type Sources } from "./scan";
-import { definition, isTrunk, leaves, scanTrunk, type Tree } from "./trunk";
+import type { Sources } from "./scan";
+import { definition, leaves, scanSurface, type Tree } from "./surface";
 
 const FILE = "/app/api/index.ts";
 
@@ -25,24 +25,13 @@ const sources = (others: Record<string, string>): Sources => ({
 });
 
 function scan(source: string, others: Record<string, string> = {}) {
-  return scanTrunk(FILE, source, sources({ ...MODULES, ...others }), file => file.startsWith("/app/api/"));
+  return scanSurface(FILE, source, sources({ ...MODULES, ...others }), file => file.startsWith("/app/api/"));
 }
 
 const plain = (tree: Tree): unknown => Object.fromEntries([...tree].map(([key, value]) => [key, value instanceof Map ? plain(value) : value]));
 
-describe("detection", () => {
-  it("will take an index exporting an object as a trunk, whatever its default", () => {
-    const trunk = (source: string) => isTrunk(moduleOf(FILE, source));
-
-    expect(trunk(`export const claim = {}; export default class Session {}`)).toBe(true);
-    expect(trunk(`const claim = {} as const; export { claim };`)).toBe(true);
-    expect(trunk(`export async function hello() {} export default class Session {}`)).toBe(false);
-    expect(trunk(`export default {};`)).toBe(false);
-  });
-});
-
 describe("tree", () => {
-  it("will take each leaf as the named export of the module defining it, grouped as the trunk groups them", async () => {
+  it("will take each leaf as the named export of the module defining it, grouped as the module groups them", async () => {
     const { tree, own, problems } = await scan(`
       import { Model } from "@expressive/mvc";
       import { search as searchClaims, create, Missing } from "./claim/search";
@@ -138,13 +127,13 @@ describe("problems", () => {
     const { problems } = await scan(`export const api = {}; export * from "./claim/search"; export enum Kind { A } export const { a } = { a: 1 };`);
 
     expect(problems).toEqual([
-      "A trunk names each export - export * would hide which calls cross.",
+      "A server module names each export - export * would hide which calls cross.",
       "A server module exports async functions and Error subclasses only.",
       "A destructured export is neither an async function nor an Error subclass - the client could not use it.",
     ]);
   });
 
-  it("will refuse a key it cannot read without running the trunk", async () => {
+  it("will refuse a key it cannot read without running the module", async () => {
     const { problems } = await scan(`
       import { search } from "./claim/search";
       const key = "k";
@@ -153,15 +142,15 @@ describe("problems", () => {
     `);
 
     expect(problems).toEqual([
-      "api has a spread - a trunk's keys are written out, each an object or an imported name.",
-      "api has a computed key - a trunk's keys are written out, each an object or an imported name.",
-      "api.nested has a method - a trunk's keys are written out, each an object or an imported name.",
-      "api.nested has a method - a trunk's keys are written out, each an object or an imported name.",
+      "api has a spread - a group's keys are written out, each an object or an imported name.",
+      "api has a computed key - a group's keys are written out, each an object or an imported name.",
+      "api.nested has a method - a group's keys are written out, each an object or an imported name.",
+      "api.nested has a method - a group's keys are written out, each an object or an imported name.",
     ]);
   });
 
   it("will refuse a leaf that is not a value imported by name", async () => {
-    const named = "a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it.";
+    const named = "a leaf is a function or Error class imported by name from the module under the folder that defines it.";
     const { problems } = await scan(`
       import * as claim from "./claim/search";
       import type { search } from "./claim/search";
@@ -193,7 +182,7 @@ describe("problems", () => {
       `api.gone is gone from "./claim/search", which does not export it.`,
       `api.search is search from "./nowhere", which does not export it.`,
       `api.a is a from "./loop", which does not export it.`,
-      "help is defined outside the trunk's folder, in /app/lib/helper.ts - a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it.",
+      "help is defined outside the folder, in /app/lib/helper.ts - a leaf is a function or Error class imported by name from the module under the folder that defines it.",
     ]);
   });
 

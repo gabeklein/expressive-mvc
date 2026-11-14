@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { locate, Manifest, type Exposed } from "./manifest";
-import type { Leaf, Tree } from "./trunk";
+import type { Leaf, Tree } from "./surface";
 
 const DIR = "/app/api";
 const at = (file: string) => locate(DIR, file);
@@ -155,7 +155,7 @@ describe("calls", () => {
   });
 });
 
-describe("trunk", () => {
+describe("groups", () => {
   it("will add each group as an object and each leaf as an export, from the stubs of the modules defining them", () => {
     const search = { file: "/app/api/claim/search.ts", name: "search" };
     const tree = new Map<string, Tree | Leaf>([
@@ -164,7 +164,7 @@ describe("trunk", () => {
       ["findAll", search],
     ]);
 
-    expect(new Manifest().trunk("/app/api/index.ts", tree)).toEqual([
+    expect(new Manifest().groups("/app/api/index.ts", tree)).toEqual([
       `import { search as t0, create as t1 } from "./claim/search.ts";`,
       `import { search as t2 } from "./attorney/search.ts";`,
       `const g0 = { "search": t0, "create": t1, "empty": {} };`,

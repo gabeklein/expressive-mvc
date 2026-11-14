@@ -9,10 +9,10 @@ export interface Leaf {
 
 export type Tree = Map<string, Tree | Leaf>;
 
-export interface Trunk {
-  /** The trunk's groups and imported leaves, by export name. */
+export interface Surface {
+  /** The module's groups and the calls it exports from other modules, by export name. */
   tree: Tree;
-  /** Its other named exports - the index's own calls and Error classes. */
+  /** Its own named exports - its calls and Error classes. */
   own: string[];
   problems: string[];
 }
@@ -20,14 +20,10 @@ export interface Trunk {
 type Imported = ReturnType<Module["imports"]["get"]>;
 type Context = { module: Module; sources: Sources; owned: (file: string) => boolean; problems: string[] };
 
-const NAMED = "a leaf is a function or Error class imported by name from the module under the trunk's folder that defines it.";
+const NAMED = "a leaf is a function or Error class imported by name from the module under the folder that defines it.";
 
-/** An index exporting an object - a group of calls - is its folder's trunk; its default stays the gate. */
-export function isTrunk(module: Module): boolean {
-  return [...module.exports].some(([name, value]) => name !== "default" && !!objectOf(value, module));
-}
-
-export async function scanTrunk(file: string, source: string, sources: Sources, owned: (file: string) => boolean): Promise<Trunk> {
+/** A server module's exports: its own, and the groups and re-exports reaching calls defined elsewhere in the folder. */
+export async function scanSurface(file: string, source: string, sources: Sources, owned: (file: string) => boolean): Promise<Surface> {
   const module = moduleOf(file, source);
   const context: Context = { module, sources, owned, problems: [...module.errors] };
   const tree: Tree = new Map();
@@ -35,7 +31,7 @@ export async function scanTrunk(file: string, source: string, sources: Sources, 
 
   for (const node of module.body) {
     if (node.type === "ExportAllDeclaration" && node.exportKind !== "type")
-      context.problems.push("A trunk names each export - export * would hide which calls cross.");
+      context.problems.push("A server module names each export - export * would hide which calls cross.");
 
     if (node.type !== "ExportNamedDeclaration" || node.exportKind === "type") continue;
 
@@ -107,7 +103,7 @@ async function branch(object: ESTree.ObjectExpression, path: string[], tree: Tre
 
   for (const prop of object.properties) {
     if (prop.type === "SpreadElement" || prop.computed || prop.kind !== "init" || prop.method) {
-      problems.push(`${path.join(".")} has a ${prop.type === "SpreadElement" ? "spread" : prop.computed ? "computed key" : "method"} - a trunk's keys are written out, each an object or an imported name.`);
+      problems.push(`${path.join(".")} has a ${prop.type === "SpreadElement" ? "spread" : prop.computed ? "computed key" : "method"} - a group's keys are written out, each an object or an imported name.`);
       continue;
     }
 
@@ -135,7 +131,7 @@ async function leaf(key: string, imported: { from: string; name: string }, tree:
   const found = from ? await definition(from, imported.name, sources) : undefined;
 
   if (!found) problems.push(`${where} is ${imported.name} from "${imported.from}", which does not export it.`);
-  else if (!owned(found.file)) problems.push(`${where} is defined outside the trunk's folder, in ${found.file} - ${NAMED}`);
+  else if (!owned(found.file)) problems.push(`${where} is defined outside the folder, in ${found.file} - ${NAMED}`);
   else if (found.name === "default") problems.push(`${where} is a default export - ${NAMED}`);
   else tree.set(key, found);
 }

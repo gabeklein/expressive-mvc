@@ -290,13 +290,13 @@ describe("extension", () => {
   });
 });
 
-describe("trunk leaves", () => {
+describe("only", () => {
   const only = (source: string, names: string[], file?: string, others?: Record<string, string>) => {
     const sources: Sources = { resolve: async spec => (spec.endsWith("base") ? "/app/api/base.ts" : undefined), read: () => `export class Base extends Error {}` };
     return scanModule(file ?? "/app/api/todos.ts", source, sources, file => file.startsWith("/app/api/"), {}, new Set(names));
   };
 
-  it("will take only the trunk's leaves as calls, leaving the rest unchecked on the server", async () => {
+  it("will take only the names given as calls, leaving the rest unchecked on the server", async () => {
     const found = await only(`${MVC}
       import { helper } from "./helper";
       export async function list() {}
@@ -331,9 +331,10 @@ describe("trunk leaves", () => {
     expect(problems).toEqual(["sync() is not async - every call to it crosses the wire.", "count is neither an async function nor an Error subclass - the client could not use it."]);
   });
 
-  it("will still take an index's default as its gate", async () => {
-    expect(await only(`${MVC} export default class Gate extends Model {} export { a } from "./a";`, [], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: true, problems: [] });
-    expect(await only(`export default () => {}; export { a } from "./a";`, [], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: true, problems: [] });
-    expect((await only(`export default 1;`, [], "/app/api/index.ts")).problems).toEqual(["An index's default is its folder's gate - a function run before each call, or a Model subclass whose static key() admits each call."]);
+  it("will take an index's default as its gate only when named", async () => {
+    expect(await only(`${MVC} export default class Gate extends Model {} export { a } from "./a";`, ["default"], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: true, problems: [] });
+    expect(await only(`export default () => {}; export { a } from "./a";`, ["default"], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: true, problems: [] });
+    expect((await only(`export default 1;`, ["default"], "/app/api/index.ts")).problems).toEqual(["An index's default is its folder's gate - a function run before each call, or a Model subclass whose static key() admits each call."]);
+    expect(await only(`export default function Page() {}`, [], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: false, problems: [] });
   });
 });
