@@ -2311,6 +2311,32 @@ describe('set method', () => {
       await expect(settled).rejects.toThrow(`${test} is destroyed.`);
     });
 
+    it('will reject with the error an async new() rejected before the call', async () => {
+      class Test extends Model {
+        protected async new() {
+          throw new Error('expired');
+        }
+      }
+
+      Test.on({ catch: () => {} });
+
+      const test = Test.new();
+
+      await flushMicrotasks();
+      expect(test.get(null)).toBe(true);
+      await expect(test.set()).rejects.toThrow('expired');
+    });
+
+    it('will reject if destroyed before the call', async () => {
+      class Test extends Model {}
+
+      const test = Test.new();
+
+      test.set(null);
+
+      await expect(test.set()).rejects.toThrow(`${test} is destroyed.`);
+    });
+
     it('will not reject unless awaited', async () => {
       class Test extends Model {
         protected async new() {

@@ -452,9 +452,10 @@ abstract class Model {
   /**
    * Keys updated in the pending batch - await for the full list once it flushes; empty if none.
    *
-   * Activates an instance built with bare `new`. While async setup is pending, awaiting waits for ready,
-   * then the batch - rejects with setup's error, or if destroyed first; never resolves awaited in its own
-   * `new()`. Waits on this instance only - `pending(work)` waits out the cascade a write sets off.
+   * Activates an instance built with bare `new`. While async setup is pending, the list is empty and
+   * awaiting waits for ready, then the batch. Rejects with the error that destroyed the instance - setup's
+   * or another - whether before or after the call; never resolves awaited in its own `new()`. Waits on
+   * this instance only - `pending(work)` waits out the cascade a write sets off.
    *
    * @example
    * const keys = await this.set();
@@ -550,6 +551,9 @@ abstract class Model {
 
     if (typeof arg2 == 'function')
       return callback(self, arg2, arg1 as Model.Signal);
+
+    if (arg1 === undefined && observer(self) === null)
+      return settled(Promise.reject(cause(self))) as Model.Updated<this>;
 
     if (arg1 && typeof arg1 == 'object') assign(self, arg1, arg2 === true);
     else if (arg2) apply(self, arg1 as string, arg2);
@@ -775,21 +779,26 @@ function init(state: Model, ...args: Model.Args) {
   PENDING.add(state);
 }
 
-function ready(state: Model, wait: Set<() => void>) {
-  const promise = new Promise((resolve, reject) => {
-    const destroyed = listener(state, () => {
-      reject(CAUSE.has(state) ? CAUSE.get(state) : new Error(`${state} is destroyed.`));
-    }, null);
+const cause = (state: Model) =>
+  CAUSE.has(state) ? CAUSE.get(state) : new Error(`${state} is destroyed.`);
 
-    wait.add(() => {
-      destroyed();
-      resolve(queued(state));
-    });
-  });
-
+function settled(promise: Promise<unknown>) {
   promise.catch(() => {});
 
   return Object.assign([], { then: promise.then.bind(promise) });
+}
+
+function ready(state: Model, wait: Set<() => void>) {
+  return settled(
+    new Promise((resolve, reject) => {
+      const destroyed = listener(state, () => reject(cause(state)), null);
+
+      wait.add(() => {
+        destroyed();
+        resolve(queued(state));
+      });
+    })
+  );
 }
 
 /**
