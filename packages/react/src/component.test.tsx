@@ -516,6 +516,27 @@ describe('render method', () => {
     expect(screen).toHaveText('World');
   });
 
+  it('will accept a function child declared by render', () => {
+    class Column<T = any> extends Component {
+      label = '';
+
+      render(props = {} as { children?: (value: T) => React.ReactNode }) {
+        return <span>{this.label}{props.children?.(2 as T)}</span>;
+      }
+    }
+
+    const screen = render(
+      <Column<number> label="n=">{(x) => x.toFixed(1)}</Column>
+    );
+
+    expect(screen).toHaveText('n=2.0');
+
+    void (
+      // @ts-expect-error
+      <Column<number>>{(x: string) => x}</Column>
+    );
+  });
+
   it('will refresh on update', async () => {
     class Control extends Component {
       value = 'bar';

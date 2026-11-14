@@ -240,6 +240,16 @@ class Card extends Component {
 
 Non-optional render props become required JSX attributes. All props (field + render + special) are on `this.props`.
 
+A render-function `children` is declared here, not as a field - a `children` field is intersected with `Component.Node`:
+
+```tsx
+class Column<T> extends Component {
+  render(props = {} as { children?: (row: T) => Component.Node }) { … }
+}
+
+<Column<Row>>{(row) => <Actions row={row} />}</Column>;
+```
+
 ### Special Props
 
 - `is` - callback receiving the instance on creation, before `new()`. A returned object is assigned once - a seed, where props reassign every render: `<Counter is={() => ({ count: start })} />`. Capturing the instance needs `void` or braces: `is={(c) => void (ref = c)}`.
