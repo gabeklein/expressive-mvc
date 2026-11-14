@@ -1,22 +1,22 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, relative, resolve as resolvePath, sep } from "node:path";
-import type { Plugin, RunnableDevEnvironment } from "vite";
+import type { Plugin, RunnableDevEnvironment, ViteDevServer } from "vite";
 
 import type { Endpoint, Seats } from "../call";
 import { toNode } from "../http/node";
 import { guardScript } from "./guard";
-import { Manifest, locate, type Exposed, type Located } from "./manifest";
+import { Manifest, SCRIPT, groupLines, locate, type Exposed, type Located } from "./manifest";
 import { scanModule, type Sources } from "./scan";
 import { leaves, scanSurface } from "./surface";
 
 export interface Options {
   dir?: string;
   /**
-   * Which modules under `dir` are server modules, by their path from it - say, `/(^|\/)index\.ts$/`. Defaults to every script.
+   * Which modules under `dir` are server modules, by their path from it. Defaults to every script.
    *
-   * The rest stay plain modules: the client stubs one only where a server module's groups or re-exports reach it, and
+   * Say, `/(^|\/)index\.ts$/` for indexes only. The rest stay plain modules: the client stubs one only where a server module's groups or re-exports reach it, and
    * serves only those calls. A folder's gate is the default of its index only when the index is a server module.
    */
   test?: RegExp | ((path: string) => boolean);
@@ -59,6 +59,8 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
   let main: string | undefined;
   let manifest = new Manifest();
   const reach = new Map<string, Map<string, Set<string>>>();
+  const surveyed = new Map<string, number>();
+  let dev: ViteDevServer | undefined;
 
   const located = (file: string) => locate(folder, file);
   const owned = (file: string) => !!located(file);
@@ -70,7 +72,7 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
 
     const path = relative(folder, file).split(sep).join("/");
 
-    return typeof test == "function" ? test(path) : test ? test.test(path) : true;
+    return typeof test == "function" ? test(path) : test ? path.search(test) >= 0 : true;
   }
 
   const reached = (id: string) => new URLSearchParams(id.split("?")[1]).has(REACHED);
@@ -91,7 +93,6 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
     return { calls, errors, gate };
   }
 
-  /** A server module's own calls and Error classes, and the tree of calls it reaches elsewhere. */
   async function surfaced(at: Located, resolve: Resolve) {
     const { tree, own, problems } = await scanSurface(at.file, readFileSync(at.file, "utf8"), sources(resolve), owned);
 
@@ -104,7 +105,35 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
     const file = indexAt(pattern);
     const at = file && selected(file) && located(file);
 
-    if (at && (await surfaced(at, resolve)).exposed.gate) return at;
+    if (at && (await scanned(at, resolve, new Set(["default"]))).gate) return at;
+  }
+
+  async function survey(resolve: Resolve) {
+    const files = (readdirSync(folder, { recursive: true }) as string[])
+      .filter(path => SCRIPT.test(path) && !path.split(sep).includes("node_modules"))
+      .map(path => join(folder, path))
+      .filter(selected);
+
+    for (const file of reach.keys()) if (!files.includes(file)) reach.delete(file);
+
+    for (const file of files) {
+      const { mtimeMs } = statSync(file);
+
+      if (surveyed.get(file) === mtimeMs) continue;
+
+      surveyed.set(file, mtimeMs);
+      reach.set(file, leaves((await scanSurface(file, readFileSync(file, "utf8"), sources(resolve), owned)).tree));
+    }
+  }
+
+  function refresh(files: Iterable<string>) {
+    const graph = dev?.environments.client.moduleGraph;
+
+    for (const file of files) {
+      const stub = graph?.getModuleById(`${file}?${REACHED}`);
+
+      if (stub) graph!.invalidateModule(stub, new Set(), Date.now(), true);
+    }
   }
 
   async function gates(resolve: Resolve): Promise<Located[]> {
@@ -158,6 +187,7 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
 
       manifest = new Manifest(opaque ? randomBytes(16).toString("base64url") : undefined);
       reach.clear();
+      surveyed.clear();
     },
 
     async buildApp(builder) {
@@ -189,7 +219,6 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
       if (!resolved) return resolved;
       if (scan) return selected(resolved.id) ? { id: `\0${resolved.id}`, external: true } : resolved;
 
-      // A stub's import of a plain module in the folder - a leaf's or an Error parent's - is that module's stub.
       return located(resolved.id) && !selected(resolved.id) ? { ...resolved, id: `${resolved.id}?${REACHED}` } : resolved;
     },
 
@@ -211,18 +240,27 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
 
       if (selected(file)) {
         const { tree, exposed } = await surfaced(at, resolve);
+        const before = reach.get(file)?.keys() ?? [];
+        const after = leaves(tree);
 
-        reach.set(file, leaves(tree));
+        reach.set(file, after);
+        surveyed.set(file, statSync(file).mtimeMs);
+        refresh(new Set([...before, ...after.keys()]));
 
-        for (const other of manifest.modules.values())
-          if (!selected(other.file)) other.calls = other.calls.filter(name => allowed(other.file).has(name));
+        for (const other of manifest.modules.values()) {
+          const names = allowed(other.file);
+
+          if (!selected(other.file)) other.calls = other.calls.filter(name => names.has(name));
+        }
 
         manifest.modules.set(file, exposed);
 
-        return manifest.stub(exposed, located, { lines: tree.size ? manifest.groups(file, tree) : [] });
+        return manifest.stub(exposed, located, { lines: tree.size ? groupLines(file, tree) : [] });
       }
 
       if (!reached(id)) return;
+
+      await survey(resolve);
 
       for (const [from, leaves] of reach) if (leaves.has(file)) this.addWatchFile(from);
 
@@ -247,6 +285,7 @@ export function rpc({ dir = "api", test, opaque = true, entry, env }: Options = 
     },
 
     configureServer(server) {
+      dev = server;
       const environment = server.environments[ENV] as RunnableDevEnvironment;
       const { runner } = environment;
       const resolve: Resolve = async (spec, importer) => (await environment.pluginContainer.resolveId(spec, importer))?.id;

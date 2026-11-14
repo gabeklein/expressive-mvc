@@ -788,6 +788,64 @@ describe("groups", () => {
     expect(await post("/shop", "cart:list")).toEqual({ status: 200, body: { value: ["one"] } });
   });
 
+  const REACH = {
+    "api/lib/p.ts": `export async function x() { return "x"; } export async function y() { return "y"; } export async function z() { return "z"; }`,
+    "api/a/index.ts": `import { x } from "../lib/p"; export const a = { x };`,
+    "api/b/index.ts": `import { y } from "../lib/p"; export const b = { y };`,
+    "api/node_modules/dep/index.ts": `export const dep = 1;`,
+  };
+
+  it("will stub a plain module for every server module reaching it, whichever loads first", async () => {
+    const root = project({ ...REACH, "api/c/index.ts": `export const c = {};` });
+    const skip = new Set<string>();
+    const { server, post } = await listen(root, { plugins: [rpc({ test: path => /(^|\/)index\.ts$/.test(path) && !skip.has(path) })] });
+    const stub = async () => (await server.transformRequest("/api/lib/p.ts?rpc"))!.code;
+
+    await server.transformRequest("/api/a/index.ts");
+    expect(await stub()).toContain('call(at, "p:y", args)');
+    expect(await stub()).not.toContain('"p:z"');
+
+    await server.transformRequest("/api/b/index.ts");
+    expect(await post("/lib", "p:y", [], "a")).toEqual({ status: 200, body: { value: "y" } });
+
+    await new Promise(ready => setTimeout(ready, 300));
+    writeFileSync(join(root, "api/c/index.ts"), `import { z } from "../lib/p"; export const c = { z };`);
+
+    await vi.waitFor(async () => {
+      await server.transformRequest("/api/c/index.ts");
+      expect(await stub()).toContain('call(at, "p:z", args)');
+    }, { timeout: 5000 });
+
+    skip.add("b/index.ts");
+    server.environments.client.moduleGraph.invalidateAll();
+    expect(await stub()).not.toContain('"p:y"');
+  }, 15_000);
+
+  it("will build a plain module's stub with every server module's leaves, however late one is found", async () => {
+    const root = project({
+      ...REACH,
+      "src/main.ts": `import { a } from "../api/a"; import { deep } from "./deep"; console.log(a, deep);`,
+      "src/deep.ts": `export { deeper as deep } from "./deeper";`,
+      "src/deeper.ts": `import { b } from "../api/b"; export const deeper = b;`,
+    });
+    const builder = await createBuilder({ root, configFile: false, logLevel: "silent", plugins: [rpc({ opaque: false, test: /(^|\/)index\.ts$/g })], resolve: SOURCES }, null);
+
+    await builder.buildApp();
+
+    const server = (await import(pathToFileURL(join(root, "dist/server/index.js")).href)).default;
+    const post = async (name: string) => {
+      const response: Response = await server.fetch(new Request("http://localhost/lib", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-expressive-call": name, authorization: "Bearer a" },
+        body: "[]",
+      }));
+
+      return response.status;
+    };
+
+    expect([await post("p:x"), await post("p:y"), await post("p:z")]).toEqual([200, 200, 404]);
+  });
+
   it("will stop answering a leaf its module drops", async () => {
     const root = project(GROUPS);
     const { server, post } = await listen(root, INDEXES());
