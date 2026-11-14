@@ -282,6 +282,30 @@ describe("dev server", () => {
     expect(await post("/", "todos:list", [], "a")).toEqual({ status: 200, body: { value: ["two"] } });
   }, 30_000);
 
+  it("will run a folder's function gate, its Models in reach of the call", async () => {
+    const { server, post } = await listen(project({
+      "lib/session.ts": `
+        import { Model } from "@expressive/mvc";
+        import { Current, Unauthorized } from "@expressive/rpc";
+        export class Session extends Model {
+          user = "";
+          protected async new() {
+            const token = Current.get().request.headers.get("authorization");
+            if (!token) throw new Unauthorized("Sign in.");
+            this.user = token.slice(7);
+          }
+        }
+      `,
+      "api/index.ts": `import { Session } from "../lib/session"; export default () => void Session.new();`,
+      "api/whoami.ts": `import { Session } from "../lib/session"; export async function whoami() { return Session.get().user; }`,
+    }));
+
+    await server.transformRequest("/api/whoami.ts");
+
+    expect(await post("/", "whoami:whoami")).toEqual({ status: 401, body: { error: "http:Unauthorized", message: "Sign in.", status: 401 } });
+    expect(await post("/", "whoami:whoami", [], "ada")).toEqual({ status: 200, body: { value: "ada" } });
+  });
+
   it("will refuse a call through a folder whose gate is not a Model", async () => {
     const { server, post } = await listen(project({ "api/odd/index.ts": `export default class Odd extends Error {}`, "api/odd/ping.ts": `export async function ping() {}` }));
 

@@ -28,16 +28,22 @@ interface Frame {
   request: Request;
   layer: Layer;
   held: Set<Entry>;
+  gated: { layer: Layer; built: Model[] }[];
+  capture?: Model[];
 }
 
 type Owned = Model.Type & { ttl?: number };
 
 export type Seat = Owned & { key?(): string | number | undefined };
 
+/** A folder's gate as a function: it refuses by throwing, or by a Model it activates whose `new()` fails. */
+export type Gate = () => unknown;
+
 const TTL = 300;
 
 const store = new AsyncLocalStorage<Frame>();
 const SEATED = new WeakSet<Owned>();
+const GATED = new WeakSet<Model>();
 let top: Layer | undefined;
 let built: ((instance: Model) => void) | undefined;
 
@@ -146,13 +152,46 @@ function release(entry: Entry) {
   entry.timer.unref();
 }
 
-export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | undefined)[] = []): Promise<Awaited<T>> {
-  const frame: Frame = { request, layer: root(), held: new Set() };
+const isSeat = (guard: Seat | Gate): guard is Seat => guard.prototype instanceof Model;
+
+/** Run a function gate in a layer of this request's own, which holds the Models it activates. */
+async function gate(frame: Frame, fn: Gate) {
+  const built: Model[] = [];
+
+  frame.layer = newLayer(frame.layer.prefix, frame.layer);
+  frame.gated.push({ layer: frame.layer, built });
+  frame.capture = built;
+
+  try {
+    await fn();
+  } finally {
+    frame.capture = undefined;
+  }
+
+  await Promise.all(built.map(model => model.set()));
+}
+
+function ungate({ layer, built }: Frame["gated"][number]) {
+  layer.children.forEach(child => evict(child));
+  built.forEach(model => model.set(null));
+  layer.context.pop();
+}
+
+export async function within<T>(request: Request, segments: string[], run: () => T, seats: (Seat | Gate | undefined)[] = []): Promise<Awaited<T>> {
+  const frame: Frame = { request, layer: root(), held: new Set(), gated: [] };
 
   return await store.run(frame, async (): Promise<Awaited<T>> => {
     try {
       for (const [i, segment] of [undefined, ...segments].entries()) {
-        frame.layer = enter(frame.layer, segment, seats[i]);
+        const guard = seats[i];
+
+        if (guard && !isSeat(guard)) {
+          frame.layer = enter(frame.layer, segment);
+          await gate(frame, guard);
+          continue;
+        }
+
+        frame.layer = enter(frame.layer, segment, guard);
         await frame.layer.seat?.ready;
       }
 
@@ -166,6 +205,7 @@ export async function within<T>(request: Request, segments: string[], run: () =>
     } finally {
       frame.held.forEach(release);
       prune(frame.layer);
+      frame.gated.reverse().forEach(ungate);
     }
   });
 }
@@ -235,7 +275,31 @@ export function onBuild(hook: (instance: Model) => void) {
   built = hook;
 }
 
+let watching = false;
+
+function watch() {
+  if (watching) return;
+  watching = true;
+
+  Model.on({
+    setup() {
+      const frame = store.getStore();
+
+      if (!frame?.capture) return;
+
+      frame.capture.push(this);
+      frame.layer.context.add(this, true);
+      GATED.add(this);
+    },
+    catch(error, kind) {
+      return kind == "setup" && GATED.has(this) ? undefined : error;
+    },
+  });
+}
+
 export function install() {
+  watch();
+
   const previous = resolver((Type, compute) => {
     if (!Type && !store.getStore()) return previous(Type, compute);
     return compute(scope(frame().layer));

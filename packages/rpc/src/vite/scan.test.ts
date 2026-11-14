@@ -245,10 +245,15 @@ describe("gates", () => {
     expect((await scan(`${MVC} export default class Gate extends Model {}`)).problems).toEqual(["Only a folder's index may export a default - its gate."]);
   });
 
-  it("will refuse an index's default that is not a Model", async () => {
-    const problem = "An index's default is its folder's gate - a Model subclass whose static key() admits each call.";
+  it("will take an index's default function as its gate", async () => {
+    expect(await scan(`export default async function () {} export async function ping() {}`, "/app/api/index.ts")).toEqual({ calls: ["ping"], errors: [], gate: true, problems: [] });
+    expect((await scan(`const gate = () => {}; export default gate;`, "/app/api/index.ts")).gate).toBe(true);
+  });
 
-    expect((await scan(`export default async function () {}`, "/app/api/index.ts")).problems).toEqual([problem]);
+  it("will refuse an index's default that is neither a function nor a Model", async () => {
+    const problem = "An index's default is its folder's gate - a function run before each call, or a Model subclass whose static key() admits each call.";
+
+    expect((await scan(`export default 1;`, "/app/api/index.ts")).problems).toEqual([problem]);
     expect((await scan(`export default class Oops extends Error {}`, "/app/api/index.ts")).problems).toEqual([problem]);
     expect((await scan(`export default class extends Undeclared {}`, "/app/api/index.ts")).problems).toEqual(["default extends Undeclared, which is neither declared nor imported."]);
   });

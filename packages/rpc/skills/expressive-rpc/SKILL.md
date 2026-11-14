@@ -43,7 +43,7 @@ A module under `dir` may export:
 
 - `async` functions - the calls.
 - `Error` subclasses - rebuilt on the client when thrown, so `instanceof` holds; message and own fields cross.
-- In an `index.ts` only, a default `Model` subclass - the folder's gate.
+- In an `index.ts` only, a default `Model` subclass or function - the folder's gate.
 
 Anything else fails the build: a sync function, a value, a re-export, a non-Error class, a default outside an index. Twin-shaped exports (Model classes) are refused - stateful twins are `@expressive/dev`'s.
 
@@ -82,6 +82,24 @@ export default class Session extends Model {
 ```
 
 Inside a call, `Session.get()` finds that instance; `Current.get()` is the request - `.request` (a Web `Request`), `.url`, `.cookies` - read-only, server-only. A gate instance is cached per key for `static ttl` seconds - an optimization: derive its state from the request, never from an earlier call.
+
+### Function gates
+
+An index's default may instead be a function, run before each call in its folder and below, root first. It refuses by throwing, or by activating a Model whose `new()` fails. Every Model it activates is this call's own: in reach of `.get()` in the call and in inner gates, waited on until ready, and destroyed when the call ends.
+
+```ts
+// api/index.ts
+import { Session } from "../lib/session";   // a Model - non-Error classes cannot be exported from api/
+
+export default () => {
+  Session.new();   // its async new() verifies the token, throwing Unauthorized to refuse
+};
+```
+
+- A failed `new()` refuses with its own error and status, and is not reported elsewhere.
+- A Model counts when it activates during the gate, after an `await` too - `X.new()`, or `new X()` then `.set()`.
+- Nothing is cached across calls - keep a costly check (verifying a token) behind a long-lived service.
+- The gate returns nothing - a returned Model is not handed on.
 
 ### Cookies
 

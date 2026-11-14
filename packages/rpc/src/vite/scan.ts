@@ -121,11 +121,13 @@ async function gate(scan: Scan, value: Value, module: Module, sources: Sources, 
   if (!INDEX.test(basename(module.file)))
     return void scan.problems.push("Only a folder's index may export a default - its gate.");
 
+  if (isFunction(value)) return void (scan.gate = true);
+
   const end = isClass(value) ? await endOf({ cls: value, module }, "default", sources, owned) : undefined;
 
   if (end?.kind === "problem") scan.problems.push(end.problem);
   else if (end?.kind === "model") scan.gate = true;
-  else scan.problems.push("An index's default is its folder's gate - a Model subclass whose static key() admits each call.");
+  else scan.problems.push("An index's default is its folder's gate - a function run before each call, or a Model subclass whose static key() admits each call.");
 }
 
 function unsupported(node: Statement): string | undefined {
