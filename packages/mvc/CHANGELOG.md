@@ -1,5 +1,11 @@
 # @expressive/mvc
 
+## 0.94.5
+
+### Patch Changes
+
+- [#708](https://github.com/gabeklein/expressive/pull/708) [`b7be047`](https://github.com/gabeklein/expressive/commit/b7be047c229a1bcaeb7906b660261e2b64edc584) `await instance.set()` waits for an instance still settling - its async `new()`, setup or a parent's hold - before resolving, and rejects with the setup error if that destroys it, or if the instance is destroyed - before the call too. It used to resolve `[]` at once.
+
 ## 0.94.4
 
 ### Patch Changes

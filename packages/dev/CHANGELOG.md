@@ -1,5 +1,14 @@
 # @expressive/dev
 
+## 0.1.4
+
+### Patch Changes
+
+- [#661](https://github.com/gabeklein/expressive/pull/661) [`35f2d80`](https://github.com/gabeklein/expressive/commit/35f2d8084dc95ca542bc3c1eedef7a4caddb74d7) A folder's gate runs per request by default: its instance ends after the last call holding it, so a logout or revoked session takes effect on the next call. `static ttl` still caches one per key, and `set(null)` on it ends it early. dev keeps its seats for 300 seconds by default, as before.
+- Updated dependencies [[`b7be047`](https://github.com/gabeklein/expressive/commit/b7be047c229a1bcaeb7906b660261e2b64edc584), [`f722198`](https://github.com/gabeklein/expressive/commit/f722198d8ae0b9fb99ad0c82e8d48c01f604085e), [`35f2d80`](https://github.com/gabeklein/expressive/commit/35f2d8084dc95ca542bc3c1eedef7a4caddb74d7), [`8503354`](https://github.com/gabeklein/expressive/commit/8503354dff1f64f65ec1f1d30e40c72c8fcc888b)]:
+  - @expressive/mvc@0.94.5
+  - @expressive/rpc@0.3.0
+
 ## 0.1.3
 
 ### Patch Changes

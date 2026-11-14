@@ -1,5 +1,20 @@
 # @expressive/rpc
 
+## 0.3.0
+
+### Minor Changes
+
+- [#710](https://github.com/gabeklein/expressive/pull/710) [`f722198`](https://github.com/gabeklein/expressive/commit/f722198d8ae0b9fb99ad0c82e8d48c01f604085e) A folder's gate may be a function: an index's default run before each call in its folder and below. The Models it activates, and those they activate while settling, belong to that call. They are in reach of `.get()`, waited on until ready, and destroyed when it ends, and one whose `new()` fails refuses the call with its error, unreported.
+
+- [#661](https://github.com/gabeklein/expressive/pull/661) [`35f2d80`](https://github.com/gabeklein/expressive/commit/35f2d8084dc95ca542bc3c1eedef7a4caddb74d7) A folder's gate runs per request by default: its instance ends after the last call holding it, so a logout or revoked session takes effect on the next call. `static ttl` still caches one per key, and `set(null)` on it ends it early. dev keeps its seats for 300 seconds by default, as before.
+
+- [#712](https://github.com/gabeklein/expressive/pull/712) [`8503354`](https://github.com/gabeklein/expressive/commit/8503354dff1f64f65ec1f1d30e40c72c8fcc888b) A server module may export groups - objects of calls and Error classes imported from elsewhere in `dir` - and re-export them. Each call keeps its defining module's path, id and gates. The new `test` option narrows which modules under `dir` are server modules: the rest stay plain, stubbed only for the calls a server module groups or re-exports, and a folder's gate is the default of its index only when `test` selects it.
+
+### Patch Changes
+
+- Updated dependencies [[`b7be047`](https://github.com/gabeklein/expressive/commit/b7be047c229a1bcaeb7906b660261e2b64edc584)]:
+  - @expressive/mvc@0.94.5
+
 ## 0.2.0
 
 ### Minor Changes
