@@ -333,6 +333,7 @@ describe("trunk leaves", () => {
 
   it("will still take an index's default as its gate", async () => {
     expect(await only(`${MVC} export default class Gate extends Model {} export { a } from "./a";`, [], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: true, problems: [] });
-    expect((await only(`export default 1;`, [], "/app/api/index.ts")).problems).toEqual(["An index's default is its folder's gate - a Model subclass whose static key() admits each call."]);
+    expect(await only(`export default () => {}; export { a } from "./a";`, [], "/app/api/index.ts")).toEqual({ calls: [], errors: [], gate: true, problems: [] });
+    expect((await only(`export default 1;`, [], "/app/api/index.ts")).problems).toEqual(["An index's default is its folder's gate - a function run before each call, or a Model subclass whose static key() admits each call."]);
   });
 });
